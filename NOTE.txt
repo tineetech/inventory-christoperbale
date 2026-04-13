@@ -1,0 +1,4 @@
+Libary yang dipakai :
+1. export-import-file-excelcsv = maatwebsite/excel
+2. export-import-file-pdf = barryvdh/laravel-dompdf
+3. barcode = milon/barcode
