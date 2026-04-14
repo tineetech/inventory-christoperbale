@@ -69,6 +69,9 @@
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
+        ],
+        "backup-db": [
+            "C:\\xampp\\mysql\\bin\\mysqldump.exe -u root -p inventory-chrisbale > backup_inventory.sql"
         ]
     },
     "extra": {
