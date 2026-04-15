@@ -13,7 +13,7 @@
         <div class="d-flex justify-content-center align-items-center">
             <div class="ui-w-60">
                 <div class="w-100 position-relative">
-                    <img src="{{ asset('assets/img/logo-dark.png') }}" class="img-fluid">
+                    <img src="{{ asset('assets/img/logo-inv.png') }}" class="img-fluid">
                 </div>
             </div>
         </div>

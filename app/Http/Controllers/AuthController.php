@@ -5,15 +5,18 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Controller;
 use App\Models\Pengguna;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Session;
 
 class AuthController extends Controller
 {
     public function loginView() {
+        if (Auth::guard('pengguna')->check()) {
+            return redirect('/dashboard');
+        }
         return view('pages.auth.login');
     }
-    
     
     public function loginAction(Request $request)
     {
@@ -22,25 +25,24 @@ class AuthController extends Controller
             'password' => 'required'
         ]);
 
+        // cari user berdasarkan email atau nama
         $user = Pengguna::where('email', $request->email)
-                    ->orWhere('nama', $request->email)
-                    ->first();
+            ->orWhere('nama', $request->email)
+            ->first();
 
-        if(!$user){
-            return back()->with('error','User tidak ditemukan');
+        if (!$user) {
+            return back()->with('error', 'User tidak ditemukan');
         }
 
-        if(!Hash::check($request->password, $user->password)){
-            return back()->with('error','Password salah');
+        // cek password
+        if (!Hash::check($request->password, $user->password)) {
+            return back()->with('error', 'Password salah');
         }
 
-        session([
-            'user_id' => $user->id,
-            'user_nama' => $user->nama,
-            'role_id' => $user->role_id
-        ]);
+        // LOGIN PAKAI GUARD PENGGUNA
+        Auth::guard('pengguna')->login($user);
 
-        return redirect('/dashboard')->with('success','Login berhasil');
+        return redirect('/dashboard')->with('success', 'Login berhasil');
     }
 
     public function logout()

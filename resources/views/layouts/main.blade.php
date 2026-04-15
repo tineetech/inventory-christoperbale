@@ -11,7 +11,7 @@
     <meta name="keywords" content="Empire, bootstrap admin template, bootstrap admin panel, bootstrap 4 admin template, admin template">
     <meta name="author" content="Srthemesvilla" />
 
-    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/favicon.ico') }}">
+    <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/logo-inv.png') }}">
 
     <!-- Google fonts -->
     <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700" rel="stylesheet">
@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="{{ asset('assets/fonts/open-iconic.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/fonts/pe-icon-7-stroke.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/fonts/feather.css') }}">
+    <script src="https://unpkg.com/feather-icons"></script>
 
     <!-- Core stylesheets -->
     <link rel="stylesheet" href="{{ asset('assets/css/bootstrap-material.css') }}">
@@ -41,7 +42,37 @@
 
 <body>
 
-    @yield('content')
+
+    <!-- [ Preloader ] Start -->
+    <div class="page-loader">
+        <div class="bg-primary"></div>
+    </div>
+    <!-- [ Preloader ] End -->
+     
+    <!-- [ Layout wrapper ] Start -->
+    <div class="layout-wrapper layout-2">
+        <div class="layout-inner">
+            <!-- [ Layout sidenav ] Start -->
+             @include('components.sidebar')
+             <!-- [ Layout sidenav ] End -->
+             <!-- [ Layout container ] Start -->
+             <div class="layout-container">
+                 <!-- [ Layout navbar ( Header ) ] Start -->
+                 @include('components.header')
+                <!-- [ Layout navbar ( Header ) ] End -->
+
+                <!-- [ Layout content ] Start -->
+                
+                    @yield('content')
+                    
+                <!-- [ Layout content ] Start -->
+            </div>
+            <!-- [ Layout container ] End -->
+        </div>
+        <!-- Overlay -->
+        <div class="layout-overlay layout-sidenav-toggle"></div>
+    </div>
+    <!-- [ Layout wrapper] End -->
 
     <!-- Core scripts -->
     <script src="{{ asset('assets/js/pace.js') }}"></script>
@@ -74,6 +105,7 @@
             // el.style.display = 'none'
 
         });
+        feather.replace();
     </script>
 
 

@@ -20,11 +20,14 @@ use App\Http\Controllers\AdjustStokController;
 use App\Http\Controllers\AdjustStokDetailController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use Illuminate\Support\Facades\Auth;
 
 Route::get('/', function () {
-    return view('welcome');
+    if (Auth::guard('pengguna')->check()) {
+        return redirect('/dashboard');
+    }
+    return redirect('/login');
 });
-
 
 /*
 |--------------------------------------------------------------------------
@@ -33,7 +36,7 @@ Route::get('/', function () {
 */
 Route::get('/login', [AuthController::class, 'loginView'])->name('login.view');
 Route::post('/login', [AuthController::class, 'loginAction'])->name('login.action');
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/logout', [AuthController::class, 'logout'])->name('logout');
 
 /*
 |--------------------------------------------------------------------------
