@@ -2,7 +2,7 @@
     <!-- Brand demo (see assets/css/demo/demo.css) -->
     <div class="app-brand demo">
         <span class="app-brand-logo demo">
-            <img src="assets/img/logo-inv.png" alt="Brand Logo" class="img-fluid" style="width: 40px;">
+            <img src="{{ asset('assets/img/logo-inv.png') }}" alt="Brand Logo" class="img-fluid" style="width: 40px;">
         </span>
         <a href="index.html" class="app-brand-text demo sidenav-text font-weight-normal ml-2">POS Inventory</a>
         <a href="javascript:" class="layout-sidenav-toggle sidenav-link text-large ml-auto">
@@ -15,7 +15,7 @@
     <ul class="sidenav-inner py-1">
         <!-- Dashboards -->
         <li class="sidenav-item active">
-            <a href="index.html" class="sidenav-link">
+            <a href="{{ route('dashboard.index') }}" class="sidenav-link">
                 <i class="sidenav-icon feather icon-home"></i>
                 <div>Dashboard</div>
             </a>
@@ -30,28 +30,28 @@
 
             <ul class="sidenav-menu">
                 <li class="sidenav-item">
-                    <a href="#" class="sidenav-link">
+                    <a href="{{ route('supplier.index') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-truck" data-feather="truck" style="width: 16px; height: 18px; margin-right: 12px"></i>
                         <div>Supplier</div>
                     </a>
                 </li>
 
                 <li class="sidenav-item">
-                    <a href="#" class="sidenav-link">
+                    <a href="{{ route('satuan.index') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-bar-chart-2"></i>
                         <div>Satuan</div>
                     </a>
                 </li>
 
                 <li class="sidenav-item">
-                    <a href="#" class="sidenav-link">
+                    <a href="{{ route('barang.index') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-package"></i>
                         <div>Barang</div>
                     </a>
                 </li>
 
                 <li class="sidenav-item">
-                    <a href="#" class="sidenav-link">
+                    <a href="{{ route('dropshipper.index') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-user-plus"></i>
                         <div>Dropshipper</div>
                     </a>
@@ -64,21 +64,21 @@
         <li class="sidenav-header small font-weight-semibold">Transaksi</li>
 
         <li class="sidenav-item">
-            <a href="#" class="sidenav-link">
+            <a href="{{ route('pembelian.index') }}" class="sidenav-link">
                 <i class="sidenav-icon feather icon-shopping-cart"></i>
                 <div>Pembelian</div>
             </a>
         </li>
 
         <li class="sidenav-item">
-            <a href="#" class="sidenav-link">
+            <a href="{{ route('penjualan.index') }}" class="sidenav-link">
                 <i class="sidenav-icon feather icon-credit-card"></i>
                 <div>Penjualan</div>
             </a>
         </li>
 
         <li class="sidenav-item">
-            <a href="#" class="sidenav-link">
+            <a href="{{ route('manange-stok.index') }}" class="sidenav-link">
                 <i class="sidenav-icon feather icon-sliders"></i>
                 <div>Manajemen Stok</div>
             </a>

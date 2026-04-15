@@ -10,19 +10,19 @@ class SupplierController extends Controller
     public function index()
     {
         $suppliers = Supplier::all();
-        return view('supplier.index', compact('suppliers'));
+        return view('pages.master.supplier.index', compact('suppliers'));
     }
 
     public function create()
     {
-        return view('supplier.create');
+        return view('pages.master.supplier.create');
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'nama_supplier' => 'required|string|max:100',
-            'no_telp'       => 'nullable|string|max:20',
+            'nama_supplier' => 'required|string',
+            'no_telp'       => 'nullable|string',
             'alamat'        => 'nullable|string',
             'keterangan'    => 'nullable|string',
         ]);
@@ -42,13 +42,13 @@ class SupplierController extends Controller
     public function show(string $id)
     {
         $supplier = Supplier::with('pembelian')->findOrFail($id);
-        return view('supplier.show', compact('supplier'));
+        return view('pages.master.supplier.show', compact('supplier'));
     }
 
     public function edit(string $id)
     {
         $supplier = Supplier::findOrFail($id);
-        return view('supplier.edit', compact('supplier'));
+        return view('pages.master.supplier.edit', compact('supplier'));
     }
 
     public function update(Request $request, string $id)

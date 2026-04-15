@@ -106,12 +106,12 @@ Route::get('/role-hak-akses/delete/{id}', [RoleHakAksesController::class, 'destr
 | SATUAN
 |--------------------------------------------------------------------------
 */
-Route::get('/satuan', [SatuanController::class, 'index']);
-Route::get('/satuan/create', [SatuanController::class, 'create']);
-Route::post('/satuan/store', [SatuanController::class, 'store']);
-Route::get('/satuan/edit/{id}', [SatuanController::class, 'edit']);
-Route::post('/satuan/update/{id}', [SatuanController::class, 'update']);
-Route::get('/satuan/delete/{id}', [SatuanController::class, 'destroy']);
+Route::get('/master/satuan', [SatuanController::class, 'index'])->name('satuan.index');
+Route::get('/master/satuan/create', [SatuanController::class, 'create'])->name('satuan.create');
+Route::post('/master/satuan/store', [SatuanController::class, 'store'])->name('satuan.store');
+Route::get('/master/satuan/edit/{id}', [SatuanController::class, 'edit'])->name('satuan.edit');
+Route::put('/master/satuan/update/{id}', [SatuanController::class, 'update'])->name('satuan.update');
+Route::delete('/master/satuan/delete/{id}', [SatuanController::class, 'destroy'])->name('satuan.destroy');
 
 
 
@@ -120,12 +120,12 @@ Route::get('/satuan/delete/{id}', [SatuanController::class, 'destroy']);
 | SUPPLIER
 |--------------------------------------------------------------------------
 */
-Route::get('/supplier', [SupplierController::class, 'index']);
-Route::get('/supplier/create', [SupplierController::class, 'create']);
-Route::post('/supplier/store', [SupplierController::class, 'store']);
-Route::get('/supplier/edit/{id}', [SupplierController::class, 'edit']);
-Route::post('/supplier/update/{id}', [SupplierController::class, 'update']);
-Route::get('/supplier/delete/{id}', [SupplierController::class, 'destroy']);
+Route::get('/master/supplier', [SupplierController::class, 'index'])->name('supplier.index');
+Route::get('/master/supplier/create', [SupplierController::class, 'create'])->name('supplier.create');
+Route::post('/master/supplier/store', [SupplierController::class, 'store'])->name('supplier.store');
+Route::get('/master/supplier/edit/{id}', [SupplierController::class, 'edit'])->name('supplier.edit');
+Route::put('/master/supplier/update/{id}', [SupplierController::class, 'update'])->name('supplier.update');
+Route::delete('/master/supplier/delete/{id}', [SupplierController::class, 'destroy'])->name('supplier.destroy');
 
 
 
@@ -134,12 +134,12 @@ Route::get('/supplier/delete/{id}', [SupplierController::class, 'destroy']);
 | DROPSHIPPER
 |--------------------------------------------------------------------------
 */
-Route::get('/dropshipper', [DropshipperController::class, 'index']);
-Route::get('/dropshipper/create', [DropshipperController::class, 'create']);
-Route::post('/dropshipper/store', [DropshipperController::class, 'store']);
-Route::get('/dropshipper/edit/{id}', [DropshipperController::class, 'edit']);
-Route::post('/dropshipper/update/{id}', [DropshipperController::class, 'update']);
-Route::get('/dropshipper/delete/{id}', [DropshipperController::class, 'destroy']);
+Route::get('/master/dropshipper', [DropshipperController::class, 'index'])->name('dropshipper.index');
+Route::get('/master/dropshipper/create', [DropshipperController::class, 'create'])->name('dropshipper.create');
+Route::post('/master/dropshipper/store', [DropshipperController::class, 'store'])->name('dropshipper.store');
+Route::get('/master/dropshipper/edit/{id}', [DropshipperController::class, 'edit'])->name('dropshipper.edit');
+Route::post('/master/dropshipper/update/{id}', [DropshipperController::class, 'update'])->name('dropshipper.update');
+Route::get('/master/dropshipper/delete/{id}', [DropshipperController::class, 'destroy'])->name('dropshipper.destroy');
 
 
 
@@ -148,12 +148,12 @@ Route::get('/dropshipper/delete/{id}', [DropshipperController::class, 'destroy']
 | BARANG
 |--------------------------------------------------------------------------
 */
-Route::get('/barang', [BarangController::class, 'index']);
-Route::get('/barang/create', [BarangController::class, 'create']);
-Route::post('/barang/store', [BarangController::class, 'store']);
-Route::get('/barang/edit/{id}', [BarangController::class, 'edit']);
-Route::post('/barang/update/{id}', [BarangController::class, 'update']);
-Route::get('/barang/delete/{id}', [BarangController::class, 'destroy']);
+Route::get('/master/barang', [BarangController::class, 'index'])->name('barang.index');
+Route::get('/master/barang/create', [BarangController::class, 'create'])->name('barang.create');
+Route::post('/master/barang/store', [BarangController::class, 'store'])->name('barang.store');
+Route::get('/master/barang/edit/{id}', [BarangController::class, 'edit'])->name('barang.edit');
+Route::post('/master/barang/update/{id}', [BarangController::class, 'update'])->name('barang.update');
+Route::get('/master/barang/delete/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
 
 
 
@@ -190,12 +190,12 @@ Route::get('/stok-movement/delete/{id}', [StokMovementController::class, 'destro
 | PEMBELIAN
 |--------------------------------------------------------------------------
 */
-Route::get('/pembelian', [PembelianController::class, 'index']);
-Route::get('/pembelian/create', [PembelianController::class, 'create']);
-Route::post('/pembelian/store', [PembelianController::class, 'store']);
-Route::get('/pembelian/edit/{id}', [PembelianController::class, 'edit']);
-Route::post('/pembelian/update/{id}', [PembelianController::class, 'update']);
-Route::get('/pembelian/delete/{id}', [PembelianController::class, 'destroy']);
+Route::get('/transaksi/pembelian', [PembelianController::class, 'index'])->name('pembelian.index');
+Route::get('/transaksi/pembelian/create', [PembelianController::class, 'create'])->name('pembelian.create');
+Route::post('/transaksi/pembelian/store', [PembelianController::class, 'store'])->name('pembelian.store');
+Route::get('/transaksi/pembelian/edit/{id}', [PembelianController::class, 'edit'])->name('pembelian.edit');
+Route::post('/transaksi/pembelian/update/{id}', [PembelianController::class, 'update'])->name('pembelian.update');
+Route::get('/transaksi/pembelian/delete/{id}', [PembelianController::class, 'destroy'])->name('pembelian.destroy');
 
 
 
@@ -218,12 +218,12 @@ Route::get('/pembelian-detail/delete/{id}', [PembelianDetailController::class, '
 | PENJUALAN
 |--------------------------------------------------------------------------
 */
-Route::get('/penjualan', [PenjualanController::class, 'index']);
-Route::get('/penjualan/create', [PenjualanController::class, 'create']);
-Route::post('/penjualan/store', [PenjualanController::class, 'store']);
-Route::get('/penjualan/edit/{id}', [PenjualanController::class, 'edit']);
-Route::post('/penjualan/update/{id}', [PenjualanController::class, 'update']);
-Route::get('/penjualan/delete/{id}', [PenjualanController::class, 'destroy']);
+Route::get('/transaksi/penjualan', [PenjualanController::class, 'index'])->name('penjualan.index');
+Route::get('/transaksi/penjualan/create', [PenjualanController::class, 'create'])->name('penjualan.create');
+Route::post('/transaksi/penjualan/store', [PenjualanController::class, 'store'])->name('penjualan.store');
+Route::get('/transaksi/penjualan/edit/{id}', [PenjualanController::class, 'edit'])->name('penjualan.edit');
+Route::post('/transaksi/penjualan/update/{id}', [PenjualanController::class, 'update'])->name('penjualan.update');
+Route::get('/transaksi/penjualan/delete/{id}', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');
 
 
 
@@ -246,12 +246,12 @@ Route::get('/penjualan-detail/delete/{id}', [PenjualanDetailController::class, '
 | ADJUST STOK
 |--------------------------------------------------------------------------
 */
-Route::get('/adjust-stok', [AdjustStokController::class, 'index']);
-Route::get('/adjust-stok/create', [AdjustStokController::class, 'create']);
-Route::post('/adjust-stok/store', [AdjustStokController::class, 'store']);
-Route::get('/adjust-stok/edit/{id}', [AdjustStokController::class, 'edit']);
-Route::post('/adjust-stok/update/{id}', [AdjustStokController::class, 'update']);
-Route::get('/adjust-stok/delete/{id}', [AdjustStokController::class, 'destroy']);
+Route::get('/transaksi/manage-stok', [AdjustStokController::class, 'index'])->name('manange-stok.index');
+Route::get('/transaksi/manage-stok/create', [AdjustStokController::class, 'create'])->name('manange-stok.create');
+Route::post('/transaksi/manage-stok/store', [AdjustStokController::class, 'store'])->name('manange-stok.store');
+Route::get('/transaksi/manage-stok/edit/{id}', [AdjustStokController::class, 'edit'])->name('manange-stok.edit');
+Route::post('/transaksi/manage-stok/update/{id}', [AdjustStokController::class, 'update'])->name('manange-stok.update');
+Route::get('/transaksi/manage-stok/delete/{id}', [AdjustStokController::class, 'destroy'])->name('manange-stok.destroy');
 
 
 

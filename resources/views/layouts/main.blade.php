@@ -37,6 +37,64 @@
     <link rel="stylesheet" href="{{ asset('assets/css/pages/authentication.css') }}">
     {{-- <script src="https://cdn.tailwindcss.com"></script> --}}
     @yield('style')
+    
+    <style>
+        #layout-sidenav, #layout-navbar {
+            z-index: 0;
+        }
+        .table-modern {
+            border: 1px solid #e4e6ef;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        .table-modern thead th {
+            background: #f8f9fa;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            border: 1px solid #e4e6ef;
+        }
+
+        .table-modern tbody td {
+            border: 1px solid #e9ecef;
+        }
+
+        .table-modern tbody tr:nth-child(odd) {
+            background: #fafafa;
+        }
+
+        .table-modern tbody tr:nth-child(even) {
+            background: #f3f4f6;
+        }
+
+        .table-modern tbody tr:hover {
+            background: #e9ecef;
+            transition: 0.2s;
+        }
+
+        .checkbox-col {
+            width: 50px;
+            text-align: center;
+        }
+
+        .checkbox-col input {
+            transform: scale(1.2);
+        }
+
+        .sort-icon {
+            font-size: 11px;
+            margin-left: 5px;
+            color: #9aa0a6;
+        }
+
+        .action-btn {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        
+    </style>
 
 </head>
 
@@ -75,6 +133,8 @@
     <!-- [ Layout wrapper] End -->
 
     <!-- Core scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <script src="{{ asset('assets/js/pace.js') }}"></script>
     <script src="{{ asset('assets/js/jquery-3.3.1.min.js') }}"></script>
     <script src="{{ asset('assets/libs/popper/popper.js') }}"></script>
@@ -96,7 +156,8 @@
     <script src="{{ asset('assets/js/demo.js') }}"></script>
     <script src="{{ asset('assets/js/analytics.js') }}"></script>
     <script src="{{ asset('assets/js/pages/dashboards_index.js') }}"></script>
-        <script>
+    @yield('scripts')
+    <script>
         window.addEventListener("load", () => {
 
             const el = document.querySelector('a[href="https://codedthemes.com/item/empire-bootstrap-admin-template/"]');
@@ -107,7 +168,5 @@
         });
         feather.replace();
     </script>
-
-
 </body>
 </html>

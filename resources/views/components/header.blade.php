@@ -3,7 +3,7 @@
     <!-- Brand demo (see assets/css/demo/demo.css) -->
     <a href="index.html" class="navbar-brand app-brand demo d-lg-none py-0 mr-4">
         <span class="app-brand-logo demo">
-            <img src="assets/img/logo-dark.png" alt="Brand Logo" class="img-fluid">
+            <img src="{{ asset('assets/img/logo-dark.png') }}" alt="Brand Logo" class="img-fluid">
         </span>
         <span class="app-brand-text demo font-weight-normal ml-2">Empire</span>
     </a>
@@ -100,7 +100,7 @@
             <div class="demo-navbar-user nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">
                     <span class="d-inline-flex flex-lg-row-reverse align-items-center align-middle">
-                        <img src="assets/img/avatars/1.png" alt class="d-block ui-w-30 rounded-circle">
+                        <img src="{{ asset('assets/img/avatars/1.png') }}" alt class="d-block ui-w-30 rounded-circle">
                         <span class="px-1 mr-lg-2 ml-2 ml-lg-0">
                             {{ ucfirst(Auth::guard('pengguna')->user()->nama) }}
                         </span>

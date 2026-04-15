@@ -10,12 +10,12 @@ class SatuanController extends Controller
     public function index()
     {
         $satuan = Satuan::all();
-        return view('satuan.index', compact('satuan'));
+        return view('pages.master.satuan.index', compact('satuan'));
     }
 
     public function create()
     {
-        return view('satuan.create');
+        return view('pages.master.satuan.create');
     }
 
     public function store(Request $request)
@@ -36,13 +36,13 @@ class SatuanController extends Controller
     public function show(string $id)
     {
         $satuan = Satuan::with('barang')->findOrFail($id);
-        return view('satuan.show', compact('satuan'));
+        return view('pages.master.satuan.show', compact('satuan'));
     }
 
     public function edit(string $id)
     {
         $satuan = Satuan::findOrFail($id);
-        return view('satuan.edit', compact('satuan'));
+        return view('pages.master.satuan.edit', compact('satuan'));
     }
 
     public function update(Request $request, string $id)
