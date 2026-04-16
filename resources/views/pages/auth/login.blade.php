@@ -7,7 +7,7 @@
 </div>
 
 <div class="authentication-wrapper authentication-1 px-4">
-    <div class="authentication-inner bg-white shadow px-10 py-5">
+    <div class="authentication-inner bg-white shadow py-5" style="padding-inline: 50px">
 
         <!-- Logo -->
         <div class="d-flex justify-content-center align-items-center">

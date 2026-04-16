@@ -5,12 +5,12 @@
 
         <!-- [ content ] Start -->
         <div class="container-fluid flex-grow-1 container-p-y">
-            <h4 class="font-weight-bold py-3 mb-0">Satuan</h4>
+            <h4 class="font-weight-bold py-3 mb-0">Dropshipper</h4>
             <div class="text-muted small mt-0 mb-4 d-block breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="#"><i class="feather icon-home"></i></a></li>
                     <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item active">Satuan</li>
+                    <li class="breadcrumb-item active">Dropshipper</li>
                 </ol>
             </div>
             <div class="row">
@@ -107,7 +107,7 @@
                             <div class="card mb-4">
                                 <div  style="border: none !important" class="card-header d-flex justify-content-between align-items-center">
                                     <h6 class="card-header-title mb-0">
-                                        <i class="feather icon-truck mr-2"></i> Data Satuan
+                                        <i class="feather icon-truck mr-2"></i> Data Dropshipper
                                     </h6>
 
                                     <div class="d-flex gap-5">
@@ -118,12 +118,12 @@
                                             <input type="text"
                                                 class="form-control form-control-sm mr-2"
                                                 id="searchTable"
-                                                placeholder="Search satuan..."
+                                                placeholder="Search dropshipper..."
                                                 style="width:150px">
 
                                         </div>
-                                        <a href="{{ route('satuan.create') }}" class="btn btn-primary btn-sm">
-                                            <i class="feather icon-plus"></i> Tambah Satuan
+                                        <a href="{{ route('dropshipper.create') }}" class="btn btn-primary btn-sm">
+                                            <i class="feather icon-plus"></i> Tambah Dropshipper
                                         </a>
 
                                     </div>
@@ -143,8 +143,10 @@
 
                                                             <th class="sortable" data-column="1">No <i class="feather icon-chevrons-up sort-icon"></i></th>
 
-                                                            <th class="sortable" data-column="2">Nama Satuan <i
-                                                                    class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="2">Nama <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="3">No Telp <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="4">Alamat <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th>Keterangan </th>
 
                                                             <th width="140">Action</th>
 
@@ -152,7 +154,7 @@
                                                     </thead>
 
                                                     <tbody>
-                                                        @foreach ($satuan as $index => $sup)
+                                                        @foreach ($dropshippers as $index => $sup)
                                                             <tr>
 
                                                                 <td class="checkbox-col">
@@ -162,18 +164,30 @@
                                                                 <td>{{ $index + 1 }}</td>
 
                                                                 <td>
-                                                                    <strong>{{ $sup->nama_satuan }}</strong>
+                                                                    <strong>{{ $sup->nama }}</strong>
+                                                                </td>
+
+                                                                <td>
+                                                                    {{ $sup->no_telp }}
+                                                                </td>
+
+                                                                <td>
+                                                                    {{ $sup->alamat }}
+                                                                </td>
+
+                                                                <td>
+                                                                    {{ $sup->keterangan }}
                                                                 </td>
 
 
                                                                 <td>
 
-                                                                    <a href="{{ route('satuan.edit', $sup->id) }}" class="btn btn-sm btn-info action-btn">
+                                                                    <a href="{{ route('dropshipper.edit', $sup->id) }}" class="btn btn-sm btn-info action-btn">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
 
                                                                     <form id="delete-form-{{ $sup->id }}" 
-                                                                        action="{{ route('satuan.destroy', $sup->id) }}" 
+                                                                        action="{{ route('dropshipper.destroy', $sup->id) }}" 
                                                                         method="POST" 
                                                                         style="display:inline">
 
@@ -508,6 +522,7 @@
             });
 
         });
+
 
     </script>
 

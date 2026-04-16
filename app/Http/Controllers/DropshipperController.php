@@ -10,12 +10,12 @@ class DropshipperController extends Controller
     public function index()
     {
         $dropshippers = Dropshipper::all();
-        return view('dropshipper.index', compact('dropshippers'));
+        return view('pages.master.dropshipper.index', compact('dropshippers'));
     }
 
     public function create()
     {
-        return view('dropshipper.create');
+        return view('pages.master.dropshipper.create');
     }
 
     public function store(Request $request)
@@ -42,13 +42,13 @@ class DropshipperController extends Controller
     public function show(string $id)
     {
         $dropshipper = Dropshipper::with('penjualan')->findOrFail($id);
-        return view('dropshipper.show', compact('dropshipper'));
+        return view('pages.master.dropshipper.show', compact('dropshipper'));
     }
 
     public function edit(string $id)
     {
         $dropshipper = Dropshipper::findOrFail($id);
-        return view('dropshipper.edit', compact('dropshipper'));
+        return view('pages.master.dropshipper.edit', compact('dropshipper'));
     }
 
     public function update(Request $request, string $id)

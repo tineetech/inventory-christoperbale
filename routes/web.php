@@ -138,8 +138,8 @@ Route::get('/master/dropshipper', [DropshipperController::class, 'index'])->name
 Route::get('/master/dropshipper/create', [DropshipperController::class, 'create'])->name('dropshipper.create');
 Route::post('/master/dropshipper/store', [DropshipperController::class, 'store'])->name('dropshipper.store');
 Route::get('/master/dropshipper/edit/{id}', [DropshipperController::class, 'edit'])->name('dropshipper.edit');
-Route::post('/master/dropshipper/update/{id}', [DropshipperController::class, 'update'])->name('dropshipper.update');
-Route::get('/master/dropshipper/delete/{id}', [DropshipperController::class, 'destroy'])->name('dropshipper.destroy');
+Route::put('/master/dropshipper/update/{id}', [DropshipperController::class, 'update'])->name('dropshipper.update');
+Route::delete('/master/dropshipper/delete/{id}', [DropshipperController::class, 'destroy'])->name('dropshipper.destroy');
 
 
 

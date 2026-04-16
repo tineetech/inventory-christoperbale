@@ -141,15 +141,15 @@
                                                                 <input type="checkbox" id="checkAll">
                                                             </th>
 
-                                                            <th>No <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="1">No <i class="feather icon-chevrons-up sort-icon"></i></th>
 
-                                                            <th>Nama Supplier <i
+                                                            <th class="sortable" data-column="2">Nama Supplier <i
                                                                     class="feather icon-chevrons-up sort-icon"></i></th>
 
-                                                            <th>No Telp <i class="feather icon-chevrons-up sort-icon"></i>
+                                                            <th class="sortable" data-column="3">No Telp <i class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
 
-                                                            <th>Alamat <i class="feather icon-chevrons-up sort-icon"></i>
+                                                            <th class="sortable" data-column="4">Alamat <i class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
 
                                                             <th>Keterangan</th>
@@ -308,7 +308,7 @@
         let entriesSelect = document.getElementById("entriesSelect");
         let pagination = document.getElementById("pagination");
         let tableInfo = document.getElementById("tableInfo");
-
+        
         let currentPage = 1;
         let rowsPerPage = parseInt(entriesSelect.value);
         let filteredRows = [...rows];
@@ -475,6 +475,58 @@
             }
 
         },4000);
+
+        
+        let currentSortColumn = null;
+        let currentSortDirection = "asc";
+        function sortTable(columnIndex){
+
+            if(currentSortColumn === columnIndex){
+                currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
+            }else{
+                currentSortColumn = columnIndex;
+                currentSortDirection = "asc";
+            }
+
+            filteredRows.sort((a,b)=>{
+
+                let aText = a.children[columnIndex].innerText.toLowerCase();
+                let bText = b.children[columnIndex].innerText.toLowerCase();
+
+                if(!isNaN(aText) && !isNaN(bText)){
+                    return currentSortDirection === "asc"
+                        ? aText - bText
+                        : bText - aText;
+                }
+
+                return currentSortDirection === "asc"
+                    ? aText.localeCompare(bText)
+                    : bText.localeCompare(aText);
+
+            });
+
+            let tbody = document.querySelector("#table tbody");
+
+            filteredRows.forEach(row=>{
+                tbody.appendChild(row);
+            });
+
+            currentPage = 1;
+
+            displayTable();
+            setupPagination();
+        }
+        document.querySelectorAll(".sortable").forEach(header => {
+
+            header.addEventListener("click", function(){
+
+                let columnIndex = this.getAttribute("data-column");
+
+                sortTable(parseInt(columnIndex));
+
+            });
+
+        });
 
     </script>
 
