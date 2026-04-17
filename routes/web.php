@@ -154,7 +154,8 @@ Route::post('/master/barang/store', [BarangController::class, 'store'])->name('b
 Route::get('/master/barang/edit/{id}', [BarangController::class, 'edit'])->name('barang.edit');
 Route::put('/master/barang/update/{id}', [BarangController::class, 'update'])->name('barang.update');
 Route::delete('/master/barang/delete/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
-
+Route::get('/api/product/search',[BarangController::class,'search']);
+Route::get('/api/product/barcode/{id}',[BarangController::class,'barcode']);
 
 
 /*

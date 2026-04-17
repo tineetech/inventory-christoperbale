@@ -161,4 +161,24 @@ class BarangController extends Controller
                 ->with('error', $e->getMessage());
         }
     }
+
+    public function search(Request $req)
+    {
+
+        $q = $req->q;
+
+        return Barang::where('nama_barang','like',"%$q%")
+        ->orWhere('sku','like',"%$q%")
+        ->limit(50)
+        ->with('stok')
+        ->get();
+
+    }
+
+    public function barcode($sku)
+    {
+
+    return Barang::where('sku',$sku)->with('stok')->first();
+
+    }
 }

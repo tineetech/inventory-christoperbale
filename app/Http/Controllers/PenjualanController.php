@@ -12,13 +12,13 @@ class PenjualanController extends Controller
     public function index()
     {
         $penjualan = Penjualan::with('dropshipper', 'user')->latest()->get();
-        return view('penjualan.index', compact('penjualan'));
+        return view('pages.transaksi.penjualan.index', compact('penjualan'));
     }
 
     public function create()
     {
         $dropshippers = Dropshipper::all();
-        return view('penjualan.create', compact('dropshippers'));
+        return view('pages.transaksi.penjualan.create', compact('dropshippers'));
     }
 
     public function store(Request $request)
@@ -54,14 +54,14 @@ class PenjualanController extends Controller
     public function show(string $id)
     {
         $penjualan = Penjualan::with('dropshipper', 'user', 'detail.barang')->findOrFail($id);
-        return view('penjualan.show', compact('penjualan'));
+        return view('pages.transaksi.penjualan.show', compact('penjualan'));
     }
 
     public function edit(string $id)
     {
         $penjualan    = Penjualan::findOrFail($id);
         $dropshippers = Dropshipper::all();
-        return view('penjualan.edit', compact('penjualan', 'dropshippers'));
+        return view('pages.transaksi.penjualan.edit', compact('penjualan', 'dropshippers'));
     }
 
     public function update(Request $request, string $id)

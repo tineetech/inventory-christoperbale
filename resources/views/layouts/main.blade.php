@@ -6,9 +6,12 @@
 
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
-    <meta name="description" content="Empire Bootstrap admin template made using Bootstrap 4, it has tons of ready made feature, UI components, pages which completely fulfills any dashboard needs." />
-    <meta name="keywords" content="Empire, bootstrap admin template, bootstrap admin panel, bootstrap 4 admin template, admin template">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <meta name="description"
+        content="Empire Bootstrap admin template made using Bootstrap 4, it has tons of ready made feature, UI components, pages which completely fulfills any dashboard needs." />
+    <meta name="keywords"
+        content="Empire, bootstrap admin template, bootstrap admin panel, bootstrap 4 admin template, admin template">
     <meta name="author" content="Srthemesvilla" />
 
     <link rel="icon" type="image/x-icon" href="{{ asset('assets/img/logo-inv.png') }}">
@@ -35,13 +38,21 @@
     <link rel="stylesheet" href="{{ asset('assets/libs/flot/flot.css') }}">
     <!-- Page -->
     <link rel="stylesheet" href="{{ asset('assets/css/pages/authentication.css') }}">
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- Select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
     {{-- <script src="https://cdn.tailwindcss.com"></script> --}}
     @yield('style')
-    
+
     <style>
-        #layout-sidenav, #layout-navbar {
+        #layout-sidenav,
+        #layout-navbar {
             z-index: 0;
         }
+
         .table-modern {
             border: 1px solid #e4e6ef;
             border-radius: 6px;
@@ -92,8 +103,6 @@
             padding: 5px 10px;
             font-size: 12px;
         }
-
-        
     </style>
 
 </head>
@@ -106,23 +115,23 @@
         <div class="bg-primary"></div>
     </div>
     <!-- [ Preloader ] End -->
-     
+
     <!-- [ Layout wrapper ] Start -->
     <div class="layout-wrapper layout-2">
         <div class="layout-inner">
             <!-- [ Layout sidenav ] Start -->
-             @include('components.sidebar')
-             <!-- [ Layout sidenav ] End -->
-             <!-- [ Layout container ] Start -->
-             <div class="layout-container">
-                 <!-- [ Layout navbar ( Header ) ] Start -->
-                 @include('components.header')
+            @include('components.sidebar')
+            <!-- [ Layout sidenav ] End -->
+            <!-- [ Layout container ] Start -->
+            <div class="layout-container">
+                <!-- [ Layout navbar ( Header ) ] Start -->
+                @include('components.header')
                 <!-- [ Layout navbar ( Header ) ] End -->
 
                 <!-- [ Layout content ] Start -->
-                
-                    @yield('content')
-                    
+
+                @yield('content')
+
                 <!-- [ Layout content ] Start -->
             </div>
             <!-- [ Layout container ] End -->
@@ -133,10 +142,12 @@
     <!-- [ Layout wrapper] End -->
 
     <!-- Core scripts -->
+    {{-- <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script> --}}
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
     <script src="{{ asset('assets/js/pace.js') }}"></script>
-    <script src="{{ asset('assets/js/jquery-3.3.1.min.js') }}"></script>
+    {{-- <script src="{{ asset('assets/js/jquery-3.3.1.min.js') }}"></script> --}}
     <script src="{{ asset('assets/libs/popper/popper.js') }}"></script>
     <script src="{{ asset('assets/js/bootstrap.js') }}"></script>
     <script src="{{ asset('assets/js/sidenav.js') }}"></script>
@@ -156,11 +167,34 @@
     <script src="{{ asset('assets/js/demo.js') }}"></script>
     <script src="{{ asset('assets/js/analytics.js') }}"></script>
     <script src="{{ asset('assets/js/pages/dashboards_index.js') }}"></script>
-    @yield('scripts')
+
     <script>
+        const Toast = Swal.mixin({
+            toast: true,
+            position: "top-end",
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+            }
+        });
+
+        function formatRupiah(angka) {
+
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(angka);
+
+        }
+
         window.addEventListener("load", () => {
 
-            const el = document.querySelector('a[href="https://codedthemes.com/item/empire-bootstrap-admin-template/"]');
+            const el = document.querySelector(
+                'a[href="https://codedthemes.com/item/empire-bootstrap-admin-template/"]');
 
             console.log(el);
             // el.style.display = 'none'
@@ -168,5 +202,8 @@
         });
         feather.replace();
     </script>
+    @yield('scripts')
+
 </body>
+
 </html>

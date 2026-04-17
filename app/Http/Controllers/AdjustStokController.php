@@ -11,12 +11,12 @@ class AdjustStokController extends Controller
     public function index()
     {
         $adjustStok = AdjustStok::with('user', 'detail')->latest()->get();
-        return view('adjust_stok.index', compact('adjustStok'));
+        return view('pages.transaksi.adjust_stok.index', compact('adjustStok'));
     }
 
     public function create()
     {
-        return view('adjust_stok.create');
+        return view('pages.transaksi.adjust_stok.create');
     }
 
     public function store(Request $request)
@@ -42,13 +42,13 @@ class AdjustStokController extends Controller
     public function show(string $id)
     {
         $adjustStok = AdjustStok::with('user', 'detail.barang')->findOrFail($id);
-        return view('adjust_stok.show', compact('adjustStok'));
+        return view('pages.transaksi.adjust_stok.show', compact('adjustStok'));
     }
 
     public function edit(string $id)
     {
         $adjustStok = AdjustStok::findOrFail($id);
-        return view('adjust_stok.edit', compact('adjustStok'));
+        return view('pages.transaksi.adjust_stok.edit', compact('adjustStok'));
     }
 
     public function update(Request $request, string $id)
