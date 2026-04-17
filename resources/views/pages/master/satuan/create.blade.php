@@ -37,7 +37,7 @@
 
                             <div class="d-flex justify-content-between">
 
-                                <a href="{{ route('supplier.index') }}" class="btn btn-secondary">
+                                <a href="{{ route('satuan.index') }}" class="btn btn-secondary">
                                     <i class="feather icon-arrow-left"></i> Kembali
                                 </a>
 

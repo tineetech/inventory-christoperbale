@@ -152,8 +152,8 @@ Route::get('/master/barang', [BarangController::class, 'index'])->name('barang.i
 Route::get('/master/barang/create', [BarangController::class, 'create'])->name('barang.create');
 Route::post('/master/barang/store', [BarangController::class, 'store'])->name('barang.store');
 Route::get('/master/barang/edit/{id}', [BarangController::class, 'edit'])->name('barang.edit');
-Route::post('/master/barang/update/{id}', [BarangController::class, 'update'])->name('barang.update');
-Route::get('/master/barang/delete/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
+Route::put('/master/barang/update/{id}', [BarangController::class, 'update'])->name('barang.update');
+Route::delete('/master/barang/delete/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
 
 
 

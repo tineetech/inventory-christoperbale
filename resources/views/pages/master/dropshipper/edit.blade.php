@@ -70,12 +70,12 @@
 
                             <div class="d-flex justify-content-between">
 
-                                <a href="{{ route('supplier.index') }}" class="btn btn-secondary">
+                                <a href="{{ route('dropshipper.index') }}" class="btn btn-secondary">
                                     <i class="feather icon-arrow-left"></i> Kembali
                                 </a>
 
                                 <button type="submit" class="btn btn-primary">
-                                    <i class="feather icon-save"></i> Update Supplier
+                                    <i class="feather icon-save"></i> Update Dropshipper
                                 </button>
 
                             </div>
