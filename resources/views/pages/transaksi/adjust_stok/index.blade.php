@@ -45,30 +45,30 @@
                                 </div>
                             @endif
 
-                            @if(session('error'))
-                            <div class="card mb-4 border-danger">
+                            @if (session('error'))
+                                <div class="card mb-4 border-danger">
 
-                                <div class="card-body d-flex align-items-center justify-content-between">
+                                    <div class="card-body d-flex align-items-center justify-content-between">
 
-                                    <div>
+                                        <div>
 
-                                        <h5 class="mb-1 text-danger">
-                                            <i class="feather icon-x-circle"></i> error
-                                        </h5>
+                                            <h5 class="mb-1 text-danger">
+                                                <i class="feather icon-x-circle"></i> error
+                                            </h5>
 
-                                        <p class="mb-0 text-muted">
-                                            {{ session('error') }}
-                                        </p>
+                                            <p class="mb-0 text-muted">
+                                                {{ session('error') }}
+                                            </p>
 
-                                    </div>
+                                        </div>
 
-                                    <div class="display-4 text-danger">
-                                        <i class="feather icon-x-circle"></i>
+                                        <div class="display-4 text-danger">
+                                            <i class="feather icon-x-circle"></i>
+                                        </div>
+
                                     </div>
 
                                 </div>
-
-                            </div>
                             @endif
 
                         </div>
@@ -101,158 +101,156 @@
                                         <div class="tab-pane fade show active pb-5" style="width: 95%" id="sale-stats">
                                             <div style="height: auto;overflow-x: auto" id="tab-table-1">
                                                 <table class="table table-modern table-hover" id="table">
-                                                    
-<thead>
-<tr>
 
-<th width="30"></th>
+                                                    <thead>
+                                                        <tr>
 
-<th>No</th>
+                                                            <th class="checkbox-col">
+                                                                <input type="checkbox" id="checkAll">
+                                                            </th>
 
-<th>Kode Adjustment</th>
+                                                            <th>No</th>
 
-<th>Tanggal</th>
+                                                            <th>Kode Adjustment</th>
 
-<th>Dibuat Oleh</th>
+                                                            <th>Tanggal</th>
 
-<th>Keterangan</th>
+                                                            <th>Dibuat Oleh</th>
 
-<th width="120">Action</th>
+                                                            <th>Keterangan</th>
 
-</tr>
-</thead>
+                                                            {{-- <th width="120">Action</th> --}}
 
+                                                        </tr>
+                                                    </thead>
 
-<tbody>
 
-@foreach($adjustments as $index => $adj)
+                                                    <tbody>
 
-<tr class="main-row" data-id="{{ $adj->id }}">
+                                                        @foreach ($adjustments as $index => $adj)
+                                                            <tr class="main-row" data-id="{{ $adj->id }}">
 
-<td>
-<i class="feather icon-chevron-right"></i>
-</td>
+                                                                <td class="checkbox-col">
+                                                                    <input type="checkbox" class="row-check">
+                                                                </td>
 
-<td>{{ $index+1 }}</td>
+                                                                <td>{{ $index + 1 }}</td>
 
-<td>
-<strong style="cursor:pointer;color:#00499b">
-{{ $adj->kode_adjust }}
-</strong>
-</td>
+                                                                <td>
+                                                                    <strong style="cursor:pointer;color:#00499b">
+                                                                        {{ $adj->kode_adjust }}
+                                                                    </strong>
+                                                                </td>
 
-<td>{{ date('d M Y', strtotime($adj->tanggal)) }}</td>
+                                                                <td>{{ date('d M Y', strtotime($adj->tanggal)) }}</td>
 
-<td>{{ $adj->user->nama ?? '-' }}</td>
+                                                                <td>{{ $adj->user->nama ?? '-' }}</td>
 
-<td>{{ $adj->keterangan }}</td>
+                                                                <td>{{ $adj->keterangan }}</td>
 
-<td>
+                                                                {{-- <td> --}}
 
-<a href="{{ route('adjust_stok.edit',$adj->id) }}"
-class="btn btn-sm btn-warning">
-<i class="feather icon-edit"></i>
-</a>
+                                                                    {{-- <a href="{{ route('manage-stok.edit', $adj->id) }}"
+                                                                        class="btn btn-sm btn-warning">
+                                                                        <i class="feather icon-edit"></i>
+                                                                    </a> --}}
 
-<form action="{{ route('adjust_stok.destroy',$adj->id) }}"
-method="POST"
-style="display:inline">
+                                                                    {{-- <form
+                                                                        action="{{ route('manage-stok.destroy', $adj->id) }}"
+                                                                        method="POST" style="display:inline">
 
-@csrf
-@method('DELETE')
+                                                                        @csrf
+                                                                        @method('DELETE')
 
-<button class="btn btn-sm btn-danger">
-<i class="feather icon-trash"></i>
-</button>
+                                                                        <button class="btn btn-sm btn-danger">
+                                                                            <i class="feather icon-trash"></i>
+                                                                        </button>
 
-</form>
+                                                                    </form> --}}
 
-</td>
+                                                                {{-- </td> --}}
 
-</tr>
+                                                            </tr>
 
 
-{{-- DETAIL ROW --}}
+                                                            {{-- DETAIL ROW --}}
 
-<tr class="detail-row" id="detail-{{ $adj->id }}" style="display:none;background:#f9f9f9">
+                                                            <tr class="detail-row" id="detail-{{ $adj->id }}"
+                                                                style="display:none;background:#f9f9f9">
 
-<td colspan="7">
+                                                                <td colspan="7">
 
-<div class="p-3">
+                                                                    <div class="p-3">
 
-<table class="table table-sm table-bordered mb-0">
+                                                                        <table class="table table-sm table-bordered mb-0">
 
-<thead class="thead-light">
+                                                                            <thead class="thead-light">
 
-<tr>
+                                                                                <tr>
 
-<th>SKU</th>
+                                                                                    <th>SKU</th>
 
-<th>Nama Barang</th>
+                                                                                    <th>Nama Barang</th>
+                                                                                    <th>Stok</th>
 
-<th>Qty Sistem</th>
+                                                                                    <th>Qty Sistem</th>
 
-<th>Qty Fisik</th>
+                                                                                    <th>Qty Fisik</th>
 
-<th>Selisih</th>
+                                                                                    <th>Selisih</th>
 
-</tr>
+                                                                                </tr>
 
-</thead>
+                                                                            </thead>
 
-<tbody>
+                                                                            <tbody>
 
-@foreach($adj->detail as $d)
+                                                                                @foreach ($adj->detail as $d)
+                                                                                    <tr>
 
-<tr>
+                                                                                        <td>{{ $d->barang->sku }}</td>
 
-<td>{{ $d->barang->sku }}</td>
+                                                                                        <td>{{ $d->barang->nama_barang }}
+                                                                                        </td>
+                                                                                        <td>{{ $d->barang->stok->jumlah_stok }}
+                                                                                        </td>
 
-<td>{{ $d->barang->nama_barang }}</td>
+                                                                                        <td>{{ $d->qty_sistem }}</td>
 
-<td>{{ $d->qty_sistem }}</td>
+                                                                                        <td>{{ $d->qty_fisik }}</td>
 
-<td>{{ $d->qty_fisik }}</td>
+                                                                                        <td>
 
-<td>
+                                                                                            @if ($d->selisih > 0)
+                                                                                                <span class="text-success">
+                                                                                                    +{{ $d->selisih }}
+                                                                                                </span>
+                                                                                            @elseif($d->selisih < 0)
+                                                                                                <span class="text-danger">
+                                                                                                    {{ $d->selisih }}
+                                                                                                </span>
+                                                                                            @else
+                                                                                                <span
+                                                                                                    class="text-muted">0</span>
+                                                                                            @endif
 
-@if($d->selisih > 0)
+                                                                                        </td>
 
-<span class="text-success">
-+{{ $d->selisih }}
-</span>
+                                                                                    </tr>
+                                                                                @endforeach
 
-@elseif($d->selisih < 0)
+                                                                            </tbody>
 
-<span class="text-danger">
-{{ $d->selisih }}
-</span>
+                                                                        </table>
 
-@else
+                                                                    </div>
 
-<span class="text-muted">0</span>
+                                                                </td>
 
-@endif
+                                                            </tr>
+                                                        @endforeach
 
-</td>
-
-</tr>
-
-@endforeach
-
-</tbody>
-
-</table>
-
-</div>
-
-</td>
-
-</tr>
-
-@endforeach
-
-</tbody>
+                                                    </tbody>
                                                 </table>
                                             </div>
                                             <div

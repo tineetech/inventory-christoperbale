@@ -594,21 +594,21 @@ data-id="${id}">X</button>
             let stok = product.stok.jumlah_stok;
             let min = product.stok_minimum ?? 1;
 
-            if (stok <= 0) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Produk SKU #" + product.sku + " Stok habis! Barang harus direstock."
-                });
-                return false;
-            }
+            // if (stok <= 0) {
+            //     Toast.fire({
+            //         icon: "error",
+            //         title: "Produk SKU #" + product.sku + " Stok habis! Barang harus direstock."
+            //     });
+            //     return false;
+            // }
 
-            if (stok < min) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Produk SKU #" + product.sku + " Stok dibawah minimum! Harap restock."
-                });
-                return false;
-            }
+            // if (stok < min) {
+            //     Toast.fire({
+            //         icon: "error",
+            //         title: "Produk SKU #" + product.sku + " Stok dibawah minimum! Harap restock."
+            //     });
+            //     return false;
+            // }
 
             if (stok <= 5) {
                 Toast.fire({

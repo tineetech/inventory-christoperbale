@@ -1,41 +1,25 @@
 @extends('layouts.main')
 
-@section('style')
-    <style>
-        .flash-row {
-            animation: flashBg .5s;
-        }
-
-        @keyframes flashBg {
-            0% {
-                background: #d4edda;
-            }
-
-            100% {
-                background: transparent;
-            }
-        }
-    </style>
-@endsection
 @section('content')
     <div class="layout-content">
 
         <div class="container-fluid flex-grow-1 container-p-y">
 
-            <h4 class="font-weight-bold py-3 mb-0">Pembelian</h4>
+            <h4 class="font-weight-bold py-3 mb-0">Adjustment Stok</h4>
 
             <div class="text-muted small mt-0 mb-4 d-block breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="#"><i class="feather icon-home"></i></a></li>
                     <li class="breadcrumb-item"><a href="#">Transaksi</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('pembelian.index') }}">Pembelian</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('manage-stok.index') }}">Manajemen Stok</a></li>
                     <li class="breadcrumb-item active">Create</li>
                 </ol>
             </div>
 
+            
             <div class="row">
-                    <div class="col-md-12">
-                        {{-- {{ dd(Auth::guard('pengguna')->user()->id) }} --}}
+                <div class="col-md-12">
+                    
 
                         @if(session('error'))
                         <div class="card mb-4 border-danger">
@@ -62,207 +46,108 @@
 
                         </div>
                         @endif
-
-                    </div>
-
-                <div class="card col-lg-12 mb-4">
-
-                    <h6 class="card-header">
-                        <i class="feather icon-shopping-cart mr-2"></i>
-                        Formulir Transaksi Pembelian
-                    </h6>
-
-                    <div class="card-body">
-
-                        <form action="{{ route('pembelian.store') }}" method="POST">
-                            @csrf
-
-                            <div class="form-row">
-
-                                <input type="hidden" name="items" id="items_input">
-                                <input type="hidden" name="total_harga" id="total_harga_input">
-                                {{-- Supplier --}}
-                                <div class="form-group col-md-6">
-
-                                    <label class="form-label">Supplier</label>
-
-                                    <select name="supplier_id" class="form-control" required>
-
-                                        <option value="">-- Pilih Supplier --</option>
-
-                                        @foreach ($supplier as $sup)
-                                            <option value="{{ $sup->id }}">
-                                                {{ $sup->nama_supplier }}
-                                            </option>
-                                        @endforeach
-
-                                    </select>
-
-                                </div>
-
-                                {{-- Tanggal --}}
-                                <div class="form-group col-md-6">
-
-                                    <label class="form-label">Tanggal Pembelian</label>
-
-                                    <input type="date" name="tanggal" class="form-control" value="{{ date('Y-m-d') }}"
-                                        required>
-
-                                </div>
-
-                                {{-- Kode Pembelian (readonly) --}}
-                                <div class="form-group col-md-6">
-
-                                    <label class="form-label">Kode Pembelian</label>
-
-                                    <input type="text" name="kode_pembelian" class="form-control"
-                                        value="{{ $kode }}">
-
-                                </div>
-
-                                {{-- Keterangan --}}
-                                <div class="form-group col-md-6">
-
-                                    <label class="form-label">Keterangan</label>
-
-                                    <textarea name="keterangan" class="form-control" rows="2" placeholder="Catatan tambahan (opsional)">
-</textarea>
-
-                                </div>
-
-                            </div>
-
-                            <hr>
-                            <div class="mt-4">
-
-                                <hr>
-
-                                <!-- BARCODE -->
-                                <div class="row">
-                                    <div class="form-group col-md-6">
-
-                                        <label class="">
-                                            Scan single Barcode (F8)
-                                        </label>
-
-                                        <div class="">
-
-                                            <input type="text" id="barcode_scan" class="form-control"
-                                                placeholder="Scan barcode / SKU">
-
-                                        </div>
-
-                                    </div>
-                                    <div class="form-group col-md-6">
-
-                                        <label class="">
-                                            Scan 10 Barcode dalam 1x scan (F7)
-                                        </label>
-
-                                        <div class="">
-
-                                            <input type="text" id="barcode_scan_10" class="form-control"
-                                                placeholder="Scan barcode / SKU">
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                                <!-- SEARCH PRODUCT -->
-                                <div class="form-group row">
-
-                                    <label class="col-md-2 col-form-label">
-                                        Cari Barang (F9)
-                                    </label>
-
-                                    <div class="col-md-10">
-
-                                        <select id="product_select" class="form-control" multiple></select>
-
-                                    </div>
-
-                                </div>
-
-                                <hr>
-
-                                <!-- TABLE ITEM -->
-                                <div class="table-responsive">
-
-                                    <table class="table table-bordered" id="tableItems">
-
-                                        <thead class="thead-dark">
-
-                                            <tr>
-                                                <th>SKU</th>
-                                                <th>Nama Barang</th>
-                                                <th>Stok</th>
-                                                <th>Harga</th>
-                                                <th width="120">Qty</th>
-                                                <th>Total</th>
-                                                <th width="60"></th>
-                                            </tr>
-
-                                        </thead>
-
-                                        <tbody></tbody>
-
-                                    </table>
-
-                                </div>
-
-                                <!-- TOTAL -->
-
-                                <div class="row mt-3">
-
-                                    <div class="col-md-3 ml-auto">
-
-                                        <div class="input-group">
-
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text">Total</span>
-                                            </div>
-
-                                            <input type="text" id="grand_total" class="form-control" readonly
-                                                value="0">
-
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                            </div>
-
-                            <div class="d-flex justify-content-between">
-
-                                <a href="{{ route('pembelian.index') }}" class="btn btn-secondary">
-
-                                    <i class="feather icon-arrow-left"></i>
-                                    Kembali
-
-                                </a>
-
-                                <button type="submit" class="btn btn-primary">
-
-                                    <i class="feather icon-save"></i>
-                                    Simpan Pembelian
-
-                                </button>
-
-                            </div>
-
-                        </form>
-
-                    </div>
                 </div>
             </div>
 
+            <div class="card">
+
+                <h6 class="card-header">
+                    <i class="feather icon-sliders mr-2"></i>
+                    Form Adjustment Stok
+                </h6>
+
+                <div class="card-body">
+
+                    <form action="{{ route('manage-stok.store') }}" method="POST">
+                        @csrf
+
+                        <input type="hidden" id="items_input" name="items">
+
+                        <div class="row">
+
+                            <div class="form-group col-md-4">
+                                <label>Kode Adjustment</label>
+                                <input type="text" name="kode_adjust" class="form-control" value="{{ $kode }}"
+                                    readonly>
+                            </div>
+
+                            <div class="form-group col-md-4">
+                                <label>Tanggal</label>
+                                <input type="date" name="tanggal" class="form-control" value="{{ date('Y-m-d') }}">
+                            </div>
+
+                            <div class="form-group col-md-4">
+                                <label>Keterangan</label>
+                                <input type="text" name="keterangan" class="form-control">
+                            </div>
+
+                        </div>
+
+                        <hr>
+
+                        <div class="row">
+
+                            <div class="form-group col-md-6">
+
+                                <label>Scan Barcode (F8)</label>
+
+                                <input type="text" id="barcode_scan" class="form-control" placeholder="Scan SKU">
+
+                            </div>
+
+                            <div class="form-group col-md-6">
+
+                                <label>Cari Barang (F9)</label>
+
+                                <select id="product_select" class="form-control"></select>
+
+                            </div>
+
+                        </div>
+
+                        <hr>
+
+                        <div class="table-responsive">
+
+                            <table class="table table-bordered" id="tableItems">
+
+                                <thead class="thead-dark">
+
+                                    <tr>
+                                        <th>SKU</th>
+                                        <th>Nama Barang</th>
+                                        <th>Stok Sistem</th>
+                                        <th width="140">Stok Fisik</th>
+                                        <th width="120">Selisih</th>
+                                        <th width="60"></th>
+                                    </tr>
+
+                                </thead>
+
+                                <tbody></tbody>
+
+                            </table>
+
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+
+                            <a href="{{ route('manage-stok.index') }}" class="btn btn-secondary">
+                                Kembali
+                            </a>
+
+                            <button class="btn btn-primary">
+                                Simpan Adjustment
+                            </button>
+
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
         </div>
-
         @include('components.footer')
-
     </div>
 @endsection
 @section('scripts')
@@ -359,7 +244,22 @@
         }
 
         function addItem(product) {
-            addItemQty(product, 1);
+
+            if (items[product.id]) return
+
+            items[product.id] = {
+
+                id: product.id,
+                sku: product.sku,
+                nama_barang: product.nama_barang,
+                stok_sistem: product.stok.jumlah_stok,
+                qty_fisik: product.stok.jumlah_stok,
+                selisih: 0
+
+            }
+
+            renderRow(product.id)
+
         }
 
         function flashRow(id) {
@@ -374,39 +274,38 @@
 
         }
 
+
+
         function renderRow(id) {
 
-            let item = items[id];
+            let i = items[id]
 
             let row = `
-<tr id="row_${id}" class="flash-row">
 
-<td>${item.sku}</td>
+<tr id="row_${id}">
 
-<td>${item.nama_barang}</td>
+<td>${i.sku}</td>
 
-<td>${item.stok}</td>
+<td>${i.nama_barang}</td>
 
-<td>${formatRupiah(item.harga_1)}</td>
+<td class="stok_sistem">${i.stok_sistem}</td>
 
 <td>
 <input type="number"
-class="form-control qty"
+class="form-control qty_fisik"
 data-id="${id}"
-value="${item.qty}"
-min="1"
->
+value="${i.qty_fisik}">
 </td>
 
-<td class="total">${formatRupiah(item.harga_1 * item.qty)}</td>
+<td class="selisih text-bold">0</td>
 
 <td>
-<button class="btn btn-danger btn-sm remove"
-data-id="${id}">X</button>
+<button class="btn btn-danger btn-sm remove" data-id="${id}">X</button>
 </td>
 
 </tr>
-`;
+
+`
 
             $('#tableItems tbody').append(row);
 
@@ -414,8 +313,10 @@ data-id="${id}">X</button>
                 $('#row_' + id).removeClass('flash-row');
             }, 1000);
 
-            calculateTotal();
+            // calculateTotal();
+
         }
+
 
         $(document).on('change', '.qty', function() {
 
@@ -500,6 +401,76 @@ data-id="${id}">X</button>
             $('#grand_total').val(total);
 
         }
+
+        $(document).on('input change', '.qty_fisik', function () {
+
+    let id = $(this).data('id');
+    let input = $(this);
+
+    let raw = input.val();
+    let fisik = parseInt(raw);
+
+    let sistem = items[id].stok_sistem;
+
+    // HANDLE KOSONG / NaN
+    if (raw === "" || isNaN(fisik)) {
+        fisik = 0;
+        input.val(0);
+    }
+
+    // HANDLE MINUS
+    if (fisik < 0) {
+
+        fisik = 0;
+        input.val(0);
+
+        Toast.fire({
+            icon: "error",
+            title: "Qty fisik tidak boleh minus!"
+        });
+
+    }
+
+    // HITUNG SELISIH SETELAH VALIDASI
+    let selisih = fisik - sistem;
+
+    // UPDATE DATA
+    items[id].qty_fisik = fisik;
+    items[id].selisih = selisih;
+
+    let cell = $('#row_' + id + ' .selisih');
+
+    if (selisih > 0) {
+
+        cell.text("+" + selisih);
+        cell.removeClass().addClass('selisih text-success font-weight-bold');
+
+    } 
+    else if (selisih < 0) {
+
+        cell.text(selisih);
+        cell.removeClass().addClass('selisih text-danger font-weight-bold');
+
+    } 
+    else {
+
+        cell.text("0");
+        cell.removeClass().addClass('selisih text-muted');
+
+    }
+
+});
+$(document).on('keydown', '.qty_fisik', function(e){
+
+    if(e.key === "Enter"){
+
+        e.preventDefault();
+        $(this).trigger('change');
+
+    }
+
+});
+
 
         $('#barcode_scan').on('keydown', function(e) {
 
