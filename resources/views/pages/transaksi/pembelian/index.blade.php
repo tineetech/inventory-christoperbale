@@ -19,25 +19,51 @@
                     <div class="row">
                         <div class="col-md-12">
 
-                            @if(session('success'))
-                            <div class="card mb-4 border-success">
+                            @if (session('success'))
+                                <div class="card mb-4 border-success">
+
+                                    <div class="card-body d-flex align-items-center justify-content-between">
+
+                                        <div>
+
+                                            <h5 class="mb-1 text-success">
+                                                <i class="feather icon-check-circle"></i> Success
+                                            </h5>
+
+                                            <p class="mb-0 text-muted">
+                                                {{ session('success') }}
+                                            </p>
+
+                                        </div>
+
+                                        <div class="display-4 text-success">
+                                            <i class="feather icon-check-circle"></i>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            @endif
+
+                            @if(session('error'))
+                            <div class="card mb-4 border-danger">
 
                                 <div class="card-body d-flex align-items-center justify-content-between">
 
                                     <div>
 
-                                        <h5 class="mb-1 text-success">
-                                            <i class="feather icon-check-circle"></i> Success
+                                        <h5 class="mb-1 text-danger">
+                                            <i class="feather icon-x-circle"></i> error
                                         </h5>
 
                                         <p class="mb-0 text-muted">
-                                            {{ session('success') }}
+                                            {{ session('error') }}
                                         </p>
 
                                     </div>
 
-                                    <div class="display-4 text-success">
-                                        <i class="feather icon-check-circle"></i>
+                                    <div class="display-4 text-danger">
+                                        <i class="feather icon-x-circle"></i>
                                     </div>
 
                                 </div>
@@ -105,7 +131,8 @@
 
                         <div class="col-sm-12">
                             <div class="card mb-4">
-                                <div  style="border: none !important" class="card-header d-flex justify-content-between align-items-center">
+                                <div style="border: none !important"
+                                    class="card-header d-flex justify-content-between align-items-center">
                                     <h6 class="card-header-title mb-0">
                                         <i class="feather icon-truck mr-2"></i> Data Pembelian
                                     </h6>
@@ -115,11 +142,8 @@
                                         <!-- Search -->
                                         <div class="d-flex mr-5 align-items-center">
 
-                                            <input type="text"
-                                                class="form-control form-control-sm mr-2"
-                                                id="searchTable"
-                                                placeholder="Search pembelian..."
-                                                style="width:150px">
+                                            <input type="text" class="form-control form-control-sm mr-2" id="searchTable"
+                                                placeholder="Search pembelian..." style="width:150px">
 
                                         </div>
                                         <a href="{{ route('pembelian.create') }}" class="btn btn-primary btn-sm">
@@ -129,8 +153,8 @@
                                     </div>
                                 </div>
                                 <div class="nav-tabs-top">
-                                    <div class="tab-content d-flex justify-content-center "   style="width: 100%" >
-                                        <div class="tab-pane fade show active pb-5"  style="width: 95%" id="sale-stats">
+                                    <div class="tab-content d-flex justify-content-center " style="width: 100%">
+                                        <div class="tab-pane fade show active pb-5" style="width: 95%" id="sale-stats">
                                             <div style="height: auto;overflow-x: auto" id="tab-table-1">
                                                 <table class="table table-modern table-hover" id="table">
                                                     <thead>
@@ -140,15 +164,20 @@
                                                                 <input type="checkbox" id="checkAll">
                                                             </th>
 
-                                                            <th class="sortable" data-column="1">No <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="1">No <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i></th>
 
-                                                            <th class="sortable" data-column="2">Kode Pembelian <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="2">Kode Pembelian <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i></th>
 
-                                                            <th class="sortable" data-column="3">Supplier <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="3">Supplier <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i></th>
 
-                                                            <th class="sortable" data-column="4">Tanggal <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="4">Tanggal <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i></th>
 
-                                                            <th class="sortable" data-column="5">Total Harga <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="5">Total Harga <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i></th>
 
                                                             <th>Dibuat Oleh</th>
 
@@ -160,83 +189,147 @@
                                                     </thead>
 
                                                     <tbody>
+
                                                         @foreach ($pembelian as $index => $pb)
-                                                        <tr>
+                                                            <tr class="main-row" data-id="{{ $pb->id }}">
 
-                                                            <td class="checkbox-col">
-                                                                <input type="checkbox" class="row-check">
-                                                            </td>
+                                                                <td class="checkbox-col">
+                                                                    <input type="checkbox" class="row-check">
+                                                                </td>
 
-                                                            <td>{{ $index + 1 }}</td>
+                                                                <td>{{ $index + 1 }}</td>
 
-                                                            <td>
-                                                                <strong>{{ $pb->kode_pembelian }}</strong>
-                                                            </td>
+                                                                <td class="kode-click" style="color: #00499b;text-decoration: underline;cursor:pointer;">
+                                                                    <strong>{{ $pb->kode_pembelian }}</strong>
+                                                                </td>
 
-                                                            <td>
-                                                                {{ $pb->supplier->nama_supplier ?? '-' }}
-                                                            </td>
+                                                                <td>{{ $pb->supplier->nama_supplier ?? '-' }}</td>
 
-                                                            <td>
-                                                                {{ date('d M Y', strtotime($pb->tanggal)) }}
-                                                            </td>
+                                                                <td>{{ date('d M Y', strtotime($pb->tanggal)) }}</td>
 
-                                                            <td>
-                                                                Rp {{ number_format($pb->total_harga,0,',','.') }}
-                                                            </td>
+                                                                <td style="font-weight: bold">Rp {{ number_format($pb->total_harga, 0, ',', '.') }}</td>
 
-                                                            <td>
-                                                                {{ $pb->user->nama ?? '-' }}
-                                                            </td>
+                                                                <td>{{ $pb->user->nama ?? '-' }}</td>
 
-                                                            <td>
-                                                                {{ $pb->keterangan }}
-                                                            </td>
+                                                                <td>{{ $pb->keterangan }}</td>
 
-                                                            <td>
+                                                                <td>
+                                                                    <a href="{{ route('pembelian.edit', $pb->id) }}"
+                                                                        class="btn btn-sm btn-warning">
+                                                                        <i class="feather icon-edit"></i>
+                                                                    </a>
+                                                                    <form id="delete-form-{{ $pb->id }}" 
+                                                                        action="{{ route('pembelian.destroy', $pb->id) }}" 
+                                                                        method="POST" 
+                                                                        style="display:inline">
 
-                                                                {{-- <a href="{{ route('pembelian.show', $pb->id) }}" class="btn btn-sm btn-info action-btn">
-                                                                    <i class="feather icon-eye"></i>
-                                                                </a> --}}
+                                                                        @csrf
+                                                                        @method('DELETE')
 
-                                                                <a href="{{ route('pembelian.edit', $pb->id) }}" class="btn btn-sm btn-warning action-btn">
-                                                                    <i class="feather icon-edit"></i>
-                                                                </a>
+                                                                        <button type="button"
+                                                                            onclick="confirmDelete({{ $pb->id }})"
+                                                                            class="btn btn-sm btn-danger action-btn">
 
-                                                                <form id="delete-form-{{ $pb->id }}"
-                                                                    action="{{ route('pembelian.destroy', $pb->id) }}"
-                                                                    method="POST"
-                                                                    style="display:inline">
+                                                                            <i class="feather icon-trash"></i>
 
-                                                                    @csrf
-                                                                    @method('DELETE')
+                                                                        </button>
 
-                                                                    <button type="button"
-                                                                        onclick="confirmDelete({{ $pb->id }})"
-                                                                        class="btn btn-sm btn-danger action-btn">
+                                                                    </form>
+                                                                </td>
 
-                                                                        <i class="feather icon-trash"></i>
+                                                            </tr>
 
-                                                                    </button>
 
-                                                                </form>
+                                                            {{-- DETAIL ROW --}}
+                                                            <tr class="detail-row" id="detail-{{ $pb->id }}"
+                                                                style="display:none; background:#f9f9f9;">
 
-                                                            </td>
+                                                                <td colspan="9">
 
-                                                        </tr>
+                                                                    <div class="p-3">
+
+                                                                        <table class="table table-sm table-bordered mb-0">
+
+                                                                            <thead class="thead-light">
+
+                                                                                <tr>
+                                                                                    <th>SKU</th>
+                                                                                    <th>Nama Barang</th>
+                                                                                    <th>Stok Sekarang</th>
+                                                                                    <th>Qty Dibeli</th>
+                                                                                    <th>Harga</th>
+                                                                                    <th>Subtotal</th>
+                                                                                </tr>
+
+                                                                            </thead>
+
+                                                                            <tbody>
+
+                                                                                @php
+                                                                                    $totalDetail = 0;
+                                                                                @endphp
+
+                                                                                @foreach ($pb->detail as $d)
+                                                                                    @php
+                                                                                        $totalDetail += $d->subtotal;
+                                                                                    @endphp
+
+                                                                                    <tr>
+
+                                                                                        <td>{{ $d->barang->sku }}</td>
+
+                                                                                        <td>{{ $d->barang->nama_barang }}
+                                                                                        </td>
+
+                                                                                        <td>{{ $d->barang->stok->jumlah_stok ?? 0 }}
+                                                                                        </td>
+
+                                                                                        <td>{{ $d->qty }}</td>
+
+                                                                                        <td>Rp
+                                                                                            {{ number_format($d->harga, 0, ',', '.') }}
+                                                                                        </td>
+
+                                                                                        <td>Rp
+                                                                                            {{ number_format($d->subtotal, 0, ',', '.') }}
+                                                                                        </td>
+
+                                                                                    </tr>
+                                                                                @endforeach
+
+                                                                                <tr
+                                                                                    style="background:#f1f1f1;font-weight:bold">
+
+                                                                                    <td colspan="5" class="text-right">
+                                                                                        Total Pembelian</td>
+
+                                                                                    <td>Rp
+                                                                                        {{ number_format($totalDetail, 0, ',', '.') }}
+                                                                                    </td>
+
+                                                                            </tbody>
+
+                                                                        </table>
+
+                                                                    </div>
+
+                                                                </td>
+
+                                                            </tr>
                                                         @endforeach
-                                                        </tbody>
+
+                                                    </tbody>
                                                 </table>
                                             </div>
-                                            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
-                                                
+                                            <div
+                                                class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+
                                                 <!-- Show Entries -->
                                                 <div class="d-flex align-items-center mr-5">
 
                                                     <span class="mr-2 text-muted small">Show</span>
 
-                                                    <select class="form-control form-control-sm"
-                                                        id="entriesSelect"
+                                                    <select class="form-control form-control-sm" id="entriesSelect"
                                                         style="width:80px">
 
                                                         <option value="10" selected>10</option>
@@ -250,13 +343,14 @@
 
                                                 </div>
                                                 <!-- Info Entries -->
-                                                <div class="text-muted small"  id="tableInfo">
-                                                    Showing <strong>1</strong> to <strong>10</strong> of <strong>100</strong> entries
+                                                <div class="text-muted small" id="tableInfo">
+                                                    Showing <strong>1</strong> to <strong>10</strong> of
+                                                    <strong>100</strong> entries
                                                 </div>
 
                                                 <!-- Pagination -->
                                                 <nav>
-                                                    <ul class="pagination pagination-sm mb-0"  id="pagination">
+                                                    <ul class="pagination pagination-sm mb-0" id="pagination">
 
                                                         <li class="page-item disabled">
                                                             <a class="page-link" href="#">
@@ -315,7 +409,8 @@
         });
 
 
-        let rows = document.querySelectorAll("#table tbody tr");
+        // let rows = document.querySelectorAll("#table tbody tr");
+        let rows = document.querySelectorAll("#table tbody tr.main-row");
         let entriesSelect = document.getElementById("entriesSelect");
         let pagination = document.getElementById("pagination");
         let tableInfo = document.getElementById("tableInfo");
@@ -390,7 +485,7 @@
 
         }
 
-        entriesSelect.addEventListener("change", function () {
+        entriesSelect.addEventListener("change", function() {
 
             currentPage = 1;
 
@@ -402,11 +497,11 @@
         displayTable();
         setupPagination();
 
-        document.getElementById('checkAll').addEventListener('click', function(){
+        document.getElementById('checkAll').addEventListener('click', function() {
 
             let checkboxes = document.querySelectorAll('.row-check');
 
-            checkboxes.forEach(cb=>{
+            checkboxes.forEach(cb => {
                 cb.checked = this.checked;
             });
 
@@ -414,7 +509,7 @@
 
 
         /* SEARCH TABLE */
-        document.getElementById('searchTable').addEventListener('keyup', function(){
+        document.getElementById('searchTable').addEventListener('keyup', function() {
 
             let value = this.value.toLowerCase();
 
@@ -433,19 +528,24 @@
         /* SHOW ENTRIES */
 
         let selectEntries = document.getElementById("entriesSelect");
-        let tableRows = document.querySelectorAll("#table tbody tr");
+        // let tableRows = document.querySelectorAll("#table tbody tr");
+        let tableRows = document.querySelectorAll("#table tbody tr.main-row");
 
-        function showEntries(){
+        function showEntries() {
 
             let limit = parseInt(selectEntries.value);
 
-            tableRows.forEach((row,index)=>{
+            tableRows.forEach((row, index) => {
 
                 row.style.display = index < limit ? "" : "none";
 
             });
 
         }
+
+        document.querySelectorAll(".detail-row").forEach(row => {
+            row.style.display = "none";
+        });
 
         selectEntries.addEventListener("change", showEntries);
 
@@ -474,51 +574,52 @@
             });
 
         }
-        
-        setTimeout(function(){
+
+        setTimeout(function() {
 
             let alertCard = document.querySelector('.border-success');
 
-            if(alertCard){
+            if (alertCard) {
                 alertCard.style.transition = "0.5s";
                 alertCard.style.opacity = "0";
-                setTimeout(()=>alertCard.remove(),500);
+                setTimeout(() => alertCard.remove(), 500);
             }
 
-        },4000);
+        }, 4000);
 
-        
+
         let currentSortColumn = null;
         let currentSortDirection = "asc";
-        function sortTable(columnIndex){
 
-            if(currentSortColumn === columnIndex){
+        function sortTable(columnIndex) {
+
+            if (currentSortColumn === columnIndex) {
                 currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
-            }else{
+            } else {
                 currentSortColumn = columnIndex;
                 currentSortDirection = "asc";
             }
 
-            filteredRows.sort((a,b)=>{
+            filteredRows.sort((a, b) => {
 
                 let aText = a.children[columnIndex].innerText.toLowerCase();
                 let bText = b.children[columnIndex].innerText.toLowerCase();
 
-                if(!isNaN(aText) && !isNaN(bText)){
-                    return currentSortDirection === "asc"
-                        ? aText - bText
-                        : bText - aText;
+                if (!isNaN(aText) && !isNaN(bText)) {
+                    return currentSortDirection === "asc" ?
+                        aText - bText :
+                        bText - aText;
                 }
 
-                return currentSortDirection === "asc"
-                    ? aText.localeCompare(bText)
-                    : bText.localeCompare(aText);
+                return currentSortDirection === "asc" ?
+                    aText.localeCompare(bText) :
+                    bText.localeCompare(aText);
 
             });
 
             let tbody = document.querySelector("#table tbody");
 
-            filteredRows.forEach(row=>{
+            filteredRows.forEach(row => {
                 tbody.appendChild(row);
             });
 
@@ -529,7 +630,7 @@
         }
         document.querySelectorAll(".sortable").forEach(header => {
 
-            header.addEventListener("click", function(){
+            header.addEventListener("click", function() {
 
                 let columnIndex = this.getAttribute("data-column");
 
@@ -538,8 +639,28 @@
             });
 
         });
+        document.querySelectorAll(".main-row").forEach(row => {
 
+            row.addEventListener("click", function(e) {
 
+                if (e.target.closest("button") || e.target.closest("a")) return;
+
+                let id = this.getAttribute("data-id");
+
+                let detailRow = document.getElementById("detail-" + id);
+
+                if (detailRow.style.display === "table-row") {
+
+                    detailRow.style.display = "none";
+
+                } else {
+
+                    detailRow.style.display = "table-row";
+
+                }
+
+            });
+
+        });
     </script>
-
 @endsection

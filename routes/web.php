@@ -198,7 +198,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::post('/transaksi/pembelian/store', [PembelianController::class, 'store'])->name('pembelian.store');
     Route::get('/transaksi/pembelian/edit/{id}', [PembelianController::class, 'edit'])->name('pembelian.edit');
     Route::post('/transaksi/pembelian/update/{id}', [PembelianController::class, 'update'])->name('pembelian.update');
-    Route::get('/transaksi/pembelian/delete/{id}', [PembelianController::class, 'destroy'])->name('pembelian.destroy');
+    Route::delete('/transaksi/pembelian/delete/{id}', [PembelianController::class, 'destroy'])->name('pembelian.destroy');
 
 
 
@@ -226,7 +226,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::post('/transaksi/penjualan/store', [PenjualanController::class, 'store'])->name('penjualan.store');
     Route::get('/transaksi/penjualan/edit/{id}', [PenjualanController::class, 'edit'])->name('penjualan.edit');
     Route::post('/transaksi/penjualan/update/{id}', [PenjualanController::class, 'update'])->name('penjualan.update');
-    Route::get('/transaksi/penjualan/delete/{id}', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');
+    Route::delete('/transaksi/penjualan/delete/{id}', [PenjualanController::class, 'destroy'])->name('penjualan.destroy');
 
 
 
@@ -249,12 +249,12 @@ Route::middleware(['auth.pengguna'])->group(function () {
     | ADJUST STOK
     |--------------------------------------------------------------------------
     */
-    Route::get('/transaksi/manage-stok', [AdjustStokController::class, 'index'])->name('manange-stok.index');
-    Route::get('/transaksi/manage-stok/create', [AdjustStokController::class, 'create'])->name('manange-stok.create');
-    Route::post('/transaksi/manage-stok/store', [AdjustStokController::class, 'store'])->name('manange-stok.store');
-    Route::get('/transaksi/manage-stok/edit/{id}', [AdjustStokController::class, 'edit'])->name('manange-stok.edit');
-    Route::post('/transaksi/manage-stok/update/{id}', [AdjustStokController::class, 'update'])->name('manange-stok.update');
-    Route::get('/transaksi/manage-stok/delete/{id}', [AdjustStokController::class, 'destroy'])->name('manange-stok.destroy');
+    Route::get('/transaksi/manage-stok', [AdjustStokController::class, 'index'])->name('manage-stok.index');
+    Route::get('/transaksi/manage-stok/create', [AdjustStokController::class, 'create'])->name('manage-stok.create');
+    Route::post('/transaksi/manage-stok/store', [AdjustStokController::class, 'store'])->name('manage-stok.store');
+    Route::get('/transaksi/manage-stok/edit/{id}', [AdjustStokController::class, 'edit'])->name('manage-stok.edit');
+    Route::post('/transaksi/manage-stok/update/{id}', [AdjustStokController::class, 'update'])->name('manage-stok.update');
+    Route::get('/transaksi/manage-stok/delete/{id}', [AdjustStokController::class, 'destroy'])->name('manage-stok.destroy');
 
 
 

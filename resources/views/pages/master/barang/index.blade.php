@@ -53,7 +53,7 @@
                                     <div>
 
                                         <h5 class="mb-1 text-danger">
-                                            <i class="feather icon-check-circle"></i> error
+                                            <i class="feather icon-x-circle"></i> error
                                         </h5>
 
                                         <p class="mb-0 text-muted">
@@ -63,7 +63,7 @@
                                     </div>
 
                                     <div class="display-4 text-danger">
-                                        <i class="feather icon-check-circle"></i>
+                                        <i class="feather icon-x-circle"></i>
                                     </div>
 
                                 </div>

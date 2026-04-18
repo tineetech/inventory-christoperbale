@@ -10,8 +10,8 @@ class AdjustStokController extends Controller
 {
     public function index()
     {
-        $adjustStok = AdjustStok::with('user', 'detail')->latest()->get();
-        return view('pages.transaksi.adjust_stok.index', compact('adjustStok'));
+        $adjustments = AdjustStok::with('user', 'detail.barang.stok')->latest()->get();
+        return view('pages.transaksi.adjust_stok.index', compact('adjustments'));
     }
 
     public function create()

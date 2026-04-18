@@ -10,6 +10,9 @@ class PenjualanDetail extends Model
 
     protected $fillable = [
         'penjualan_id',
+        'nomor_resi',
+        'nomor_pesanan',
+        'nomor_transaksi',
         'barang_id',
         'qty',
         'harga',

@@ -5,12 +5,12 @@
 
         <!-- [ content ] Start -->
         <div class="container-fluid flex-grow-1 container-p-y">
-            <h4 class="font-weight-bold py-3 mb-0">Dropshipper</h4>
+            <h4 class="font-weight-bold py-3 mb-0">Manajemen Stok</h4>
             <div class="text-muted small mt-0 mb-4 d-block breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="#"><i class="feather icon-home"></i></a></li>
-                    <li class="breadcrumb-item"><a href="#">Master</a></li>
-                    <li class="breadcrumb-item active">Dropshipper</li>
+                    <li class="breadcrumb-item"><a href="#">Transaksi</a></li>
+                    <li class="breadcrumb-item active">Manajemen Stok</li>
                 </ol>
             </div>
             <div class="row">
@@ -19,25 +19,51 @@
                     <div class="row">
                         <div class="col-md-12">
 
-                            @if(session('success'))
-                            <div class="card mb-4 border-success">
+                            @if (session('success'))
+                                <div class="card mb-4 border-success">
+
+                                    <div class="card-body d-flex align-items-center justify-content-between">
+
+                                        <div>
+
+                                            <h5 class="mb-1 text-success">
+                                                <i class="feather icon-check-circle"></i> Success
+                                            </h5>
+
+                                            <p class="mb-0 text-muted">
+                                                {{ session('success') }}
+                                            </p>
+
+                                        </div>
+
+                                        <div class="display-4 text-success">
+                                            <i class="feather icon-check-circle"></i>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            @endif
+
+                            @if(session('error'))
+                            <div class="card mb-4 border-danger">
 
                                 <div class="card-body d-flex align-items-center justify-content-between">
 
                                     <div>
 
-                                        <h5 class="mb-1 text-success">
-                                            <i class="feather icon-check-circle"></i> Success
+                                        <h5 class="mb-1 text-danger">
+                                            <i class="feather icon-x-circle"></i> error
                                         </h5>
 
                                         <p class="mb-0 text-muted">
-                                            {{ session('success') }}
+                                            {{ session('error') }}
                                         </p>
 
                                     </div>
 
-                                    <div class="display-4 text-success">
-                                        <i class="feather icon-check-circle"></i>
+                                    <div class="display-4 text-danger">
+                                        <i class="feather icon-x-circle"></i>
                                     </div>
 
                                 </div>
@@ -46,68 +72,13 @@
                             @endif
 
                         </div>
-                        {{-- <div class="col-md-3">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="">
-                                            <h2 class="mb-2"> 256 </h2>
-                                            <p class="text-muted mb-0"><span class="badge badge-primary">Supplier</span>
-                                                Today</p>
-                                        </div>
-                                        <div class="lnr lnr-leaf display-4 text-primary"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="">
-                                            <h2 class="mb-2">8451</h2>
-                                            <p class="text-muted mb-0"><span class="badge badge-success">20%</span> Stock
-                                            </p>
-                                        </div>
-                                        <div class="lnr lnr-chart-bars display-4 text-success"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="">
-                                            <h2 class="mb-2"> 31% <small></small></h2>
-                                            <p class="text-muted mb-0">New <span class="badge badge-danger">20%</span>
-                                                Customer</p>
-                                        </div>
-                                        <div class="lnr lnr-rocket display-4 text-danger"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="">
-                                            <h2 class="mb-2">158</h2>
-                                            <p class="text-muted mb-0"><span class="badge badge-warning">$143.45</span>
-                                                Profit</p>
-                                        </div>
-                                        <div class="lnr lnr-cart display-4 text-warning"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div> --}}
 
                         <div class="col-sm-12">
                             <div class="card mb-4">
-                                <div  style="border: none !important" class="card-header d-flex justify-content-between align-items-center">
+                                <div style="border: none !important"
+                                    class="card-header d-flex justify-content-between align-items-center">
                                     <h6 class="card-header-title mb-0">
-                                        <i class="feather icon-truck mr-2"></i> Data Dropshipper
+                                        <i class="feather icon-truck mr-2"></i> Data Manajemen Stok
                                     </h6>
 
                                     <div class="d-flex gap-5">
@@ -115,112 +86,184 @@
                                         <!-- Search -->
                                         <div class="d-flex mr-5 align-items-center">
 
-                                            <input type="text"
-                                                class="form-control form-control-sm mr-2"
-                                                id="searchTable"
-                                                placeholder="Search dropshipper..."
-                                                style="width:150px">
+                                            <input type="text" class="form-control form-control-sm mr-2" id="searchTable"
+                                                placeholder="Search data riwayat stok..." style="width:150px">
 
                                         </div>
-                                        <a href="{{ route('dropshipper.create') }}" class="btn btn-primary btn-sm">
-                                            <i class="feather icon-plus"></i> Tambah Dropshipper
+                                        <a href="{{ route('manage-stok.create') }}" class="btn btn-primary btn-sm">
+                                            <i class="feather icon-plus"></i> Tambah Manajemen Stok
                                         </a>
 
                                     </div>
                                 </div>
                                 <div class="nav-tabs-top">
-                                    <div class="tab-content d-flex justify-content-center "   style="width: 100%" >
-                                        <div class="tab-pane fade show active pb-5"  style="width: 95%" id="sale-stats">
+                                    <div class="tab-content d-flex justify-content-center " style="width: 100%">
+                                        <div class="tab-pane fade show active pb-5" style="width: 95%" id="sale-stats">
                                             <div style="height: auto;overflow-x: auto" id="tab-table-1">
                                                 <table class="table table-modern table-hover" id="table">
+                                                    
+<thead>
+<tr>
 
-                                                    <thead>
-                                                        <tr>
+<th width="30"></th>
 
-                                                            <th class="checkbox-col">
-                                                                <input type="checkbox" id="checkAll">
-                                                            </th>
+<th>No</th>
 
-                                                            <th class="sortable" data-column="1">No <i class="feather icon-chevrons-up sort-icon"></i></th>
+<th>Kode Adjustment</th>
 
-                                                            <th class="sortable" data-column="2">Nama <i class="feather icon-chevrons-up sort-icon"></i></th>
-                                                            <th class="sortable" data-column="3">No Telp <i class="feather icon-chevrons-up sort-icon"></i></th>
-                                                            <th class="sortable" data-column="4">Alamat <i class="feather icon-chevrons-up sort-icon"></i></th>
-                                                            <th>Keterangan </th>
+<th>Tanggal</th>
 
-                                                            <th width="140">Action</th>
+<th>Dibuat Oleh</th>
 
-                                                        </tr>
-                                                    </thead>
+<th>Keterangan</th>
 
-                                                    <tbody>
-                                                        @foreach ($dropshippers as $index => $sup)
-                                                            <tr>
+<th width="120">Action</th>
 
-                                                                <td class="checkbox-col">
-                                                                    <input type="checkbox" class="row-check">
-                                                                </td>
-
-                                                                <td>{{ $index + 1 }}</td>
-
-                                                                <td>
-                                                                    <strong>{{ $sup->nama }}</strong>
-                                                                </td>
-
-                                                                <td>
-                                                                    {{ $sup->no_telp }}
-                                                                </td>
-
-                                                                <td>
-                                                                    {{ $sup->alamat }}
-                                                                </td>
-
-                                                                <td>
-                                                                    {{ $sup->keterangan }}
-                                                                </td>
+</tr>
+</thead>
 
 
-                                                                <td>
+<tbody>
 
-                                                                    <a href="{{ route('dropshipper.edit', $sup->id) }}" class="btn btn-sm btn-info action-btn">
-                                                                        <i class="feather icon-edit"></i>
-                                                                    </a>
+@foreach($adjustments as $index => $adj)
 
-                                                                    <form id="delete-form-{{ $sup->id }}" 
-                                                                        action="{{ route('dropshipper.destroy', $sup->id) }}" 
-                                                                        method="POST" 
-                                                                        style="display:inline">
+<tr class="main-row" data-id="{{ $adj->id }}">
 
-                                                                        @csrf
-                                                                        @method('DELETE')
+<td>
+<i class="feather icon-chevron-right"></i>
+</td>
 
-                                                                        <button type="button"
-                                                                            onclick="confirmDelete({{ $sup->id }})"
-                                                                            class="btn btn-sm btn-danger action-btn">
+<td>{{ $index+1 }}</td>
 
-                                                                            <i class="feather icon-trash"></i>
+<td>
+<strong style="cursor:pointer;color:#00499b">
+{{ $adj->kode_adjust }}
+</strong>
+</td>
 
-                                                                        </button>
+<td>{{ date('d M Y', strtotime($adj->tanggal)) }}</td>
 
-                                                                    </form>
-                                                                </td>
+<td>{{ $adj->user->nama ?? '-' }}</td>
 
-                                                            </tr>
-                                                        @endforeach
-                                                        
+<td>{{ $adj->keterangan }}</td>
 
-                                                    </tbody>
+<td>
+
+<a href="{{ route('adjust_stok.edit',$adj->id) }}"
+class="btn btn-sm btn-warning">
+<i class="feather icon-edit"></i>
+</a>
+
+<form action="{{ route('adjust_stok.destroy',$adj->id) }}"
+method="POST"
+style="display:inline">
+
+@csrf
+@method('DELETE')
+
+<button class="btn btn-sm btn-danger">
+<i class="feather icon-trash"></i>
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+
+{{-- DETAIL ROW --}}
+
+<tr class="detail-row" id="detail-{{ $adj->id }}" style="display:none;background:#f9f9f9">
+
+<td colspan="7">
+
+<div class="p-3">
+
+<table class="table table-sm table-bordered mb-0">
+
+<thead class="thead-light">
+
+<tr>
+
+<th>SKU</th>
+
+<th>Nama Barang</th>
+
+<th>Qty Sistem</th>
+
+<th>Qty Fisik</th>
+
+<th>Selisih</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+@foreach($adj->detail as $d)
+
+<tr>
+
+<td>{{ $d->barang->sku }}</td>
+
+<td>{{ $d->barang->nama_barang }}</td>
+
+<td>{{ $d->qty_sistem }}</td>
+
+<td>{{ $d->qty_fisik }}</td>
+
+<td>
+
+@if($d->selisih > 0)
+
+<span class="text-success">
++{{ $d->selisih }}
+</span>
+
+@elseif($d->selisih < 0)
+
+<span class="text-danger">
+{{ $d->selisih }}
+</span>
+
+@else
+
+<span class="text-muted">0</span>
+
+@endif
+
+</td>
+
+</tr>
+
+@endforeach
+
+</tbody>
+
+</table>
+
+</div>
+
+</td>
+
+</tr>
+
+@endforeach
+
+</tbody>
                                                 </table>
                                             </div>
-                                            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
-                                                
+                                            <div
+                                                class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+
                                                 <!-- Show Entries -->
                                                 <div class="d-flex align-items-center mr-5">
 
                                                     <span class="mr-2 text-muted small">Show</span>
 
-                                                    <select class="form-control form-control-sm"
-                                                        id="entriesSelect"
+                                                    <select class="form-control form-control-sm" id="entriesSelect"
                                                         style="width:80px">
 
                                                         <option value="10" selected>10</option>
@@ -234,13 +277,14 @@
 
                                                 </div>
                                                 <!-- Info Entries -->
-                                                <div class="text-muted small"  id="tableInfo">
-                                                    Showing <strong>1</strong> to <strong>10</strong> of <strong>100</strong> entries
+                                                <div class="text-muted small" id="tableInfo">
+                                                    Showing <strong>1</strong> to <strong>10</strong> of
+                                                    <strong>100</strong> entries
                                                 </div>
 
                                                 <!-- Pagination -->
                                                 <nav>
-                                                    <ul class="pagination pagination-sm mb-0"  id="pagination">
+                                                    <ul class="pagination pagination-sm mb-0" id="pagination">
 
                                                         <li class="page-item disabled">
                                                             <a class="page-link" href="#">
@@ -299,7 +343,8 @@
         });
 
 
-        let rows = document.querySelectorAll("#table tbody tr");
+        // let rows = document.querySelectorAll("#table tbody tr");
+        let rows = document.querySelectorAll("#table tbody tr.main-row");
         let entriesSelect = document.getElementById("entriesSelect");
         let pagination = document.getElementById("pagination");
         let tableInfo = document.getElementById("tableInfo");
@@ -374,7 +419,7 @@
 
         }
 
-        entriesSelect.addEventListener("change", function () {
+        entriesSelect.addEventListener("change", function() {
 
             currentPage = 1;
 
@@ -386,11 +431,11 @@
         displayTable();
         setupPagination();
 
-        document.getElementById('checkAll').addEventListener('click', function(){
+        document.getElementById('checkAll').addEventListener('click', function() {
 
             let checkboxes = document.querySelectorAll('.row-check');
 
-            checkboxes.forEach(cb=>{
+            checkboxes.forEach(cb => {
                 cb.checked = this.checked;
             });
 
@@ -398,7 +443,7 @@
 
 
         /* SEARCH TABLE */
-        document.getElementById('searchTable').addEventListener('keyup', function(){
+        document.getElementById('searchTable').addEventListener('keyup', function() {
 
             let value = this.value.toLowerCase();
 
@@ -417,19 +462,24 @@
         /* SHOW ENTRIES */
 
         let selectEntries = document.getElementById("entriesSelect");
-        let tableRows = document.querySelectorAll("#table tbody tr");
+        // let tableRows = document.querySelectorAll("#table tbody tr");
+        let tableRows = document.querySelectorAll("#table tbody tr.main-row");
 
-        function showEntries(){
+        function showEntries() {
 
             let limit = parseInt(selectEntries.value);
 
-            tableRows.forEach((row,index)=>{
+            tableRows.forEach((row, index) => {
 
                 row.style.display = index < limit ? "" : "none";
 
             });
 
         }
+
+        document.querySelectorAll(".detail-row").forEach(row => {
+            row.style.display = "none";
+        });
 
         selectEntries.addEventListener("change", showEntries);
 
@@ -458,51 +508,52 @@
             });
 
         }
-        
-        setTimeout(function(){
+
+        setTimeout(function() {
 
             let alertCard = document.querySelector('.border-success');
 
-            if(alertCard){
+            if (alertCard) {
                 alertCard.style.transition = "0.5s";
                 alertCard.style.opacity = "0";
-                setTimeout(()=>alertCard.remove(),500);
+                setTimeout(() => alertCard.remove(), 500);
             }
 
-        },4000);
+        }, 4000);
 
-        
+
         let currentSortColumn = null;
         let currentSortDirection = "asc";
-        function sortTable(columnIndex){
 
-            if(currentSortColumn === columnIndex){
+        function sortTable(columnIndex) {
+
+            if (currentSortColumn === columnIndex) {
                 currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
-            }else{
+            } else {
                 currentSortColumn = columnIndex;
                 currentSortDirection = "asc";
             }
 
-            filteredRows.sort((a,b)=>{
+            filteredRows.sort((a, b) => {
 
                 let aText = a.children[columnIndex].innerText.toLowerCase();
                 let bText = b.children[columnIndex].innerText.toLowerCase();
 
-                if(!isNaN(aText) && !isNaN(bText)){
-                    return currentSortDirection === "asc"
-                        ? aText - bText
-                        : bText - aText;
+                if (!isNaN(aText) && !isNaN(bText)) {
+                    return currentSortDirection === "asc" ?
+                        aText - bText :
+                        bText - aText;
                 }
 
-                return currentSortDirection === "asc"
-                    ? aText.localeCompare(bText)
-                    : bText.localeCompare(aText);
+                return currentSortDirection === "asc" ?
+                    aText.localeCompare(bText) :
+                    bText.localeCompare(aText);
 
             });
 
             let tbody = document.querySelector("#table tbody");
 
-            filteredRows.forEach(row=>{
+            filteredRows.forEach(row => {
                 tbody.appendChild(row);
             });
 
@@ -513,7 +564,7 @@
         }
         document.querySelectorAll(".sortable").forEach(header => {
 
-            header.addEventListener("click", function(){
+            header.addEventListener("click", function() {
 
                 let columnIndex = this.getAttribute("data-column");
 
@@ -522,8 +573,28 @@
             });
 
         });
+        document.querySelectorAll(".main-row").forEach(row => {
 
+            row.addEventListener("click", function(e) {
 
+                if (e.target.closest("button") || e.target.closest("a")) return;
+
+                let id = this.getAttribute("data-id");
+
+                let detailRow = document.getElementById("detail-" + id);
+
+                if (detailRow.style.display === "table-row") {
+
+                    detailRow.style.display = "none";
+
+                } else {
+
+                    detailRow.style.display = "table-row";
+
+                }
+
+            });
+
+        });
     </script>
-
 @endsection

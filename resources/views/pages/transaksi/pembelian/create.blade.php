@@ -116,7 +116,7 @@
                                     <label class="form-label">Kode Pembelian</label>
 
                                     <input type="text" name="kode_pembelian" class="form-control"
-                                        value="{{ $kode }}" readonly>
+                                        value="{{ $kode }}">
 
                                 </div>
 
@@ -325,15 +325,15 @@
 
                 let newQty = items[product.id].qty + qty;
 
-                if (newQty > items[product.id].stok) {
+                // if (newQty > items[product.id].stok) {
 
-                    Toast.fire({
-                        icon: "error",
-                        title: "Qty melebihi stok tersedia"
-                    });
+                //     Toast.fire({
+                //         icon: "error",
+                //         title: "Qty melebihi stok tersedia"
+                //     });
 
-                    return;
-                }
+                //     return;
+                // }
 
                 items[product.id].qty = newQty;
 
@@ -395,7 +395,7 @@ class="form-control qty"
 data-id="${id}"
 value="${item.qty}"
 min="1"
-max="${item.stok}">
+>
 </td>
 
 <td class="total">${formatRupiah(item.harga_1 * item.qty)}</td>
@@ -428,20 +428,25 @@ data-id="${id}">X</button>
 
             if (!val || val <= 0) {
                 val = 1;
-            }
-
-            if (val > stok) {
-
+                input.val(1)
                 Toast.fire({
                     icon: "error",
-                    title: "Qty melebihi stok tersedia"
+                    title: "Qty tidak boleh mines !"
                 });
-
-                // kembalikan ke qty sebelumnya
-                input.val(oldQty);
-
-                return;
             }
+
+            // if (val > stok) {
+
+            //     Toast.fire({
+            //         icon: "error",
+            //         title: "Qty melebihi stok tersedia"
+            //     });
+
+            //     // kembalikan ke qty sebelumnya
+            //     input.val(oldQty);
+
+            //     return;
+            // }
 
             items[id].qty = val;
 

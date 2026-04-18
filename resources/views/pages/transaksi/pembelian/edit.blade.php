@@ -109,7 +109,7 @@
                                     <input type="date"
                                     name="tanggal"
                                     class="form-control"
-                                    value="{{ $pembelian->tanggal }}"
+                                    value="{{ date('Y-m-d', strtotime($pembelian->tanggal)) }}"
                                     required>
 
                                 </div>
@@ -120,10 +120,10 @@
                                     <label class="form-label">Kode Pembelian</label>
 
                                     <input type="text"
-name="kode_pembelian"
-class="form-control"
-value="{{ $pembelian->kode_pembelian }}"
-readonly>
+                                        name="kode_pembelian"
+                                        class="form-control"
+                                        value="{{ $pembelian->kode_pembelian }}"
+                                    >
 
                                 </div>
 
@@ -207,6 +207,7 @@ rows="2">{{ $pembelian->keterangan }}</textarea>
                                                 <th>Stok</th>
                                                 <th>Harga</th>
                                                 <th width="120">Qty</th>
+                                                <th width="120">Δ Stok</th>
                                                 <th>Total</th>
                                                 <th width="60"></th>
                                             </tr>
@@ -216,6 +217,10 @@ rows="2">{{ $pembelian->keterangan }}</textarea>
                                         <tbody></tbody>
 
                                     </table>
+                                    <small class="text-muted">
+                                        Δ Stok menunjukkan perubahan stok akibat edit qty.
+                                        Hijau (+) = stok bertambah | Merah (-) = stok berkurang
+                                        </small>
 
                                 </div>
 
@@ -291,7 +296,8 @@ items[{{ $d->barang_id }}] = {
 
     harga_1: {{ $d->harga }},
 
-    qty: {{ $d->qty }}
+    qty: {{ $d->qty }},
+    qty_awal: {{ $d->qty }}
 
 };
 
@@ -364,15 +370,15 @@ $(document).ready(function(){
 
                 let newQty = items[product.id].qty + qty;
 
-                if (newQty > items[product.id].stok) {
+                // if (newQty > items[product.id].stok) {
 
-                    Toast.fire({
-                        icon: "error",
-                        title: "Qty melebihi stok tersedia"
-                    });
+                //     Toast.fire({
+                //         icon: "error",
+                //         title: "Qty melebihi stok tersedia"
+                //     });
 
-                    return;
-                }
+                //     return;
+                // }
 
                 items[product.id].qty = newQty;
 
@@ -412,12 +418,23 @@ $(document).ready(function(){
             }, 500);
 
         }
+function renderRow(id) {
 
-        function renderRow(id) {
+    let item = items[id];
 
-            let item = items[id];
+    let delta = item.qty - item.qty_awal;
 
-            let row = `
+    let deltaText = "";
+
+    if(delta > 0){
+        deltaText = `<span class="text-success">+${delta}</span>`;
+    }else if(delta < 0){
+        deltaText = `<span class="text-danger">${delta}</span>`;
+    }else{
+        deltaText = `<span class="text-muted">0</span>`;
+    }
+
+    let row = `
 <tr id="row_${id}" class="flash-row">
 
 <td>${item.sku}</td>
@@ -433,9 +450,10 @@ $(document).ready(function(){
 class="form-control qty"
 data-id="${id}"
 value="${item.qty}"
-min="1"
-max="${item.stok}">
+min="1">
 </td>
+
+<td class="delta">${deltaText}</td>
 
 <td class="total">${formatRupiah(item.harga_1 * item.qty)}</td>
 
@@ -447,42 +465,60 @@ data-id="${id}">X</button>
 </tr>
 `;
 
-            $('#tableItems tbody').append(row);
+    $('#tableItems tbody').append(row);
 
-            setTimeout(() => {
-                $('#row_' + id).removeClass('flash-row');
-            }, 1000);
+    setTimeout(() => {
+        $('#row_' + id).removeClass('flash-row');
+    }, 1000);
 
-            calculateTotal();
-        }
-
+    calculateTotal();
+}
         $(document).on('change', '.qty', function() {
 
             let id = $(this).data('id');
             let input = $(this);
 
-            let val = parseInt(input.val());
-            let stok = items[id].stok;
-            let oldQty = items[id].qty; // simpan qty sebelumnya
+            let newQty = parseInt(input.val());
+            let item = items[id];
 
-            if (!val || val <= 0) {
-                val = 1;
-            }
+            let oldQty = item.qty_awal; // qty saat transaksi lama
+            let stokNow = item.stok;
 
-            if (val > stok) {
-
+            if (!newQty || newQty <= 0) {
+                newQty = 1;
+                input.val(1)
                 Toast.fire({
                     icon: "error",
-                    title: "Qty melebihi stok tersedia"
+                    title: "Qty tidak boleh mines !"
                 });
-
-                // kembalikan ke qty sebelumnya
-                input.val(oldQty);
-
-                return;
             }
 
-            items[id].qty = val;
+            let delta = newQty - oldQty;
+
+            /*
+            ==================================================
+            VALIDASI DELTA STOK
+            ==================================================
+            */
+
+            if (delta < 0) {
+
+                // kita mengurangi pembelian lama
+                // stok harus cukup untuk rollback
+
+                if (stokNow + delta < 0) {
+
+                    Toast.fire({
+                        icon: "error",
+                        title: "Stok tidak cukup untuk mengurangi qty"
+                    });
+
+                    input.val(item.qty);
+                    return;
+                }
+            }
+
+            item.qty = newQty;
 
             updateRow(id);
 
@@ -496,18 +532,37 @@ data-id="${id}">X</button>
             }
 
         });
+function updateRow(id) {
 
-        function updateRow(id) {
+    let item = items[id];
 
-            let item = items[id];
+    let total = item.qty * item.harga_1;
 
-            let total = item.qty * item.harga_1;
+    $('#row_' + id + ' .total').text(formatRupiah(total));
 
-            $('#row_' + id + ' .total').text(formatRupiah(total));
+    /*
+    ===========================
+    HITUNG DELTA STOK
+    ===========================
+    */
 
-            calculateTotal();
+    let delta = item.qty - item.qty_awal;
 
-        }
+    let deltaText = "";
+
+    if(delta > 0){
+        deltaText = `<span class="text-success">+${delta}</span>`;
+    }else if(delta < 0){
+        deltaText = `<span class="text-danger">${delta}</span>`;
+    }else{
+        deltaText = `<span class="text-muted">0</span>`;
+    }
+
+    $('#row_' + id + ' .delta').html(deltaText);
+
+    calculateTotal();
+
+}
 
         $(document).on('click', '.remove', function() {
 
@@ -531,7 +586,7 @@ data-id="${id}">X</button>
 
             });
 
-            $('#grand_total').val(total);
+            $('#grand_total').val(formatRupiah(total));
 
         }
 
