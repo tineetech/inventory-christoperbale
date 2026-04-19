@@ -100,29 +100,29 @@
         <li class="sidenav-divider mb-1"></li>
         <li class="sidenav-header small font-weight-semibold">Laporan</li>
 
-        <li class="sidenav-item">
-            <a href="#" class="sidenav-link">
+        <li class="sidenav-item {{ request()->routeIs('laporan.pembelian') ? 'active' : '' }}">
+            <a href="{{ route('laporan.pembelian') }}" class="sidenav-link">
                 <i class="sidenav-icon feather icon-file-text"></i>
                 <div>Pembelian</div>
             </a>
         </li>
 
-        <li class="sidenav-item">
-            <a href="#" class="sidenav-link">
+        <li class="sidenav-item {{ request()->routeIs('laporan.penjualan') ? 'active' : '' }}">
+            <a href="{{ route('laporan.penjualan') }}" class="sidenav-link">
                 <i class="sidenav-icon feather icon-file-text"></i>
                 <div>Penjualan</div>
             </a>
         </li>
 
-        <li class="sidenav-item">
-            <a href="#" class="sidenav-link">
+        <li class="sidenav-item {{ request()->routeIs('laporan.stok') ? 'active' : '' }}">
+            <a href="{{ route('laporan.stok') }}" class="sidenav-link">
                 <i class="sidenav-icon feather icon-archive" data-feather="archive" style="width: 16px; height: 18px; margin-right: 15px"></i>
                 <div>Stok</div>
             </a>
         </li>
 
-        <li class="sidenav-item">
-            <a href="#" class="sidenav-link">
+        <li class="sidenav-item {{ request()->routeIs('laporan.barang') ? 'active' : '' }}">
+            <a href="{{ route('laporan.barang') }}" class="sidenav-link">
                 <i class="sidenav-icon feather icon-box"></i>
                 <div>Barang</div>
             </a>

@@ -20,6 +20,7 @@ use App\Http\Controllers\AdjustStokController;
 use App\Http\Controllers\AdjustStokDetailController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Auth;
 
 /*
@@ -255,6 +256,17 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/transaksi/manage-stok/edit/{id}', [AdjustStokController::class, 'edit'])->name('manage-stok.edit');
     Route::post('/transaksi/manage-stok/update/{id}', [AdjustStokController::class, 'update'])->name('manage-stok.update');
     Route::get('/transaksi/manage-stok/delete/{id}', [AdjustStokController::class, 'destroy'])->name('manage-stok.destroy');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | LAPORAN
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/laporan/pembelian', [ReportController::class, 'pembelian'])->name('laporan.pembelian');
+    Route::get('/laporan/penjualan', [ReportController::class, 'penjualan'])->name('laporan.penjualan');
+    Route::get('/laporan/stok', [ReportController::class, 'stok'])->name('laporan.stok');
+    Route::get('/laporan/barang', [ReportController::class, 'barang'])->name('laporan.barang');
 
 
 
