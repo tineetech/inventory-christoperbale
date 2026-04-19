@@ -294,7 +294,7 @@
 
                             <div class="d-flex justify-content-between">
 
-                                <a href="{{ route('pembelian.index') }}" class="btn btn-secondary">
+                                <a href="{{ route('penjualan.index') }}" class="btn btn-secondary">
 
                                     <i class="feather icon-arrow-left"></i>
                                     Kembali

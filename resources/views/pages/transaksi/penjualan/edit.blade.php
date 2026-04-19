@@ -268,7 +268,7 @@
                                         <tbody></tbody>
 
                                     </table>
-                                    
+
                                     <small class="text-muted">
                                         Δ Stok menunjukkan perubahan stok akibat edit qty.
                                         Hijau (+) = stok bertambah | Merah (-) = stok berkurang
@@ -302,7 +302,7 @@
 
                             <div class="d-flex justify-content-between">
 
-                                <a href="{{ route('pembelian.index') }}" class="btn btn-secondary">
+                                <a href="{{ route('penjualan.index') }}" class="btn btn-secondary">
 
                                     <i class="feather icon-arrow-left"></i>
                                     Kembali
@@ -332,7 +332,7 @@
 @section('scripts')
     <script>
         let existingItems = @json($penjualan->detail);
-        
+
         let items = {};
 
 
@@ -387,12 +387,12 @@
 
         function addItemQty(product, qty) {
 
-            // if (!validateStock(product)) return;
+            if (!validateStock(product)) return;
 
             if (items[product.id]) {
 
                 let newQty = items[product.id].qty + qty;
-                
+
                 // if (newQty > items[product.id].stok) {
 
                 //     Toast.fire({
@@ -403,7 +403,7 @@
                 //     return;
                 // }
                 let original = items[product.id].original_qty ?? 0;
-let delta = newQty - original;
+                let delta = newQty - original;
 
                 if (delta > items[product.id].stok) {
 
@@ -459,16 +459,15 @@ let delta = newQty - original;
 
             let item = items[id];
 
-            console.log(item)
             let delta = item.qty - item.original_qty;
 
             let deltaText = "";
 
-            if(delta > 0){
+            if (delta > 0) {
                 deltaText = `<span class="text-danger">-${delta}</span>`;
-            }else if(delta < 0){
+            } else if (delta < 0) {
                 deltaText = `<span class="text-success">+${delta}</span>`;
-            }else{
+            } else {
                 deltaText = `<span class="text-muted">0</span>`;
             }
 
@@ -577,7 +576,7 @@ data-id="${id}">X</button>
 
         });
 
-        
+
         function updateRow(id) {
 
             let item = items[id];
@@ -596,11 +595,11 @@ data-id="${id}">X</button>
 
             let deltaText = "";
 
-            if(delta > 0){
+            if (delta > 0) {
                 deltaText = `<span class="text-danger">-${delta}</span>`;
-            }else if(delta < 0){
+            } else if (delta < 0) {
                 deltaText = `<span class="text-success">+${Math.abs(delta)}</span>`;
-            }else{
+            } else {
                 deltaText = `<span class="text-muted">0</span>`;
             }
 

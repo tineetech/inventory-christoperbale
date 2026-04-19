@@ -149,7 +149,7 @@
 
         <li class="sidenav-item">
             <a href="#" class="sidenav-link">
-                <i class="sidenav-icon feather icon-database"></i>
+                <i class="sidenav-icon feather icon-archive" data-feather="database" style="width: 16px; height: 18px; margin-right: 15px"></i>
                 <div>Backup Database</div>
             </a>
         </li>
