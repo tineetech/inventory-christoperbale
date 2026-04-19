@@ -240,6 +240,10 @@
 
                                                                 <td>
 
+                                                                    <a href="{{ route('barang.edit', $sup->id) }}" class="btn btn-sm btn-warning action-btn">
+                                                                        {{-- <i class="feather icon-edit"></i> --}}
+                                                                        <span>Cetak Barcode</span>
+                                                                    </a>
                                                                     <a href="{{ route('barang.edit', $sup->id) }}" class="btn btn-sm btn-info action-btn">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
