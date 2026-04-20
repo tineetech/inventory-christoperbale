@@ -37,6 +37,15 @@ class DashboardController extends Controller
 
         $stokMovementHariIni = StokMovement::whereDate('created_at', today())->count();
 
+        $stokKritis = Barang::with(['stok', 'satuan'])
+            ->whereHas('stok', function ($q) {
+                $q->where(function ($inner) {
+                    $inner->whereColumn('jumlah_stok', '<=', 'barang.stok_minimum')
+                        ->orWhere('jumlah_stok', '<', 10);
+                });
+            })
+            ->get();
+
         return view('pages.dashboard', compact(
             'totalBarang',
             'totalSupplier',
@@ -45,6 +54,7 @@ class DashboardController extends Controller
             'penjualanHariIni',
             'pembelianHariIni',
             'adjustHariIni',
+            'stokKritis',
             'stokMovementHariIni'
         ));
     }

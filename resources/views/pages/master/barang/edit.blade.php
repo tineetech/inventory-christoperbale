@@ -68,9 +68,9 @@
                             </div>
 
                             <div class="form-group col-md-6">
-                                <label class="form-label">Harga 1</label>
+                                <label class="form-label">Harga Beli</label>
                                 <input type="number" name="harga_1" class="form-control"
-                                    value="{{ old('harga_1', $barang->harga_1) }}"
+                                value="{{ old('harga_1', number_format($barang->harga_1, 0, '.', '')) }}"
                                     placeholder="Masukkan harga pertama" required>
 
                                 @error('harga_1')
@@ -79,9 +79,9 @@
                             </div>
 
                             <div class="form-group col-md-12">
-                                <label class="form-label">Harga 2</label>
+                                <label class="form-label">Harga Jual</label>
                                 <input type="number" name="harga_2" class="form-control"
-                                    value="{{ old('harga_2', $barang->harga_2) }}"
+                                value="{{ old('harga_2', number_format($barang->harga_2, 0, '.', '')) }}"
                                     placeholder="Masukkan harga kedua">
 
                                 @error('harga_2')

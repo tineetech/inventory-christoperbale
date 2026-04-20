@@ -8,7 +8,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\StokBarang;
 use App\Models\StokMovement;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
+use Milon\Barcode\DNS1D;
 
 class BarangController extends Controller
 {
@@ -75,7 +77,6 @@ class BarangController extends Controller
 
             return redirect()->route('barang.index')
                 ->with('success', 'Barang dan stok awal berhasil ditambahkan.');
-
         } catch (\Exception $e) {
 
             DB::rollBack();
@@ -127,8 +128,8 @@ class BarangController extends Controller
         return redirect()->route('barang.index')->with('success', 'Barang berhasil diperbarui.');
     }
 
-        
-        
+
+
     public function destroy(string $id)
     {
         DB::beginTransaction();
@@ -151,7 +152,6 @@ class BarangController extends Controller
             return redirect()
                 ->route('barang.index')
                 ->with('success', 'Barang berhasil dihapus.');
-
         } catch (\Exception $e) {
 
             DB::rollBack();
@@ -167,18 +167,70 @@ class BarangController extends Controller
 
         $q = $req->q;
 
-        return Barang::where('nama_barang','like',"%$q%")
-        ->orWhere('sku','like',"%$q%")
-        ->limit(50)
-        ->with('stok')
-        ->get();
-
+        return Barang::where('nama_barang', 'like', "%$q%")
+            ->orWhere('sku', 'like', "%$q%")
+            ->limit(50)
+            ->with('stok')
+            ->get();
     }
 
     public function barcode($sku)
     {
 
-    return Barang::where('sku',$sku)->with('stok')->first();
+        return Barang::where('sku', $sku)->with('stok')->first();
+    }
 
+    public function downloadBarcode($id)
+    {
+        $barang = Barang::findOrFail($id);
+        $sku    = $barang->sku;
+
+        // 1. Generate barcode PNG (raw binary)
+        $barcode    = new DNS1D();
+        $barcodePng = base64_decode($barcode->getBarcodePNG($sku, 'C128', 2, 60, [0, 0, 0], true));
+
+        // 2. Load barcode ke GD
+        $barcodeImg = imagecreatefromstring($barcodePng);
+        $bcWidth    = imagesx($barcodeImg);
+        $bcHeight   = imagesy($barcodeImg);
+
+        // 3. Buat canvas baru: tinggi barcode + ruang teks
+        $textHeight = 20;
+        $padding    = 6;
+        $canvas     = imagecreatetruecolor($bcWidth, $bcHeight + $textHeight + $padding);
+
+        // 4. Background putih
+
+        // 4. Aktifkan transparansi (HAPUS background putih)
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127); // 127 = fully transparent
+        imagefill($canvas, 0, 0, $transparent);
+
+        // 5. Set blending true sebelum copy barcode
+        imagealphablending($canvas, true);
+
+        $black = imagecolorallocate($canvas, 0, 0, 0);
+
+        // 5. Copy barcode ke canvas
+        imagecopy($canvas, $barcodeImg, 0, 0, 0, 0, $bcWidth, $bcHeight);
+
+        // // 6. Tulis teks SKU di tengah bawah
+        // $fontSize  = 4; // built-in GD font (1-5)
+        // $textWidth = imagefontwidth($fontSize) * strlen($sku);
+        // $textX     = (int)(($bcWidth - $textWidth) / 2);
+        // $textY     = $bcHeight + $padding;
+        // imagestring($canvas, $fontSize, $textX, $textY, $sku, $black);
+
+        // 7. Output sebagai PNG download
+        header('Content-Type: image/png');
+        header('Content-Disposition: attachment; filename="barcode-' . $sku . '.png"');
+
+        imagepng($canvas);
+
+        // 8. Cleanup
+        imagedestroy($canvas);
+        imagedestroy($barcodeImg);
+        exit;
     }
 }

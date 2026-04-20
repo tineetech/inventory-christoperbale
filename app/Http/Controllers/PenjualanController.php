@@ -49,9 +49,19 @@ class PenjualanController extends Controller
             $items = json_decode($request->items, true);
 
 
-            $nomorResi = $items[0]['nomor_resi'];
+            $nomorResi = $items[0]['nomor_resi'] ?? null;
             $nomorPesanan = $items[0]['nomor_pesanan'];
             $nomorTransaksi = $items[0]['nomor_transaksi'];
+
+            if ($nomorResi) {
+                $duplicate = Penjualan::where('nomor_resi', $nomorResi)->exists();
+                if ($duplicate) {
+                    // dd('woi');
+                    // return back()->with('error','Nomor resi sudah digunakan, tidak boleh duplikat.');
+                    throw new \Exception("Nomor resi sudah digunakan, tidak boleh duplikat ");
+                }
+            }
+
             // 1️⃣ create penjualan
             $penjualan = Penjualan::create([
                 'kode_penjualan'  => $request->kode_penjualan,
@@ -69,7 +79,7 @@ class PenjualanController extends Controller
 
                 $barangId = $item['id'];
                 $qty      = $item['qty'];
-                $harga    = $item['harga_1'];
+                $harga    = $item['harga_2'];
 
                 $subtotal = $qty * $harga;
 
@@ -168,6 +178,12 @@ class PenjualanController extends Controller
             $nomorPesanan   = $items[0]['nomor_pesanan'] ?? null;
             $nomorTransaksi = $items[0]['nomor_transaksi'] ?? null;
 
+            if ($nomorResi && Penjualan::where('nomor_resi', $nomorResi)
+                    ->where('id', '!=', $penjualan->id)  // <-- kecualikan diri sendiri
+                    ->exists()) {
+                    throw new \Exception("Nomor resi sudah digunakan, tidak boleh duplikat ");
+            }
+
             /*
             =========================================
             UPDATE HEADER
@@ -199,7 +215,7 @@ class PenjualanController extends Controller
 
                 $barangId = $item['id'];
                 $newQty   = $item['qty'];
-                $harga    = $item['harga_1'];
+                $harga    = $item['harga_2'];
 
                 $subtotal = $newQty * $harga;
 

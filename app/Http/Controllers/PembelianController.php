@@ -22,8 +22,9 @@ class PembelianController extends Controller
     public function create()
     {
         $supplier = Supplier::all();
+        $user = Auth::guard('pengguna')->user()->role->nama_role;
         $kode = 'PB-' . date('Ymd') . '-' . rand(100,999);
-        return view('pages.transaksi.pembelian.create', compact('supplier','kode'));
+        return view('pages.transaksi.pembelian.create', compact('supplier','kode', 'user'));
     }
 
 
@@ -120,7 +121,8 @@ class PembelianController extends Controller
     {
         $pembelian = Pembelian::with('detail', 'supplier')->findOrFail($id);
         $suppliers = Supplier::all();
-        return view('pages.transaksi.pembelian.edit', compact('pembelian', 'suppliers'));
+        $user = Auth::guard('pengguna')->user()->role->nama_role;
+        return view('pages.transaksi.pembelian.edit', compact('pembelian', 'suppliers', 'user'));
     }
 
     public function update(Request $request, $id)

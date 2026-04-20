@@ -40,6 +40,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
         return redirect('/login');
     });
 
+    // Route::get('/')
     /*
     |--------------------------------------------------------------------------
     | DASHBOARD PAGE
@@ -158,6 +159,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::delete('/master/barang/delete/{id}', [BarangController::class, 'destroy'])->name('barang.destroy');
     Route::get('/api/product/search',[BarangController::class,'search']);
     Route::get('/api/product/barcode/{id}',[BarangController::class,'barcode']);
+    Route::get('/barang/{id}/barcode/download', [BarangController::class, 'downloadBarcode'])->name('barang.barcode.download');
 
 
     /*

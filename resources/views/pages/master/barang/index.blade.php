@@ -19,56 +19,56 @@
                     <div class="row">
                         <div class="col-md-12">
 
-                            @if(session('success'))
-                            <div class="card mb-4 border-success">
+                            @if (session('success'))
+                                <div class="card mb-4 border-success">
 
-                                <div class="card-body d-flex align-items-center justify-content-between">
+                                    <div class="card-body d-flex align-items-center justify-content-between">
 
-                                    <div>
+                                        <div>
 
-                                        <h5 class="mb-1 text-success">
-                                            <i class="feather icon-check-circle"></i> Success
-                                        </h5>
+                                            <h5 class="mb-1 text-success">
+                                                <i class="feather icon-check-circle"></i> Success
+                                            </h5>
 
-                                        <p class="mb-0 text-muted">
-                                            {{ session('success') }}
-                                        </p>
+                                            <p class="mb-0 text-muted">
+                                                {{ session('success') }}
+                                            </p>
 
-                                    </div>
+                                        </div>
 
-                                    <div class="display-4 text-success">
-                                        <i class="feather icon-check-circle"></i>
+                                        <div class="display-4 text-success">
+                                            <i class="feather icon-check-circle"></i>
+                                        </div>
+
                                     </div>
 
                                 </div>
-
-                            </div>
                             @endif
 
-                            @if(session('error'))
-                            <div class="card mb-4 border-danger">
+                            @if (session('error'))
+                                <div class="card mb-4 border-danger">
 
-                                <div class="card-body d-flex align-items-center justify-content-between">
+                                    <div class="card-body d-flex align-items-center justify-content-between">
 
-                                    <div>
+                                        <div>
 
-                                        <h5 class="mb-1 text-danger">
-                                            <i class="feather icon-x-circle"></i> error
-                                        </h5>
+                                            <h5 class="mb-1 text-danger">
+                                                <i class="feather icon-x-circle"></i> error
+                                            </h5>
 
-                                        <p class="mb-0 text-muted">
-                                            {{ session('error') }}
-                                        </p>
+                                            <p class="mb-0 text-muted">
+                                                {{ session('error') }}
+                                            </p>
 
-                                    </div>
+                                        </div>
 
-                                    <div class="display-4 text-danger">
-                                        <i class="feather icon-x-circle"></i>
+                                        <div class="display-4 text-danger">
+                                            <i class="feather icon-x-circle"></i>
+                                        </div>
+
                                     </div>
 
                                 </div>
-
-                            </div>
                             @endif
 
                         </div>
@@ -131,7 +131,8 @@
 
                         <div class="col-sm-12">
                             <div class="card mb-4">
-                                <div  style="border: none !important" class="card-header d-flex justify-content-between align-items-center">
+                                <div style="border: none !important"
+                                    class="card-header d-flex justify-content-between align-items-center">
                                     <h6 class="card-header-title mb-0">
                                         <i class="feather icon-truck mr-2"></i> Data Barang
                                     </h6>
@@ -141,11 +142,8 @@
                                         <!-- Search -->
                                         <div class="d-flex mr-5 align-items-center">
 
-                                            <input type="text"
-                                                class="form-control form-control-sm mr-2"
-                                                id="searchTable"
-                                                placeholder="Search barang..."
-                                                style="width:150px">
+                                            <input type="text" class="form-control form-control-sm mr-2" id="searchTable"
+                                                placeholder="Search barang..." style="width:150px">
 
                                         </div>
                                         <a href="{{ route('barang.create') }}" class="btn btn-primary btn-sm">
@@ -155,8 +153,8 @@
                                     </div>
                                 </div>
                                 <div class="nav-tabs-top">
-                                    <div class="tab-content d-flex justify-content-center "   style="width: 100%" >
-                                        <div class="tab-pane fade show active pb-5"  style="width: 95%" id="sale-stats">
+                                    <div class="tab-content d-flex justify-content-center " style="width: 100%">
+                                        <div class="tab-pane fade show active pb-5" style="width: 95%" id="sale-stats">
                                             <div style="height: auto;overflow-x: auto" id="tab-table-1">
                                                 <table class="table table-modern table-hover" id="table">
 
@@ -167,14 +165,16 @@
                                                                 <input type="checkbox" id="checkAll">
                                                             </th>
 
-                                                            <th class="sortable" data-column="1">No <i class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            <th class="sortable" data-column="1">No <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i></th>
 
                                                             <th class="sortable" data-column="2">
                                                                 SKU <i class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
 
                                                             <th class="sortable" data-column="3">
-                                                                Nama Barang <i class="feather icon-chevrons-up sort-icon"></i>
+                                                                Nama Barang <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
 
                                                             <th class="sortable" data-column="4">
@@ -182,11 +182,13 @@
                                                             </th>
 
                                                             <th class="sortable" data-column="5">
-                                                                Harga 1 <i class="feather icon-chevrons-up sort-icon"></i>
+                                                                Harga Beli <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
 
                                                             <th class="sortable" data-column="6">
-                                                                Harga 2 <i class="feather icon-chevrons-up sort-icon"></i>
+                                                                Harga Jual <i
+                                                                    class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
 
                                                             <th class="sortable" data-column="7">
@@ -210,8 +212,22 @@
 
                                                                 <td>{{ $index + 1 }}</td>
 
-                                                                <td>
+                                                                {{-- <td>
                                                                     {{ $sup->sku }}
+                                                                </td> --}}
+                                                                <td>
+                                                                    <div class="d-flex flex-column  align-items-center"
+                                                                        style="padding-block: 20px">
+                                                                        {{-- Barcode tanpa teks --}}
+                                                                        <div style="transform: scaleY(1.5)">
+                                                                            {!! DNS1D::getBarcodeHTML($sup->sku, 'C128', 2, 25) !!}
+                                                                        </div>
+                                                                        {{-- Teks SKU dari blade --}}
+                                                                        <small class="mt-1"
+                                                                            style="font-size:15px; letter-spacing:1px">
+                                                                            {{ $sup->sku }}
+                                                                        </small>
+                                                                    </div>
                                                                 </td>
 
                                                                 <td>
@@ -223,11 +239,11 @@
                                                                 </td>
 
                                                                 <td>
-                                                                    {{ number_format($sup->harga_1) }}
+                                                                    Rp {{ number_format($sup->harga_1, 0, ',', '.') }}
                                                                 </td>
 
                                                                 <td>
-                                                                    {{ number_format($sup->harga_2) }}
+                                                                    Rp {{ number_format($sup->harga_2, 0, ',', '.') }}
                                                                 </td>
 
                                                                 <td>
@@ -240,18 +256,23 @@
 
                                                                 <td>
 
-                                                                    <a href="{{ route('barang.edit', $sup->id) }}" class="btn btn-sm btn-warning action-btn">
-                                                                        {{-- <i class="feather icon-edit"></i> --}}
-                                                                        <span>Cetak Barcode</span>
+
+                                                                    {{-- SESUDAH --}}
+                                                                    <a href="{{ route('barang.barcode.download', $sup->id) }}"
+                                                                        class="btn btn-sm btn-dark action-btn"
+                                                                        target="_blank">
+                                                                        <i class="feather icon-download"></i>
+                                                                        <span>Barcode</span>
                                                                     </a>
-                                                                    <a href="{{ route('barang.edit', $sup->id) }}" class="btn btn-sm btn-info action-btn">
+
+                                                                    <a href="{{ route('barang.edit', $sup->id) }}"
+                                                                        class="btn btn-sm btn-info action-btn">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
 
-                                                                    <form id="delete-form-{{ $sup->id }}" 
-                                                                        action="{{ route('barang.destroy', $sup->id) }}" 
-                                                                        method="POST" 
-                                                                        style="display:inline">
+                                                                    <form id="delete-form-{{ $sup->id }}"
+                                                                        action="{{ route('barang.destroy', $sup->id) }}"
+                                                                        method="POST" style="display:inline">
 
                                                                         @csrf
                                                                         @method('DELETE')
@@ -269,20 +290,20 @@
 
                                                             </tr>
                                                         @endforeach
-                                                        
+
 
                                                     </tbody>
                                                 </table>
                                             </div>
-                                            <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
-                                                
+                                            <div
+                                                class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
+
                                                 <!-- Show Entries -->
                                                 <div class="d-flex align-items-center mr-5">
 
                                                     <span class="mr-2 text-muted small">Show</span>
 
-                                                    <select class="form-control form-control-sm"
-                                                        id="entriesSelect"
+                                                    <select class="form-control form-control-sm" id="entriesSelect"
                                                         style="width:80px">
 
                                                         <option value="10" selected>10</option>
@@ -296,13 +317,14 @@
 
                                                 </div>
                                                 <!-- Info Entries -->
-                                                <div class="text-muted small"  id="tableInfo">
-                                                    Showing <strong>1</strong> to <strong>10</strong> of <strong>100</strong> entries
+                                                <div class="text-muted small" id="tableInfo">
+                                                    Showing <strong>1</strong> to <strong>10</strong> of
+                                                    <strong>100</strong> entries
                                                 </div>
 
                                                 <!-- Pagination -->
                                                 <nav>
-                                                    <ul class="pagination pagination-sm mb-0"  id="pagination">
+                                                    <ul class="pagination pagination-sm mb-0" id="pagination">
 
                                                         <li class="page-item disabled">
                                                             <a class="page-link" href="#">
@@ -436,7 +458,7 @@
 
         }
 
-        entriesSelect.addEventListener("change", function () {
+        entriesSelect.addEventListener("change", function() {
 
             currentPage = 1;
 
@@ -448,11 +470,11 @@
         displayTable();
         setupPagination();
 
-        document.getElementById('checkAll').addEventListener('click', function(){
+        document.getElementById('checkAll').addEventListener('click', function() {
 
             let checkboxes = document.querySelectorAll('.row-check');
 
-            checkboxes.forEach(cb=>{
+            checkboxes.forEach(cb => {
                 cb.checked = this.checked;
             });
 
@@ -460,7 +482,7 @@
 
 
         /* SEARCH TABLE */
-        document.getElementById('searchTable').addEventListener('keyup', function(){
+        document.getElementById('searchTable').addEventListener('keyup', function() {
 
             let value = this.value.toLowerCase();
 
@@ -481,11 +503,11 @@
         let selectEntries = document.getElementById("entriesSelect");
         let tableRows = document.querySelectorAll("#table tbody tr");
 
-        function showEntries(){
+        function showEntries() {
 
             let limit = parseInt(selectEntries.value);
 
-            tableRows.forEach((row,index)=>{
+            tableRows.forEach((row, index) => {
 
                 row.style.display = index < limit ? "" : "none";
 
@@ -520,51 +542,52 @@
             });
 
         }
-        
-        setTimeout(function(){
+
+        setTimeout(function() {
 
             let alertCard = document.querySelector('.border-success');
 
-            if(alertCard){
+            if (alertCard) {
                 alertCard.style.transition = "0.5s";
                 alertCard.style.opacity = "0";
-                setTimeout(()=>alertCard.remove(),500);
+                setTimeout(() => alertCard.remove(), 500);
             }
 
-        },4000);
+        }, 4000);
 
-        
+
         let currentSortColumn = null;
         let currentSortDirection = "asc";
-        function sortTable(columnIndex){
 
-            if(currentSortColumn === columnIndex){
+        function sortTable(columnIndex) {
+
+            if (currentSortColumn === columnIndex) {
                 currentSortDirection = currentSortDirection === "asc" ? "desc" : "asc";
-            }else{
+            } else {
                 currentSortColumn = columnIndex;
                 currentSortDirection = "asc";
             }
 
-            filteredRows.sort((a,b)=>{
+            filteredRows.sort((a, b) => {
 
                 let aText = a.children[columnIndex].innerText.toLowerCase();
                 let bText = b.children[columnIndex].innerText.toLowerCase();
 
-                if(!isNaN(aText) && !isNaN(bText)){
-                    return currentSortDirection === "asc"
-                        ? aText - bText
-                        : bText - aText;
+                if (!isNaN(aText) && !isNaN(bText)) {
+                    return currentSortDirection === "asc" ?
+                        aText - bText :
+                        bText - aText;
                 }
 
-                return currentSortDirection === "asc"
-                    ? aText.localeCompare(bText)
-                    : bText.localeCompare(aText);
+                return currentSortDirection === "asc" ?
+                    aText.localeCompare(bText) :
+                    bText.localeCompare(aText);
 
             });
 
             let tbody = document.querySelector("#table tbody");
 
-            filteredRows.forEach(row=>{
+            filteredRows.forEach(row => {
                 tbody.appendChild(row);
             });
 
@@ -575,7 +598,7 @@
         }
         document.querySelectorAll(".sortable").forEach(header => {
 
-            header.addEventListener("click", function(){
+            header.addEventListener("click", function() {
 
                 let columnIndex = this.getAttribute("data-column");
 
@@ -584,8 +607,5 @@
             });
 
         });
-
-
     </script>
-
 @endsection

@@ -219,7 +219,7 @@
                                 </div>
 
                                 {{-- INPUT NOMOR TRANSAKSI GLOBAL --}}
-                                <div class="form-group row">
+                                {{-- <div class="form-group row">
 
                                     <label class="col-md-2 col-form-label">
                                         Input Nomor Transaksi
@@ -232,7 +232,7 @@
 
                                     </div>
 
-                                </div>
+                                </div> --}}
 
                                 <hr>
 
@@ -246,6 +246,9 @@
 
                                             <tr>
 
+                                                <th>Nomor Resi</th>
+                                                <th>Nomor Pesanan</th>
+                                                <th>Nomor Transaksi</th>
                                                 <th>SKU</th>
                                                 <th>Nama Barang</th>
                                                 <th>Stok</th>
@@ -254,9 +257,6 @@
                                                 <th width="120">Qty</th>
                                                 <th width="120">Δ Stok</th>
 
-                                                <th>Nomor Resi</th>
-                                                <th>Nomor Pesanan</th>
-                                                <th>Nomor Transaksi</th>
 
                                                 <th>Subtotal</th>
                                                 <th width="60"></th>
@@ -362,7 +362,7 @@
                             id: p.id,
                             text: "#" + p.sku + " - " + p.nama_barang +
                                 " | Stok: " + p.stok.jumlah_stok +
-                                " | Rp " + formatRupiah(p.harga_1),
+                                " | Rp " + formatRupiah(p.harga_2),
                             product: p
                         }))
                     };
@@ -426,14 +426,16 @@
 
                 return;
             }
+            let nomorUrut = Object.keys(items).length + 1;
 
             items[product.id] = {
                 id: product.id,
                 sku: product.sku,
                 nama_barang: product.nama_barang,
                 stok: product.stok.jumlah_stok,
-                harga_1: product.harga_1,
-                qty: qty
+                harga_2: product.harga_2,
+                qty: qty,
+                nomor_urut: nomorUrut
             };
 
             renderRow(product.id);
@@ -474,25 +476,6 @@
             let row = `
 <tr id="row_${id}">
 
-<td>${item.sku}</td>
-
-<td>${item.nama_barang}</td>
-
-<td>${item.stok}</td>
-
-<td>${formatRupiah(item.harga_1)}</td>
-
-<td>
-<input type="number"
-class="form-control qty"
-data-id="${id}"
-value="${item.qty}"
-min="1"
-max="${item.stok + (item.original_qty ?? 0)}">
-</td>
-
-<td class="delta">${deltaText}</td>
-
 <td>
 <input type="text"
 class="form-control nomor_resi"
@@ -508,11 +491,31 @@ data-id="${id}">
 <td>
 <input type="text"
 class="form-control nomor_transaksi"
-data-id="${id}">
+data-id="${id}"
+value="${item.nomor_urut}">
+<td>${item.sku}</td>
+
+<td>${item.nama_barang}</td>
+
+<td>${item.stok}</td>
+
+<td>${formatRupiah(item.harga_2)}</td>
+
+<td>
+<input type="number"
+class="form-control qty"
+data-id="${id}"
+value="${item.qty}"
+min="1"
+max="${item.stok + (item.original_qty ?? 0)}">
+</td>
+
+<td class="delta">${deltaText}</td>
+
 </td>
 
 <td class="total">
-${formatRupiah(item.harga_1 * item.qty)}
+${formatRupiah(item.harga_2 * item.qty)}
 </td>
 
 <td>
@@ -581,7 +584,7 @@ data-id="${id}">X</button>
 
             let item = items[id];
 
-            let total = item.qty * item.harga_1;
+            let total = item.qty * item.harga_2;
 
             $('#row_' + id + ' .total').text(formatRupiah(total));
 
@@ -609,6 +612,23 @@ data-id="${id}">X</button>
 
         }
 
+        function reOrderNomorUrut() {
+
+    let index = 1;
+
+    $('#tableItems tbody tr').each(function() {
+
+        let id = $(this).attr('id').replace('row_', '');
+
+        items[id].nomor_urut = index;
+
+        $(this).find('.nomor_transaksi').val(index);
+
+        index++;
+
+    });
+
+}
         $(document).on('click', '.remove', function() {
 
             let id = $(this).data('id');
@@ -616,6 +636,7 @@ data-id="${id}">X</button>
             delete items[id];
 
             $('#row_' + id).remove();
+            reOrderNomorUrut()
 
             calculateTotal();
 
@@ -627,7 +648,7 @@ data-id="${id}">X</button>
 
             Object.values(items).forEach(i => {
 
-                total += i.qty * i.harga_1;
+                total += i.qty * i.harga_2;
 
             });
 
@@ -776,7 +797,7 @@ data-id="${id}">X</button>
 
                     id: id,
                     qty: $(this).find('.qty').val(),
-                    harga_1: items[id].harga_1,
+                    harga_2: items[id].harga_2,
                     nomor_resi: $(this).find('.nomor_resi').val(),
                     nomor_pesanan: $(this).find('.nomor_pesanan').val(),
                     nomor_transaksi: $(this).find('.nomor_transaksi').val()
@@ -790,7 +811,7 @@ data-id="${id}">X</button>
             let total = 0;
 
             Object.values(items).forEach(i => {
-                total += i.qty * i.harga_1;
+                total += i.qty * i.harga_2;
             });
 
             $('#total_harga_input').val(total);
@@ -864,7 +885,7 @@ data-id="${id}">X</button>
                         sku: d.barang.sku,
                         nama_barang: d.barang.nama_barang,
                         stok: d.barang.stok.jumlah_stok,
-                        harga_1: d.harga
+                        harga_2: d.harga
                     };
 
                     items[d.barang.id] = {
@@ -872,7 +893,7 @@ data-id="${id}">X</button>
                         sku: d.barang.sku,
                         nama_barang: d.barang.nama_barang,
                         stok: d.barang.stok.jumlah_stok,
-                        harga_1: d.harga,
+                        harga_2: d.harga,
                         qty: d.qty,
                         original_qty: d.qty
                     };

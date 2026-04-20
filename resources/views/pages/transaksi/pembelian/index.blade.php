@@ -134,7 +134,7 @@
                                 <div style="border: none !important"
                                     class="card-header d-flex justify-content-between align-items-center">
                                     <h6 class="card-header-title mb-0">
-                                        <i class="feather icon-truck mr-2"></i> Data Pembelian
+                                        <i class="feather icon-truck mr-2"></i> Data Penambahan Barang - Pembelian
                                     </h6>
 
                                     <div class="d-flex gap-5">
@@ -147,7 +147,7 @@
 
                                         </div>
                                         <a href="{{ route('pembelian.create') }}" class="btn btn-primary btn-sm">
-                                            <i class="feather icon-plus"></i> Tambah Pembelian
+                                            <i class="feather icon-plus"></i> Buat Penambahan Barang
                                         </a>
 
                                     </div>
@@ -257,7 +257,9 @@
                                                                                     <th>Nama Barang</th>
                                                                                     <th>Stok Sekarang</th>
                                                                                     <th>Qty Dibeli</th>
-                                                                                    <th>Harga</th>
+                                                                                    @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
+                                                                                        <th>Harga</th>
+                                                                                    @endif
                                                                                     <th>Subtotal</th>
                                                                                 </tr>
 
@@ -286,9 +288,11 @@
 
                                                                                         <td>{{ $d->qty }}</td>
 
-                                                                                        <td>Rp
-                                                                                            {{ number_format($d->harga, 0, ',', '.') }}
-                                                                                        </td>
+                                                                                        @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
+                                                                                            <td>Rp
+                                                                                                {{ number_format($d->harga, 0, ',', '.') }}
+                                                                                            </td>
+                                                                                        @endif
 
                                                                                         <td>Rp
                                                                                             {{ number_format($d->subtotal, 0, ',', '.') }}

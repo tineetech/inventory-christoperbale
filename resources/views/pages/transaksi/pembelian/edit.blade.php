@@ -69,7 +69,7 @@
 
                     <h6 class="card-header">
                         <i class="feather icon-shopping-cart mr-2"></i>
-                        Formulir Transaksi Pembelian
+                        Formulir Transaksi Pengeditan Pembelian
                     </h6>
 
                     <div class="card-body">
@@ -205,10 +205,14 @@ rows="2">{{ $pembelian->keterangan }}</textarea>
                                                 <th>SKU</th>
                                                 <th>Nama Barang</th>
                                                 <th>Stok</th>
+                                                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                 <th>Harga</th>
+                                                @endif
                                                 <th width="120">Qty</th>
                                                 <th width="120">Δ Stok</th>
+                                                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                 <th>Total</th>
+                                                @endif
                                                 <th width="60"></th>
                                             </tr>
 
@@ -231,6 +235,7 @@ rows="2">{{ $pembelian->keterangan }}</textarea>
                                     <div class="col-md-3 ml-auto">
 
                                         <div class="input-group">
+                                            @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
 
                                             <div class="input-group-prepend">
                                                 <span class="input-group-text">Total</span>
@@ -238,6 +243,8 @@ rows="2">{{ $pembelian->keterangan }}</textarea>
 
                                             <input type="text" id="grand_total" class="form-control" readonly
                                                 value="{{ $pembelian->total_harga }}">
+
+                                            @endif
 
                                         </div>
 
@@ -334,6 +341,17 @@ $(document).ready(function(){
                 },
 
                 processResults: function(data) {
+                    let role = @json($user);
+                    if (role !== 'super_admin') {
+                        return {
+                            results: data.map(p => ({
+                                id: p.id,
+                                text: "#" + p.sku + " - " + p.nama_barang +
+                                    " | Stok: " + p.stok.jumlah_stok,
+                                product: p
+                            }))
+                        };
+                    }
                     return {
                         results: data.map(p => ({
                             id: p.id,
@@ -443,8 +461,9 @@ function renderRow(id) {
 
 <td>${item.stok}</td>
 
+@if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
 <td>${formatRupiah(item.harga_1)}</td>
-
+@endif
 <td>
 <input type="number"
 class="form-control qty"
@@ -455,7 +474,9 @@ min="1">
 
 <td class="delta">${deltaText}</td>
 
+@if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
 <td class="total">${formatRupiah(item.harga_1 * item.qty)}</td>
+@endif
 
 <td>
 <button class="btn btn-danger btn-sm remove"
