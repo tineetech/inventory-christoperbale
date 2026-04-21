@@ -10,12 +10,12 @@ class HakAksesController extends Controller
     public function index()
     {
         $hakAkses = HakAkses::with('roles')->get();
-        return view('hak_akses.index', compact('hakAkses'));
+        return view('pages.hak_akses.index', compact('hakAkses'));
     }
 
     public function create()
     {
-        return view('hak_akses.create');
+        return view('pages.hak_akses.create');
     }
 
     public function store(Request $request)
@@ -30,19 +30,19 @@ class HakAksesController extends Controller
             'nama_permission' => $data['nama_permission'],
         ]);
 
-        return redirect()->route('hak-akses.index')->with('success', 'Hak akses berhasil ditambahkan.');
+        return redirect()->route('hak_akses.index')->with('success', 'Hak akses berhasil ditambahkan.');
     }
 
     public function show(string $id)
     {
         $hakAkses = HakAkses::with('roles')->findOrFail($id);
-        return view('hak_akses.show', compact('hakAkses'));
+        return view('pages.hak_akses.show', compact('hakAkses'));
     }
 
     public function edit(string $id)
     {
         $hakAkses = HakAkses::findOrFail($id);
-        return view('hak_akses.edit', compact('hakAkses'));
+        return view('pages.hak_akses.edit', compact('hakAkses'));
     }
 
     public function update(Request $request, string $id)
@@ -58,7 +58,7 @@ class HakAksesController extends Controller
             'nama_permission' => $data['nama_permission'],
         ]);
 
-        return redirect()->route('hak-akses.index')->with('success', 'Hak akses berhasil diperbarui.');
+        return redirect()->route('hak_akses.index')->with('success', 'Hak akses berhasil diperbarui.');
     }
 
     public function destroy(string $id)
@@ -66,6 +66,6 @@ class HakAksesController extends Controller
         $hakAkses = HakAkses::findOrFail($id);
         $hakAkses->delete();
 
-        return redirect()->route('hak-akses.index')->with('success', 'Hak akses berhasil dihapus.');
+        return redirect()->route('hak_akses.index')->with('success', 'Hak akses berhasil dihapus.');
     }
 }

@@ -175,9 +175,11 @@
 
                                                             <th class="sortable" data-column="4">Tanggal <i
                                                                     class="feather icon-chevrons-up sort-icon"></i></th>
-
+                                                            
+                                                            @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                             <th class="sortable" data-column="5">Total Harga <i
                                                                     class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            @endif
 
                                                             <th>Dibuat Oleh</th>
 
@@ -207,7 +209,9 @@
 
                                                                 <td>{{ date('d M Y', strtotime($pb->tanggal)) }}</td>
 
+                                                                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                                 <td style="font-weight: bold">Rp {{ number_format($pb->total_harga, 0, ',', '.') }}</td>
+                                                                @endif
 
                                                                 <td>{{ $pb->user->nama ?? '-' }}</td>
 
@@ -259,8 +263,8 @@
                                                                                     <th>Qty Dibeli</th>
                                                                                     @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                                                         <th>Harga</th>
+                                                                                        <th>Subtotal</th>
                                                                                     @endif
-                                                                                    <th>Subtotal</th>
                                                                                 </tr>
 
                                                                             </thead>
@@ -292,15 +296,15 @@
                                                                                             <td>Rp
                                                                                                 {{ number_format($d->harga, 0, ',', '.') }}
                                                                                             </td>
+                                                                                            <td>Rp
+                                                                                                {{ number_format($d->subtotal, 0, ',', '.') }}
+                                                                                            </td>
                                                                                         @endif
 
-                                                                                        <td>Rp
-                                                                                            {{ number_format($d->subtotal, 0, ',', '.') }}
-                                                                                        </td>
 
                                                                                     </tr>
                                                                                 @endforeach
-
+                                                                                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                                                 <tr
                                                                                     style="background:#f1f1f1;font-weight:bold">
 
@@ -310,7 +314,7 @@
                                                                                     <td>Rp
                                                                                         {{ number_format($totalDetail, 0, ',', '.') }}
                                                                                     </td>
-
+                                                                                @endif
                                                                             </tbody>
 
                                                                         </table>

@@ -12,13 +12,13 @@ class PenggunaController extends Controller
     public function index()
     {
         $pengguna = Pengguna::with('role')->get();
-        return view('pengguna.index', compact('pengguna'));
+        return view('pages.pengguna.index', compact('pengguna'));
     }
 
     public function create()
     {
         $roles = Role::all();
-        return view('pengguna.create', compact('roles'));
+        return view('pages.pengguna.create', compact('roles'));
     }
 
     public function store(Request $request)
@@ -26,7 +26,7 @@ class PenggunaController extends Controller
         $request->validate([
             'nama'     => 'required|string|max:100',
             'email'    => 'required|email|unique:pengguna,email',
-            'password' => 'required|string|min:6|confirmed',
+            'password' => 'required|string',
             'role_id'  => 'required|exists:role,id',
         ]);
 
@@ -45,14 +45,14 @@ class PenggunaController extends Controller
     public function show(string $id)
     {
         $pengguna = Pengguna::with('role')->findOrFail($id);
-        return view('pengguna.show', compact('pengguna'));
+        return view('pages.pengguna.show', compact('pengguna'));
     }
 
     public function edit(string $id)
     {
         $pengguna = Pengguna::findOrFail($id);
         $roles = Role::all();
-        return view('pengguna.edit', compact('pengguna', 'roles'));
+        return view('pages.pengguna.edit', compact('pengguna', 'roles'));
     }
 
     public function update(Request $request, string $id)
@@ -60,7 +60,7 @@ class PenggunaController extends Controller
         $request->validate([
             'nama'     => 'required|string|max:100',
             'email'    => 'required|email|unique:pengguna,email,' . $id,
-            'password' => 'nullable|string|min:6|confirmed',
+            'password' => 'nullable|string',
             'role_id'  => 'required|exists:role,id',
         ]);
 

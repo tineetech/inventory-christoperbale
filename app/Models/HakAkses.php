@@ -21,4 +21,9 @@ class HakAkses extends Model
             'role_id'
         );
     }
+
+    public function roleHakAkses()
+    {
+        return $this->hasMany(RoleHakAkses::class);
+    }
 }
