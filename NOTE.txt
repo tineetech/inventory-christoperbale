@@ -3,3 +3,4 @@ Libary yang dipakai :
 2. export-import-file-pdf = barryvdh/laravel-dompdf
 3. barcode = milon/barcode
 tes
+tes2
