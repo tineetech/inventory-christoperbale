@@ -13,11 +13,60 @@
             </div>
 
             <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ route('laporan.pembelian') }}">
+                        <div class="form-row">
+                            <div class="form-group col-md-4">
+                                <label class="font-weight-bold">Dari Tanggal</label>
+                                <input type="date" class="form-control" name="dari_tanggal"
+                                    value="{{ $filters['dari_tanggal'] }}">
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label class="font-weight-bold">Sampai Tanggal</label>
+                                <input type="date" class="form-control" name="sampai_tanggal"
+                                    value="{{ $filters['sampai_tanggal'] }}">
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label class="font-weight-bold">Supplier</label>
+                                <select class="form-control" name="supplier_id">
+                                    <option value="">(Semua)</option>
+                                    @foreach ($supplierOptions as $option)
+                                        <option value="{{ $option->id }}"
+                                            {{ (string) $filters['supplier_id'] === (string) $option->id ? 'selected' : '' }}>
+                                            {{ $option->nama_supplier }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap justify-content-end" style="gap: 10px;">
+                            <a href="{{ route('laporan.pembelian.print', $filters) }}" target="_blank" class="btn btn-success">
+                                <i class="feather icon-printer"></i> Print
+                            </a>
+                            <a href="{{ route('laporan.pembelian.excel', $filters) }}" class="btn btn-warning text-white">
+                                <i class="feather icon-download"></i> Excel
+                            </a>
+                            <button type="submit" class="btn btn-info">
+                                <i class="feather icon-refresh-cw"></i> Proses
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-4">
                 <div style="border: none !important" class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="card-header-title mb-0">
                         <i class="feather icon-file-text mr-2"></i> Data Laporan Pembelian
                     </h6>
-                    <span class="badge badge-light">{{ $pembelian->count() }} transaksi</span>
+                    <div class="d-flex align-items-center" style="gap: 12px;">
+                        <span class="badge badge-light">{{ $pembelian->count() }} transaksi</span>
+                        <small class="text-muted">
+                            Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
+                            {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }}
+                        </small>
+                    </div>
                 </div>
 
                 <div class="table-responsive px-3 pb-3">
@@ -46,7 +95,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">Belum ada data pembelian.</td>
+                                    <td colspan="7" class="text-center text-muted py-4">Belum ada data pembelian pada filter ini.</td>
                                 </tr>
                             @endforelse
                         </tbody>

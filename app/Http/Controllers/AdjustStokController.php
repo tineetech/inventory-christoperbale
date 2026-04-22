@@ -130,7 +130,7 @@ class AdjustStokController extends Controller
             'keterangan'  => $data['keterangan'] ?? null,
         ]);
 
-        return redirect()->route('adjust-stok.index')->with('success', 'Adjust stok berhasil diperbarui.');
+        return redirect()->route('adjust-stok.index')->with('success', 'ok berhasil diperbarui.');
     }
 
     public function destroy(string $id)
@@ -138,6 +138,6 @@ class AdjustStokController extends Controller
         $adjustStok = AdjustStok::findOrFail($id);
         $adjustStok->delete();
 
-        return redirect()->route('adjust-stok.index')->with('success', 'Adjust stok berhasil dihapus.');
+        return redirect()->route('adjust-stok.index')->with('success', 'ok berhasil dihapus.');
     }
 }
