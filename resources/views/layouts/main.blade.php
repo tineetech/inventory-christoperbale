@@ -103,6 +103,11 @@
             padding: 5px 10px;
             font-size: 12px;
         }
+
+        .layout-collapsed:not(.layout-offcanvas):not(.layout-fixed-offcanvas) .layout-sidenav:not(:hover) .sidenav-vertical .sidenav-inner > .sidenav-item > .sidenav-link > div,
+        .layout-collapsed:not(.layout-offcanvas):not(.layout-fixed-offcanvas) .layout-sidenav.sidenav-vertical:not(:hover) .sidenav-inner > .sidenav-item > .sidenav-link > div {
+            display: none !important;
+        }
     </style>
 
 </head>

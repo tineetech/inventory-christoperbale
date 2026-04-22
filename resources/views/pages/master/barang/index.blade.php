@@ -146,7 +146,8 @@
                                                 placeholder="Search barang..." style="width:150px">
 
                                         </div>
-                                        <a href="{{ route('barang.create') }}" class="btn btn-primary btn-sm">
+                                        <a href="{{ route('barang.create') }}" class="btn btn-sm text-white"
+                                            style="background: linear-gradient(135deg, #ff8a00, #ff5b00); border: none; box-shadow: 0 6px 14px rgba(255, 107, 0, 0.25);">
                                             <i class="feather icon-plus"></i> Tambah Barang
                                         </a>
 

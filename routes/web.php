@@ -21,6 +21,7 @@ use App\Http\Controllers\AdjustStokDetailController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Auth;
 
@@ -420,6 +421,26 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/transaksi/manage-stok/delete/{id}', [AdjustStokController::class, 'destroy'])
         ->name('manage-stok.destroy')
         ->middleware('permission:edit,manajemen_stok');
+
+    /*
+    |--------------------------------------------------------------------------
+    | LAPORAN
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/laporan/pembelian', [ReportController::class, 'pembelian'])->name('laporan.pembelian');
+    Route::get('/laporan/pembelian/excel', [ReportController::class, 'pembelianExcel'])->name('laporan.pembelian.excel');
+    Route::get('/laporan/pembelian/print', [ReportController::class, 'pembelianPrint'])->name('laporan.pembelian.print');
+    Route::get('/laporan/penjualan', [ReportController::class, 'penjualan'])->name('laporan.penjualan');
+    Route::get('/laporan/penjualan/excel', [ReportController::class, 'penjualanExcel'])->name('laporan.penjualan.excel');
+    Route::get('/laporan/penjualan/print', [ReportController::class, 'penjualanPrint'])->name('laporan.penjualan.print');
+    Route::get('/laporan/stok', [ReportController::class, 'stok'])->name('laporan.stok');
+    Route::get('/laporan/stok/excel', [ReportController::class, 'stokExcel'])->name('laporan.stok.excel');
+    Route::get('/laporan/stok/print', [ReportController::class, 'stokPrint'])->name('laporan.stok.print');
+    Route::get('/laporan/barang', [ReportController::class, 'barang'])->name('laporan.barang');
+    Route::get('/laporan/barang/pdf', [ReportController::class, 'barangPdf'])->name('laporan.barang.pdf');
+    Route::get('/laporan/barang/excel', [ReportController::class, 'barangExcel'])->name('laporan.barang.excel');
+    Route::get('/laporan/barang/print', [ReportController::class, 'barangPrint'])->name('laporan.barang.print');
+
 
 
     /*

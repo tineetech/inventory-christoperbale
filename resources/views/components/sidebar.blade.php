@@ -117,7 +117,7 @@
 
             @if(hasPermission('lihat', 'laporan_pembelian'))
                 <li class="sidenav-item {{ request()->routeIs('laporan-pembelian.*') ? 'active' : '' }}">
-                    <a href="#" class="sidenav-link">
+            <a href="{{ route('laporan.pembelian') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-file-text"></i>
                         <div>Pembelian</div>
                     </a>
@@ -126,7 +126,7 @@
 
             @if(hasPermission('lihat', 'laporan_penjualan'))
                 <li class="sidenav-item {{ request()->routeIs('laporan-penjualan.*') ? 'active' : '' }}">
-                    <a href="#" class="sidenav-link">
+            <a href="{{ route('laporan.penjualan') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-file-text"></i>
                         <div>Penjualan</div>
                     </a>
@@ -135,7 +135,7 @@
 
             @if(hasPermission('lihat', 'laporan_stok'))
                 <li class="sidenav-item {{ request()->routeIs('laporan-stok.*') ? 'active' : '' }}">
-                    <a href="#" class="sidenav-link">
+            <a href="{{ route('laporan.stok') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-archive" data-feather="archive" style="width:16px;height:18px;margin-right:15px"></i>
                         <div>Stok</div>
                     </a>
@@ -144,7 +144,7 @@
 
             @if(hasPermission('lihat', 'laporan_barang'))
                 <li class="sidenav-item {{ request()->routeIs('laporan-barang.*') ? 'active' : '' }}">
-                    <a href="#" class="sidenav-link">
+            <a href="{{ route('laporan.barang') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-box"></i>
                         <div>Barang</div>
                     </a>
@@ -166,6 +166,7 @@
                     </a>
                 </li>
             @endif
+
 
             @if(hasPermission('lihat', 'hak_akses'))
                 <li class="sidenav-item {{ request()->routeIs('hak_akses.*') ? 'active' : '' }}">
