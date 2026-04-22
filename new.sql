@@ -20,7 +20,6 @@ SET time_zone = "+00:00";
 --
 -- Database: `inventory-chrisbale`
 --
-mysql -u root -p `inventory-chrisbale` < "new.sql"
 
 -- --------------------------------------------------------
 
