@@ -48,9 +48,19 @@ class PenjualanController extends Controller
 
             $items = json_decode($request->items, true);
 
-            $nomorResi = $items[0]['nomor_resi'];
+
+            $nomorResi = $items[0]['nomor_resi'] ?? null;
             $nomorPesanan = $items[0]['nomor_pesanan'];
             $nomorTransaksi = $items[0]['nomor_transaksi'];
+
+            if ($nomorResi) {
+                $duplicate = Penjualan::where('nomor_resi', $nomorResi)->exists();
+                if ($duplicate) {
+                    // dd('woi');
+                    // return back()->with('error','Nomor resi sudah digunakan, tidak boleh duplikat.');
+                    throw new \Exception("Nomor resi sudah digunakan, tidak boleh duplikat ");
+                }
+            }
 
             // 1️⃣ create penjualan
             $penjualan = Penjualan::create([
@@ -65,11 +75,12 @@ class PenjualanController extends Controller
                 'created_by'      => Auth::guard('pengguna')->user()->id
             ]);
 
-            foreach ($items as $index => $item) {
+            foreach ($items as $item) {
 
                 $barangId = $item['id'];
                 $qty      = $item['qty'];
                 $harga    = $item['harga_2'];
+
                 $subtotal = $qty * $harga;
 
                 // 2️⃣ insert penjualan_detail
@@ -79,6 +90,9 @@ class PenjualanController extends Controller
                     'qty'          => $qty,
                     'harga'        => $harga,
                     'subtotal'     => $subtotal,
+                    'nomor_resi'=>$item['nomor_resi'],
+                    'nomor_pesanan'=>$item['nomor_pesanan'],
+                    'nomor_transaksi'=>$item['nomor_transaksi']
                 ]);
 
                 // ambil stok lama
@@ -89,7 +103,7 @@ class PenjualanController extends Controller
                 $stokSebelum = $stok->jumlah_stok ?? 0;
 
                 if ($stokSebelum < $qty) {
-                    throw new \Exception("Stok tidak cukup untuk barang " . $item['nama_barang']);
+                    throw new \Exception("Stok tidak cukup untuk barang ID ".$barangId);
                 }
 
                 $stokSesudah = $stokSebelum - $qty;
@@ -164,6 +178,12 @@ class PenjualanController extends Controller
             $nomorPesanan   = $items[0]['nomor_pesanan'] ?? null;
             $nomorTransaksi = $items[0]['nomor_transaksi'] ?? null;
 
+            if ($nomorResi && Penjualan::where('nomor_resi', $nomorResi)
+                    ->where('id', '!=', $penjualan->id)  // <-- kecualikan diri sendiri
+                    ->exists()) {
+                    throw new \Exception("Nomor resi sudah digunakan, tidak boleh duplikat ");
+            }
+
             /*
             =========================================
             UPDATE HEADER
@@ -195,7 +215,6 @@ class PenjualanController extends Controller
 
                 $barangId = $item['id'];
                 $newQty   = $item['qty'];
-                // Menggunakan harga_2 untuk update penjualan
                 $harga    = $item['harga_2'];
 
                 $subtotal = $newQty * $harga;

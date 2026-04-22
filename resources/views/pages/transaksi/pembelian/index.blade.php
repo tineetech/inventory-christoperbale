@@ -134,7 +134,7 @@
                                 <div style="border: none !important"
                                     class="card-header d-flex justify-content-between align-items-center">
                                     <h6 class="card-header-title mb-0">
-                                        <i class="feather icon-truck mr-2"></i> Data Pembelian
+                                        <i class="feather icon-truck mr-2"></i> Data Penambahan Barang - Pembelian
                                     </h6>
 
                                     <div class="d-flex gap-5">
@@ -147,7 +147,7 @@
 
                                         </div>
                                         <a href="{{ route('pembelian.create') }}" class="btn btn-primary btn-sm">
-                                            <i class="feather icon-plus"></i> Tambah Pembelian
+                                            <i class="feather icon-plus"></i> Buat Penambahan Barang
                                         </a>
 
                                     </div>
@@ -175,9 +175,11 @@
 
                                                             <th class="sortable" data-column="4">Tanggal <i
                                                                     class="feather icon-chevrons-up sort-icon"></i></th>
-
+                                                            
+                                                            @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                             <th class="sortable" data-column="5">Total Harga <i
                                                                     class="feather icon-chevrons-up sort-icon"></i></th>
+                                                            @endif
 
                                                             <th>Dibuat Oleh</th>
 
@@ -207,7 +209,9 @@
 
                                                                 <td>{{ date('d M Y', strtotime($pb->tanggal)) }}</td>
 
+                                                                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                                 <td style="font-weight: bold">Rp {{ number_format($pb->total_harga, 0, ',', '.') }}</td>
+                                                                @endif
 
                                                                 <td>{{ $pb->user->nama ?? '-' }}</td>
 
@@ -257,8 +261,10 @@
                                                                                     <th>Nama Barang</th>
                                                                                     <th>Stok Sekarang</th>
                                                                                     <th>Qty Dibeli</th>
-                                                                                    <th>Harga</th>
-                                                                                    <th>Subtotal</th>
+                                                                                    @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
+                                                                                        <th>Harga</th>
+                                                                                        <th>Subtotal</th>
+                                                                                    @endif
                                                                                 </tr>
 
                                                                             </thead>
@@ -286,17 +292,19 @@
 
                                                                                         <td>{{ $d->qty }}</td>
 
-                                                                                        <td>Rp
-                                                                                            {{ number_format($d->harga, 0, ',', '.') }}
-                                                                                        </td>
+                                                                                        @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
+                                                                                            <td>Rp
+                                                                                                {{ number_format($d->harga, 0, ',', '.') }}
+                                                                                            </td>
+                                                                                            <td>Rp
+                                                                                                {{ number_format($d->subtotal, 0, ',', '.') }}
+                                                                                            </td>
+                                                                                        @endif
 
-                                                                                        <td>Rp
-                                                                                            {{ number_format($d->subtotal, 0, ',', '.') }}
-                                                                                        </td>
 
                                                                                     </tr>
                                                                                 @endforeach
-
+                                                                                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                                                 <tr
                                                                                     style="background:#f1f1f1;font-weight:bold">
 
@@ -306,7 +314,7 @@
                                                                                     <td>Rp
                                                                                         {{ number_format($totalDetail, 0, ',', '.') }}
                                                                                     </td>
-
+                                                                                @endif
                                                                             </tbody>
 
                                                                         </table>

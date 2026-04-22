@@ -34,7 +34,7 @@
         </div>
 
         <div class="navbar-nav align-items-lg-center ml-auto">
-            <div class="demo-navbar-notifications nav-item dropdown mr-lg-3">
+            {{-- <div class="demo-navbar-notifications nav-item dropdown mr-lg-3">
                 <a class="nav-link dropdown-toggle hide-arrow" href="#" data-toggle="dropdown">
                     <i class="feather icon-bell navbar-icon align-middle"></i>
                     <span class="badge badge-danger badge-dot indicator"></span>
@@ -93,7 +93,7 @@
                     </div>
                     <a href="javascript:" class="d-block text-center text-light small p-2 my-1">Show all notifications</a>
                 </div>
-            </div>
+            </div> --}}
 
             <!-- Divider -->
             <div class="nav-item d-none d-lg-block text-big font-weight-light line-height-1 opacity-25 mr-3 ml-1">|</div>
@@ -107,12 +107,12 @@
                     </span>
                 </a>
                 <div class="dropdown-menu dropdown-menu-right">
-                    <a href="javascript:" class="dropdown-item">
+                    <a href="{{ route('profile.edit') }}" class="dropdown-item">
                         <i class="feather icon-user text-muted"></i> &nbsp; My profile</a>
                     <!-- <a href="javascript:" class="dropdown-item">
                         <i class="feather icon-mail text-muted"></i> &nbsp; Messages</a> -->
-                    <a href="javascript:" class="dropdown-item">
-                        <i class="feather icon-settings text-muted"></i> &nbsp; Account settings</a>
+                    {{-- <a href="javascript:" class="dropdown-item">
+                        <i class="feather icon-settings text-muted"></i> &nbsp; Account settings</a> --}}
                     <div class="dropdown-divider"></div>
                     <a href="/logout" class="dropdown-item">
                         <i class="feather icon-power text-danger"></i> &nbsp; Log Out</a>

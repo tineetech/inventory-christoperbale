@@ -9,19 +9,34 @@ use Illuminate\Http\Request;
 
 class RoleHakAksesController extends Controller
 {
-    public function index()
+    
+    public function index(Request $request)
     {
-        $roleHakAkses = RoleHakAkses::with(['role', 'hakAkses'])->get();
-        // Grouping by role for cleaner display
-        $roles = Role::with('permissions')->get();
-        return view('role_hak_akses.index', compact('roleHakAkses', 'roles'));
+        $roles = Role::all();
+
+        $roleId = $request->role ?? $roles->first()->id;
+
+        $role = Role::findOrFail($roleId);
+
+        $permissions = HakAkses::all();
+
+        $rolePermissions = RoleHakAkses::where('role_id',$roleId)
+                        ->pluck('hak_akses_id')
+                        ->toArray();
+
+        return view('pages.role_hak_akses.index',compact(
+            'roles',
+            'role',
+            'permissions',
+            'rolePermissions'
+        ));
     }
 
     public function create()
     {
         $roles     = Role::all();
         $hakAkses  = HakAkses::all();
-        return view('role_hak_akses.create', compact('roles', 'hakAkses'));
+        return view('pages.role_hak_akses.create', compact('roles', 'hakAkses'));
     }
 
     public function store(Request $request)
@@ -44,7 +59,7 @@ class RoleHakAksesController extends Controller
     public function show(string $id)
     {
         $roleHakAkses = RoleHakAkses::with(['role', 'hakAkses'])->findOrFail($id);
-        return view('role_hak_akses.show', compact('roleHakAkses'));
+        return view('pages.role_hak_akses.show', compact('roleHakAkses'));
     }
 
     public function edit(string $id)
@@ -52,25 +67,30 @@ class RoleHakAksesController extends Controller
         $roleHakAkses = RoleHakAkses::findOrFail($id);
         $roles        = Role::all();
         $hakAkses     = HakAkses::all();
-        return view('role_hak_akses.edit', compact('roleHakAkses', 'roles', 'hakAkses'));
+        return view('pages.role_hak_akses.edit', compact('roleHakAkses', 'roles', 'hakAkses'));
     }
 
-    public function update(Request $request, string $id)
+    
+    public function update(Request $request,$roleId)
     {
-        $request->validate([
-            'role_id'      => 'required|exists:role,id',
-            'hak_akses_id' => 'required|exists:hak_akses,id',
-        ]);
+        RoleHakAkses::where('role_id',$roleId)->delete();
 
-        $data = $request->all();
+        if($request->permissions){
 
-        $roleHakAkses = RoleHakAkses::findOrFail($id);
-        $roleHakAkses->update([
-            'role_id'      => $data['role_id'],
-            'hak_akses_id' => $data['hak_akses_id'],
-        ]);
+            foreach($request->permissions as $permission){
 
-        return redirect()->route('role-hak-akses.index')->with('success', 'Role hak akses berhasil diperbarui.');
+                RoleHakAkses::create([
+                    'role_id'=>$roleId,
+                    'hak_akses_id'=>$permission
+                ]);
+
+            }
+
+        }
+
+        return redirect()
+            ->back()
+            ->with('success','Hak akses berhasil diperbarui');
     }
 
     public function destroy(string $id)

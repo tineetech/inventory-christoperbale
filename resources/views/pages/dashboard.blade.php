@@ -160,92 +160,68 @@
             </div>
 
             <!-- BOTTOM SECTION -->
-            <div class="row">
+            {{-- Stok Kritis --}}
+            <div class="row mt-2">
+                <div class="col-md-12">
+                    <div class="card p-3 mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center" style="border:none">
+                            <h6 class="mb-0 text-danger">
+                                <i class="feather icon-alert-triangle mr-2"></i> Stok Kritis
+                                <small class="text-muted">Stok dibawah minimum dan dibawah 10 yang perlu di restock</small>
+                            </h6>
+                            <span class="badge badge-danger">{{ $stokKritis->count() }} barang</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>No</th>
+                                        <th>SKU</th>
+                                        <th>Nama Barang</th>
+                                        <th>Satuan</th>
+                                        <th>Stok Minimum</th>
+                                        <th>Stok Sekarang</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($stokKritis as $index => $item)
+                                        <tr>
+                                            <td>{{ $index + 1 }}</td>
+                                            <td><code>{{ $item->sku }}</code></td>
+                                            <td><strong>{{ $item->nama_barang }}</strong></td>
+                                            <td>{{ $item->satuan->nama_satuan }}</td>
+                                            <td>{{ $item->stok_minimum }}</td>
+                                            <td>
+                                                <span class="text-danger font-weight-bold">
+                                                    {{ $item->stok->jumlah_stok ?? 0 }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                @php
+                                                    $stokNow = $item->stok->jumlah_stok ?? 0;
+                                                @endphp
 
-                <div class="col-md-6">
-                    <div class="card d-flex w-100 mb-4">
-                        <div class="row no-gutters row-bordered row-border-light h-100">
-
-                            <!-- TOTAL SUPPLIER -->
-                            <div class="d-flex col-lg-6 align-items-center">
-                                <div class="card-body media align-items-center text-dark">
-                                    <i class="lnr lnr-store display-4 text-primary"></i>
-                                    <span class="media-body ml-3">
-                                        <span class="text-big mr-1 text-primary">{{ $totalSupplier }}</span>
-                                        <br>
-                                        <small class="text-muted">Supplier</small>
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- TOTAL DROPSHIPPER -->
-                            <div class="d-flex col-lg-6 align-items-center">
-                                <div class="card-body media align-items-center text-dark">
-                                    <i class="lnr lnr-user display-4 text-success"></i>
-                                    <span class="media-body ml-3">
-                                        <span class="text-big mr-1 text-success">{{ $totalDropshipper }}</span>
-                                        <br>
-                                        <small class="text-muted">Dropshipper</small>
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- ADJUSTMENT -->
-                            <div class="d-flex col-lg-6 align-items-center">
-                                <div class="card-body media align-items-center text-dark">
-                                    <i class="lnr lnr-cog display-4 text-danger"></i>
-                                    <span class="media-body ml-3">
-                                        <span class="text-big mr-1 text-danger">{{ $adjustHariIni }}</span>
-                                        <br>
-                                        <small class="text-muted">Adjustment Hari Ini</small>
-                                    </span>
-                                </div>
-                            </div>
-
-                            <!-- STOK MOVEMENT -->
-                            <div class="d-flex col-lg-6 align-items-center">
-                                <div class="card-body media align-items-center text-dark">
-                                    <i class="lnr lnr-sync display-4 text-info"></i>
-                                    <span class="media-body ml-3">
-                                        <span class="text-big mr-1 text-info">{{ $stokMovementHariIni }}</span>
-                                        <br>
-                                        <small class="text-muted">Stok Movement</small>
-                                    </span>
-                                </div>
-                            </div>
-
+                                                @if ($stokNow == 0)
+                                                    <span class="badge badge-danger">Habis</span>
+                                                @else
+                                                    <span class="badge badge-warning">Kritis</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                <i class="feather icon-check-circle text-success mr-2"></i>
+                                                Semua stok aman
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-
-                <div class="col-md-6">
-
-                    <div class="card mb-4 bg-primary text-white">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="lnr lnr-cart display-4"></div>
-                                <div class="ml-3">
-                                    <div class="small">Penjualan Hari Ini</div>
-                                    <div class="text-large">{{ $penjualanHariIni }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <div class="d-flex align-items-center">
-                                <div class="lnr lnr-enter display-4 text-warning"></div>
-                                <div class="ml-3">
-                                    <div class="text-muted small">Pembelian Hari Ini</div>
-                                    <div class="text-large">{{ $pembelianHariIni }}</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
             </div>
 
         </div>
