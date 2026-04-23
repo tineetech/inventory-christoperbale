@@ -213,6 +213,11 @@
                                                             </th>
 
                                                             <th class="sortable" data-column="9">
+                                                                Scan Out
+                                                                <i class="feather icon-chevrons-up sort-icon"></i>
+                                                            </th>
+
+                                                            <th class="sortable" data-column="10">
                                                                 Keterangan
                                                                 <i class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
@@ -260,6 +265,19 @@
                                                                 <td style="font-weight:bold">
                                                                     Rp {{ number_format($pj->total_harga, 0, ',', '.') }}
                                                                 </td>
+
+                                                                <td>
+                                                                    @if ($pj->scan_out === 'pending')
+                                                                        <span class="badge badge-warning">Pending</span>
+                                                                    @elseif ($pj->scan_out === 'done')
+                                                                        <span class="badge badge-success">Done</span>
+                                                                    @elseif ($pj->scan_out === 'failed')
+                                                                        <span class="badge badge-danger">Failed</span>
+                                                                    @else
+                                                                        <span class="badge badge-secondary">Nothing</span>
+                                                                    @endif
+                                                                </td>
+
 
                                                                 <td>{{ $pj->keterangan }}</td>
 

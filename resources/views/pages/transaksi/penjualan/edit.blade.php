@@ -131,6 +131,16 @@
 
                                 </div>
 
+                                <div class="form-group col-md-12">
+                                    <label class="form-label">Scan Out</label>
+                                    <select name="scan_out" class="form-control">
+                                        <option value="">-- Pilih Status --</option>
+                                        <option value="pending" {{ $penjualan->scan_out == 'pending' ? 'selected' : '' }}>Pending</option>
+                                        <option value="done" {{ $penjualan->scan_out == 'done' ? 'selected' : '' }}>Done</option>
+                                        <option value="failed" {{ $penjualan->scan_out == 'failed' ? 'selected' : '' }}>Failed</option>
+                                    </select>
+                                </div>
+
                             </div>
 
                             <hr>

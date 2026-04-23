@@ -17,6 +17,7 @@ class Penjualan extends Model
         'tanggal',
         'total_harga',
         'keterangan',
+        'scan_out',
         'created_by'
     ];
 

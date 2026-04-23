@@ -13,11 +13,8 @@ use App\Http\Controllers\BarangController;
 use App\Http\Controllers\StokBarangController;
 use App\Http\Controllers\StokMovementController;
 use App\Http\Controllers\PembelianController;
-use App\Http\Controllers\PembelianDetailController;
 use App\Http\Controllers\PenjualanController;
-use App\Http\Controllers\PenjualanDetailController;
 use App\Http\Controllers\AdjustStokController;
-use App\Http\Controllers\AdjustStokDetailController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
@@ -273,12 +270,6 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::delete('/master/barang/delete/{id}', [BarangController::class, 'destroy'])
         ->name('barang.destroy')
         ->middleware('permission:hapus,barang');
-
-    Route::get('/api/product/search', [BarangController::class, 'search'])
-        ->middleware('permission:lihat,barang');
-
-    Route::get('/api/product/barcode/{id}', [BarangController::class, 'barcode'])
-        ->middleware('permission:lihat,barang');
 
     Route::get('/barang/{id}/barcode/download', [BarangController::class, 'downloadBarcode'])
         ->name('barang.barcode.download')

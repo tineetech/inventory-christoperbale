@@ -19,7 +19,7 @@ class PenjualanController extends Controller
             'dropshipper',
             'user',
             'detail.barang.stok'
-        ])->latest()->get();
+        ])->whereDate('tanggal', today())->get();
 
         return view('pages.transaksi.penjualan.index', compact('penjualan'));
     }
@@ -38,6 +38,7 @@ class PenjualanController extends Controller
             'kode_penjualan'  => 'required|string|unique:penjualan,kode_penjualan',
             'dropshipper_id'  => 'nullable|exists:dropshipper,id',
             'tanggal'         => 'required|date',
+            'scan_out'        => 'required',
             'total_harga'     => 'required|numeric|min:0',
             'items'           => 'required'
         ]);
@@ -72,6 +73,7 @@ class PenjualanController extends Controller
                 'tanggal'         => $request->tanggal,
                 'total_harga'     => $request->total_harga,
                 'keterangan'      => $request->keterangan,
+                'scan_out'        => $request->scan_out,
                 'created_by'      => Auth::guard('pengguna')->user()->id
             ]);
 
@@ -163,6 +165,7 @@ class PenjualanController extends Controller
             'dropshipper_id'  => 'nullable|exists:dropshipper,id',
             'tanggal'         => 'required|date',
             'total_harga'     => 'required|numeric|min:0',
+            'scan_out'        => 'required',
             'items'           => 'required'
         ]);
 
@@ -198,6 +201,7 @@ class PenjualanController extends Controller
                 'dropshipper_id'  => $request->dropshipper_id,
                 'tanggal'         => $request->tanggal,
                 'total_harga'     => $request->total_harga,
+                'scan_out'        => $request->scan_out,
                 'keterangan'      => $request->keterangan,
             ]);
 

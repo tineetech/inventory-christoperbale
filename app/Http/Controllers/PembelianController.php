@@ -15,7 +15,7 @@ class PembelianController extends Controller
 {
     public function index()
     {
-        $pembelian = Pembelian::with('supplier', 'detail.barang.stok', 'user')->latest()->get();
+        $pembelian = Pembelian::with('supplier', 'detail.barang.stok', 'user')->whereDate('tanggal', today())->get();
         return view('pages.transaksi.pembelian.index', compact('pembelian'));
     }
 
