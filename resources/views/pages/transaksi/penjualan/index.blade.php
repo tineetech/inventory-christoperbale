@@ -272,7 +272,7 @@
                                                                     @elseif ($pj->scan_out === 'done')
                                                                         <span class="badge badge-success">Done</span>
                                                                     @elseif ($pj->scan_out === 'failed')
-                                                                        <span class="badge badge-danger">Failed</span>
+                                                                        <span class="badge badge-danger">Failed </span>
                                                                     @else
                                                                         <span class="badge badge-secondary">Nothing</span>
                                                                     @endif

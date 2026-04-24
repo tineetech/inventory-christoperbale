@@ -149,6 +149,20 @@
 
                                 <!-- BARCODE -->
                                 <div class="row">
+                                    <div class="form-group col-md-12g">
+
+                                        <label class="">
+                                            Import Cepat Via File Resi Shopee/Tokped (Optional)
+                                        </label>
+
+                                        <div class="">
+
+                                            <input type="file" id="file_import" class="form-control"
+                                                placeholder="Scan barcode / SKU">
+
+                                        </div>
+
+                                    </div>
                                     <div class="form-group col-md-6">
 
                                         <label class="">
