@@ -22,23 +22,23 @@
 
         <div class="container-fluid flex-grow-1 container-p-y">
 
-            <h4 class="font-weight-bold py-3 mb-0">Adjustment Stok</h4>
+            <h4 class="font-weight-bold py-3 mb-0">Hitung Stok</h4>
 
             <div class="text-muted small mt-0 mb-4 d-block breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="#"><i class="feather icon-home"></i></a></li>
                     <li class="breadcrumb-item"><a href="#">Transaksi</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('manage-stok.index') }}">Manajemen Stok</a></li>
-                    <li class="breadcrumb-item active">Create</li>
+                    <li class="breadcrumb-item"><a href="{{ route('hitung-stok.index') }}">Hitung Stok</a></li>
+                    <li class="breadcrumb-item active">Edit</li>
                 </ol>
             </div>
 
-            
+
             <div class="row">
                 <div class="col-md-12">
-                    
 
-                        @if(session('error'))
+
+                    @if (session('error'))
                         <div class="card mb-4 border-danger">
 
                             <div class="card-body d-flex align-items-center justify-content-between">
@@ -62,7 +62,7 @@
                             </div>
 
                         </div>
-                        @endif
+                    @endif
                 </div>
             </div>
 
@@ -70,12 +70,12 @@
 
                 <h6 class="card-header">
                     <i class="feather icon-sliders mr-2"></i>
-                    Form Adjustment Stok
+                    Form Verifikasi Laporan Pencatatan Hitung Stok
                 </h6>
 
                 <div class="card-body">
 
-                    <form action="{{ route('manage-stok.store') }}" method="POST">
+                    <form action="{{ route('hitung-stok.update', $adjustStok->id) }}" method="POST">
                         @csrf
 
                         <input type="hidden" id="items_input" name="items">
@@ -84,18 +84,36 @@
 
                             <div class="form-group col-md-4">
                                 <label>Kode Adjustment</label>
-                                <input type="text" name="kode_adjust" class="form-control" value="{{ $kode }}"
+                                <input type="text" name="kode_adjust" class="form-control" value="{{ $adjustStok->kode_adjust }}"
                                     readonly>
                             </div>
 
                             <div class="form-group col-md-4">
                                 <label>Tanggal</label>
-                                <input type="date" name="tanggal" class="form-control" value="{{ date('Y-m-d') }}">
+                                <input type="date" name="tanggal" class="form-control" value="{{ date('Y-m-d', strtotime($adjustStok->tanggal)) }}">
                             </div>
 
                             <div class="form-group col-md-4">
                                 <label>Keterangan</label>
-                                <input type="text" name="keterangan" class="form-control">
+                                <input type="text" name="keterangan" class="form-control" value="{{ $adjustStok->keterangan }}">
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label>Dibuat oleh</label>
+                                <input type="text" name="created" class="form-control" value="{{ $adjustStok->user->nama }}" disabled>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label>Fokus Barang</label>
+                                <input type="text" name="fokusBarang" class="form-control" value="{{ optional($adjustStok->detail->first())->barang->nama_barang }}" disabled>
+                            </div>
+                            <div class="form-group col-md-4">
+                                <label>Status</label>
+                                
+                                <select class="form-control" name="status" required>
+                                    <option value="" hidden>=== Pilih Status ===</option>
+                                    <option value="pending" {{ $adjustStok->status === 'pending' ? 'selected' : '' }}>Pending</option>
+                                    <option value="approve" {{ $adjustStok->status === 'approve' ? 'selected' : '' }}>Approve</option>
+                                    <option value="reject" {{ $adjustStok->status === 'reject' ? 'selected' : '' }}>Reject</option>
+                                </select>
                             </div>
 
                         </div>
@@ -104,7 +122,7 @@
 
                         <div class="row">
 
-                            <div class="form-group col-md-6">
+                            {{-- <div class="form-group col-md-6">
 
                                 <label>Scan Barcode (F8)</label>
 
@@ -118,11 +136,15 @@
 
                                 <select id="product_select" class="form-control"></select>
 
-                            </div>
+                            </div> --}}
+                            {{-- <div class="form-group col-md-12">
+                                <span>Dibuat oleh : {{ $adjustStok->user->nama }}</span>
+
+                            </div> --}}
 
                         </div>
 
-                        <hr>
+                        {{-- <hr> --}}
 
                         <div class="table-responsive">
 
@@ -133,10 +155,10 @@
                                     <tr>
                                         <th>SKU</th>
                                         <th>Nama Barang</th>
-                                        <th>Stok Sistem</th>
+                                        <th>Stok Sistem Saat Ini (realtime)</th>
+                                        <th>Stok Sistem Pencatatan sebelumnya</th>
                                         <th width="140">Stok Fisik</th>
                                         <th width="120">Selisih</th>
-                                        <th width="60"></th>
                                     </tr>
 
                                 </thead>
@@ -149,7 +171,7 @@
 
                         <div class="d-flex justify-content-between mt-4">
 
-                            <a href="{{ route('manage-stok.index') }}" class="btn btn-secondary">
+                            <a href="{{ route('hitung-stok.index') }}" class="btn btn-secondary">
                                 Kembali
                             </a>
 
@@ -169,7 +191,58 @@
 @endsection
 @section('scripts')
     <script>
+
+        
         let items = {};
+
+        @foreach($adjustStok->detail as $d)
+
+        items[{{ $d->barang_id }}] = {
+            id: {{ $d->barang_id }},
+            sku: "{{ $d->barang->sku }}",
+            nama_barang: "{{ $d->barang->nama_barang }}",
+
+            stok_sistem_saat_ini: {{ $d->barang->stok->jumlah_stok ?? 0 }},
+            stok_sistem: {{ $d->qty_sistem ?? 0 }},
+
+            qty_fisik: {{ $d->qty_fisik }},
+            selisih: {{ $d->selisih }}
+        };
+
+        @endforeach
+        
+$(document).ready(function(){
+console.log(items)
+    Object.keys(items).forEach(id => {
+
+        renderRow(id);
+        updateSelisih(id); // ⭐ penting
+
+    });
+
+    calculateTotal();
+
+});
+        const beepSuccess = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+        const beepError = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+
+        function vibrate(ms = 100) {
+            if (navigator.vibrate) {
+                navigator.vibrate(ms);
+            }
+        }
+
+
+        function isDifferentProduct(product) {
+
+            let existing = Object.values(items)[0];
+
+            if (!existing) return false;
+
+            return existing.id !== product.id;
+        }
+        // let items = {};
+
         $('#product_select').select2({
 
             placeholder: "Cari SKU / Nama Barang",
@@ -213,6 +286,8 @@
             // hapus dari select supaya bisa dipilih lagi
             let selected = $(this).val();
             selected.pop();
+            flashRow(product.id)
+            console.log(product)
 
             $(this).val(selected).trigger('change');
 
@@ -262,21 +337,79 @@
 
         function addItem(product) {
 
-            if (items[product.id]) return
+            // 🚫 BLOCK beda SKU
+            if (isDifferentProduct(product)) {
+
+                Toast.fire({
+                    icon: "error",
+                    title: "Tidak boleh scan barang berbeda!"
+                });
+
+                beepError.play();
+                vibrate([200, 100, 200]);
+
+                return;
+            }
+
+            // kalau sudah ada → tambah
+            if (items[product.id]) {
+
+                items[product.id].qty_fisik += 1;
+
+                $('#row_' + product.id + ' .qty_fisik')
+                    .val(items[product.id].qty_fisik);
+
+                updateSelisih(product.id);
+
+                beepSuccess.play();
+                vibrate(50);
+
+                return;
+            }
+
+            // reset (single item mode)
+            items = {};
+            $('#tableItems tbody').html('');
 
             items[product.id] = {
-
                 id: product.id,
                 sku: product.sku,
                 nama_barang: product.nama_barang,
                 stok_sistem: product.stok.jumlah_stok,
-                qty_fisik: product.stok.jumlah_stok,
+                qty_fisik: 0,
                 selisih: 0
+            };
 
+            renderRow(product.id);
+
+            beepSuccess.play();
+            vibrate(50);
+        }
+
+
+        function updateSelisih(id) {
+
+            let item = items[id];
+
+            // let selisih = item.qty_fisik - item.stok_sistem;
+            let selisih = item.qty_fisik - item.stok_sistem_saat_ini;
+
+            item.selisih = selisih;
+
+            let cell = $('#row_' + id + ' .selisih');
+
+            if (selisih > 0) {
+                cell.text("+" + selisih);
+                cell.removeClass().addClass('selisih text-success font-weight-bold');
+            } else if (selisih < 0) {
+                cell.text(selisih);
+                cell.removeClass().addClass('selisih text-danger font-weight-bold');
+            } else {
+                cell.text("0");
+                cell.removeClass().addClass('selisih text-muted');
             }
 
-            renderRow(product.id)
-
+            flashRow(id);
         }
 
         function flashRow(id) {
@@ -305,24 +438,29 @@
 
 <td>${i.nama_barang}</td>
 
+<td class="stok_sistem_saat_ini">${i.stok_sistem_saat_ini}</td>
 <td class="stok_sistem">${i.stok_sistem}</td>
 
 <td>
+<div class="input-group">
+
+
 <input type="number"
-class="form-control qty_fisik"
+class="form-control text-center qty_fisik"
 data-id="${id}"
-value="${i.qty_fisik}">
+value="${i.qty_fisik}"
+>
+
+</div>
 </td>
 
-<td class="selisih text-bold">0</td>
 
-<td>
-<button class="btn btn-danger btn-sm remove" data-id="${id}">X</button>
-</td>
+<td class="selisih text-bold">${i.selisih}</td>
+
 
 </tr>
 
-`
+`;
 
             $('#tableItems tbody').append(row);
 
@@ -333,6 +471,46 @@ value="${i.qty_fisik}">
             // calculateTotal();
 
         }
+
+        $(document).on('click', '.minus', function(e) {
+
+            e.preventDefault();
+
+            let id = $(this).data('id');
+
+            if (!items[id]) return;
+
+            if (items[id].qty_fisik <= 0) {
+
+                beepError.play();
+                vibrate([200, 100, 200]);
+
+                Toast.fire({
+                    icon: "warning",
+                    title: "Qty sudah 0"
+                });
+
+                return;
+            }
+
+            items[id].qty_fisik -= 1;
+
+            $('#row_' + id + ' .qty_fisik').val(items[id].qty_fisik);
+
+            updateSelisih(id);
+
+            beepSuccess.play();
+            vibrate(50);
+
+        });
+
+        document.addEventListener('click', () => {
+            beepSuccess.play().catch(() => {});
+            beepSuccess.pause();
+            beepSuccess.currentTime = 0;
+        }, {
+            once: true
+        });
 
 
         $(document).on('change', '.qty', function() {
@@ -419,74 +597,71 @@ value="${i.qty_fisik}">
 
         }
 
-        $(document).on('input change', '.qty_fisik', function () {
+        $(document).on('input change', '.qty_fisik', function() {
 
-    let id = $(this).data('id');
-    let input = $(this);
+            let id = $(this).data('id');
+            let input = $(this);
 
-    let raw = input.val();
-    let fisik = parseInt(raw);
+            let raw = input.val();
+            let fisik = parseInt(raw);
 
-    let sistem = items[id].stok_sistem;
+            let sistem = items[id].stok_sistem;
 
-    // HANDLE KOSONG / NaN
-    if (raw === "" || isNaN(fisik)) {
-        fisik = 0;
-        input.val(0);
-    }
+            // HANDLE KOSONG / NaN
+            if (raw === "" || isNaN(fisik)) {
+                fisik = 0;
+                input.val(0);
+            }
 
-    // HANDLE MINUS
-    if (fisik < 0) {
+            // HANDLE MINUS
+            if (fisik < 0) {
 
-        fisik = 0;
-        input.val(0);
+                fisik = 0;
+                input.val(0);
 
-        Toast.fire({
-            icon: "error",
-            title: "Qty fisik tidak boleh minus!"
+                Toast.fire({
+                    icon: "error",
+                    title: "Qty fisik tidak boleh minus!"
+                });
+
+            }
+
+            // HITUNG SELISIH SETELAH VALIDASI
+            let selisih = fisik - sistem;
+
+            // UPDATE DATA
+            items[id].qty_fisik = fisik;
+            updateSelisih(id);
+            let cell = $('#row_' + id + ' .selisih');
+
+            if (selisih > 0) {
+
+                cell.text("+" + selisih);
+                cell.removeClass().addClass('selisih text-success font-weight-bold');
+
+            } else if (selisih < 0) {
+
+                cell.text(selisih);
+                cell.removeClass().addClass('selisih text-danger font-weight-bold');
+
+            } else {
+
+                cell.text("0");
+                cell.removeClass().addClass('selisih text-muted');
+
+            }
+
         });
+        $(document).on('keydown', '.qty_fisik', function(e) {
 
-    }
+            if (e.key === "Enter") {
 
-    // HITUNG SELISIH SETELAH VALIDASI
-    let selisih = fisik - sistem;
+                e.preventDefault();
+                $(this).trigger('change');
 
-    // UPDATE DATA
-    items[id].qty_fisik = fisik;
-    items[id].selisih = selisih;
+            }
 
-    let cell = $('#row_' + id + ' .selisih');
-
-    if (selisih > 0) {
-
-        cell.text("+" + selisih);
-        cell.removeClass().addClass('selisih text-success font-weight-bold');
-
-    } 
-    else if (selisih < 0) {
-
-        cell.text(selisih);
-        cell.removeClass().addClass('selisih text-danger font-weight-bold');
-
-    } 
-    else {
-
-        cell.text("0");
-        cell.removeClass().addClass('selisih text-muted');
-
-    }
-
-});
-$(document).on('keydown', '.qty_fisik', function(e){
-
-    if(e.key === "Enter"){
-
-        e.preventDefault();
-        $(this).trigger('change');
-
-    }
-
-});
+        });
 
 
         $('#barcode_scan').on('keydown', function(e) {
@@ -502,6 +677,17 @@ $(document).on('keydown', '.qty_fisik', function(e){
                 $.get('/api/product/barcode/' + sku, function(product) {
 
                     addItem(product);
+                    flashRow(product.id)
+
+                }).fail(function() {
+
+                    Toast.fire({
+                        icon: "error",
+                        title: "Produk tidak ditemukan!"
+                    });
+
+                    beepError.play();
+                    vibrate([200, 100, 200]);
 
                 });
 
@@ -526,6 +712,7 @@ $(document).on('keydown', '.qty_fisik', function(e){
                 $.get('/api/product/barcode/' + sku, function(product) {
 
                     addItemQty(product, 10);
+                    flashRow(product.id)
 
                 });
 
@@ -550,6 +737,16 @@ $(document).on('keydown', '.qty_fisik', function(e){
                 $.get('/api/product/barcode/' + sku, function(product) {
 
                     addItem(product);
+                    flashRow(product.id)
+                }).fail(function() {
+
+                    Toast.fire({
+                        icon: "error",
+                        title: "Produk tidak ditemukan!"
+                    });
+
+                    beepError.play();
+                    vibrate([200, 100, 200]);
 
                 });
 

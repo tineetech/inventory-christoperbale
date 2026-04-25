@@ -18,6 +18,7 @@ use App\Http\Controllers\AdjustStokController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BackupController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\HitungStokController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Auth;
@@ -129,7 +130,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->name('hak_akses.edit')
         ->middleware('permission:edit,hak_akses');
 
-    Route::post('/hak-akses/update/{id}', [HakAksesController::class, 'update'])
+    Route::put('/hak-akses/update/{id}', [HakAksesController::class, 'update'])
         ->name('hak_akses.update')
         ->middleware('permission:edit,hak_akses');
 
@@ -411,7 +412,36 @@ Route::middleware(['auth.pengguna'])->group(function () {
 
     Route::get('/transaksi/manage-stok/delete/{id}', [AdjustStokController::class, 'destroy'])
         ->name('manage-stok.destroy')
-        ->middleware('permission:edit,manajemen_stok');
+        ->middleware('permission:hapus,manajemen_stok');
+
+    /*
+    |--------------------------------------------------------------------------
+    | HITUNG STOK
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/transaksi/hitung-stok', [HitungStokController::class, 'index'])
+        ->name('hitung-stok.index')
+        ->middleware('permission:lihat,hitung_stok');
+
+    Route::get('/transaksi/hitung-stok/create', [HitungStokController::class, 'create'])
+        ->name('hitung-stok.create')
+        ->middleware('permission:tambah,hitung_stok');
+
+    Route::post('/transaksi/hitung-stok/store', [HitungStokController::class, 'store'])
+        ->name('hitung-stok.store')
+        ->middleware('permission:tambah,hitung_stok');
+
+    Route::get('/transaksi/hitung-stok/edit/{id}', [HitungStokController::class, 'edit'])
+        ->name('hitung-stok.edit')
+        ->middleware('permission:edit,hitung_stok');
+
+    Route::post('/transaksi/hitung-stok/update/{id}', [HitungStokController::class, 'update'])
+        ->name('hitung-stok.update')
+        ->middleware('permission:edit,hitung_stok');
+
+    Route::get('/transaksi/hitung-stok/delete/{id}', [HitungStokController::class, 'destroy'])
+        ->name('hitung-stok.destroy')
+        ->middleware('permission:hapus,hitung_stok');
 
     /*
     |--------------------------------------------------------------------------

@@ -22,23 +22,23 @@
 
         <div class="container-fluid flex-grow-1 container-p-y">
 
-            <h4 class="font-weight-bold py-3 mb-0">Adjustment Stok</h4>
+            <h4 class="font-weight-bold py-3 mb-0">Hitung Stok</h4>
 
             <div class="text-muted small mt-0 mb-4 d-block breadcrumb">
                 <ol class="breadcrumb">
                     <li class="breadcrumb-item"><a href="#"><i class="feather icon-home"></i></a></li>
                     <li class="breadcrumb-item"><a href="#">Transaksi</a></li>
-                    <li class="breadcrumb-item"><a href="{{ route('manage-stok.index') }}">Manajemen Stok</a></li>
+                    <li class="breadcrumb-item"><a href="{{ route('hitung-stok.index') }}">Hitung Stok</a></li>
                     <li class="breadcrumb-item active">Create</li>
                 </ol>
             </div>
 
-            
+
             <div class="row">
                 <div class="col-md-12">
-                    
 
-                        @if(session('error'))
+
+                    @if (session('error'))
                         <div class="card mb-4 border-danger">
 
                             <div class="card-body d-flex align-items-center justify-content-between">
@@ -62,7 +62,7 @@
                             </div>
 
                         </div>
-                        @endif
+                    @endif
                 </div>
             </div>
 
@@ -70,12 +70,12 @@
 
                 <h6 class="card-header">
                     <i class="feather icon-sliders mr-2"></i>
-                    Form Adjustment Stok
+                    Form Pembuatan Laporan Pencatatan Hitung Stok
                 </h6>
 
                 <div class="card-body">
 
-                    <form action="{{ route('manage-stok.store') }}" method="POST">
+                    <form action="{{ route('hitung-stok.store') }}" method="POST">
                         @csrf
 
                         <input type="hidden" id="items_input" name="items">
@@ -149,7 +149,7 @@
 
                         <div class="d-flex justify-content-between mt-4">
 
-                            <a href="{{ route('manage-stok.index') }}" class="btn btn-secondary">
+                            <a href="{{ route('hitung-stok.index') }}" class="btn btn-secondary">
                                 Kembali
                             </a>
 
@@ -169,7 +169,26 @@
 @endsection
 @section('scripts')
     <script>
+        const beepSuccess = new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
+        const beepError = new Audio("https://actions.google.com/sounds/v1/alarms/beep_short.ogg");
+
+        function vibrate(ms = 100) {
+            if (navigator.vibrate) {
+                navigator.vibrate(ms);
+            }
+        }
+
+
+        function isDifferentProduct(product) {
+
+            let existing = Object.values(items)[0];
+
+            if (!existing) return false;
+
+            return existing.id !== product.id;
+        }
         let items = {};
+
         $('#product_select').select2({
 
             placeholder: "Cari SKU / Nama Barang",
@@ -213,6 +232,8 @@
             // hapus dari select supaya bisa dipilih lagi
             let selected = $(this).val();
             selected.pop();
+            flashRow(product.id)
+            console.log(product)
 
             $(this).val(selected).trigger('change');
 
@@ -262,21 +283,78 @@
 
         function addItem(product) {
 
-            if (items[product.id]) return
+            // 🚫 BLOCK beda SKU
+            if (isDifferentProduct(product)) {
+
+                Toast.fire({
+                    icon: "error",
+                    title: "Tidak boleh scan barang berbeda!"
+                });
+
+                beepError.play();
+                vibrate([200, 100, 200]);
+
+                return;
+            }
+
+            // kalau sudah ada → tambah
+            if (items[product.id]) {
+
+                items[product.id].qty_fisik += 1;
+
+                $('#row_' + product.id + ' .qty_fisik')
+                    .val(items[product.id].qty_fisik);
+
+                updateSelisih(product.id);
+
+                beepSuccess.play();
+                vibrate(50);
+
+                return;
+            }
+
+            // reset (single item mode)
+            items = {};
+            $('#tableItems tbody').html('');
 
             items[product.id] = {
-
                 id: product.id,
                 sku: product.sku,
                 nama_barang: product.nama_barang,
                 stok_sistem: product.stok.jumlah_stok,
-                qty_fisik: product.stok.jumlah_stok,
+                qty_fisik: 0,
                 selisih: 0
+            };
 
+            renderRow(product.id);
+
+            beepSuccess.play();
+            vibrate(50);
+        }
+
+
+        function updateSelisih(id) {
+
+            let item = items[id];
+
+            let selisih = item.qty_fisik - item.stok_sistem;
+
+            item.selisih = selisih;
+
+            let cell = $('#row_' + id + ' .selisih');
+
+            if (selisih > 0) {
+                cell.text("+" + selisih);
+                cell.removeClass().addClass('selisih text-success font-weight-bold');
+            } else if (selisih < 0) {
+                cell.text(selisih);
+                cell.removeClass().addClass('selisih text-danger font-weight-bold');
+            } else {
+                cell.text("0");
+                cell.removeClass().addClass('selisih text-muted');
             }
 
-            renderRow(product.id)
-
+            flashRow(id);
         }
 
         function flashRow(id) {
@@ -308,10 +386,17 @@
 <td class="stok_sistem">${i.stok_sistem}</td>
 
 <td>
+<div class="input-group">
+
+<button class="btn btn-sm btn-danger minus" data-id="${id}">-</button>
+
 <input type="number"
-class="form-control qty_fisik"
+class="form-control text-center qty_fisik"
 data-id="${id}"
-value="${i.qty_fisik}">
+value="${i.qty_fisik}"
+disabled>
+
+</div>
 </td>
 
 <td class="selisih text-bold">0</td>
@@ -322,7 +407,7 @@ value="${i.qty_fisik}">
 
 </tr>
 
-`
+`;
 
             $('#tableItems tbody').append(row);
 
@@ -333,6 +418,46 @@ value="${i.qty_fisik}">
             // calculateTotal();
 
         }
+
+        $(document).on('click', '.minus', function(e) {
+
+            e.preventDefault();
+
+            let id = $(this).data('id');
+
+            if (!items[id]) return;
+
+            if (items[id].qty_fisik <= 0) {
+
+                beepError.play();
+                vibrate([200, 100, 200]);
+
+                Toast.fire({
+                    icon: "warning",
+                    title: "Qty sudah 0"
+                });
+
+                return;
+            }
+
+            items[id].qty_fisik -= 1;
+
+            $('#row_' + id + ' .qty_fisik').val(items[id].qty_fisik);
+
+            updateSelisih(id);
+
+            beepSuccess.play();
+            vibrate(50);
+
+        });
+
+        document.addEventListener('click', () => {
+            beepSuccess.play().catch(() => {});
+            beepSuccess.pause();
+            beepSuccess.currentTime = 0;
+        }, {
+            once: true
+        });
 
 
         $(document).on('change', '.qty', function() {
@@ -419,74 +544,71 @@ value="${i.qty_fisik}">
 
         }
 
-        $(document).on('input change', '.qty_fisik', function () {
+        $(document).on('input change', '.qty_fisik', function() {
 
-    let id = $(this).data('id');
-    let input = $(this);
+            let id = $(this).data('id');
+            let input = $(this);
 
-    let raw = input.val();
-    let fisik = parseInt(raw);
+            let raw = input.val();
+            let fisik = parseInt(raw);
 
-    let sistem = items[id].stok_sistem;
+            let sistem = items[id].stok_sistem;
 
-    // HANDLE KOSONG / NaN
-    if (raw === "" || isNaN(fisik)) {
-        fisik = 0;
-        input.val(0);
-    }
+            // HANDLE KOSONG / NaN
+            if (raw === "" || isNaN(fisik)) {
+                fisik = 0;
+                input.val(0);
+            }
 
-    // HANDLE MINUS
-    if (fisik < 0) {
+            // HANDLE MINUS
+            if (fisik < 0) {
 
-        fisik = 0;
-        input.val(0);
+                fisik = 0;
+                input.val(0);
 
-        Toast.fire({
-            icon: "error",
-            title: "Qty fisik tidak boleh minus!"
+                Toast.fire({
+                    icon: "error",
+                    title: "Qty fisik tidak boleh minus!"
+                });
+
+            }
+
+            // HITUNG SELISIH SETELAH VALIDASI
+            let selisih = fisik - sistem;
+
+            // UPDATE DATA
+            items[id].qty_fisik = fisik;
+            updateSelisih(id);
+            let cell = $('#row_' + id + ' .selisih');
+
+            if (selisih > 0) {
+
+                cell.text("+" + selisih);
+                cell.removeClass().addClass('selisih text-success font-weight-bold');
+
+            } else if (selisih < 0) {
+
+                cell.text(selisih);
+                cell.removeClass().addClass('selisih text-danger font-weight-bold');
+
+            } else {
+
+                cell.text("0");
+                cell.removeClass().addClass('selisih text-muted');
+
+            }
+
         });
+        $(document).on('keydown', '.qty_fisik', function(e) {
 
-    }
+            if (e.key === "Enter") {
 
-    // HITUNG SELISIH SETELAH VALIDASI
-    let selisih = fisik - sistem;
+                e.preventDefault();
+                $(this).trigger('change');
 
-    // UPDATE DATA
-    items[id].qty_fisik = fisik;
-    items[id].selisih = selisih;
+            }
 
-    let cell = $('#row_' + id + ' .selisih');
-
-    if (selisih > 0) {
-
-        cell.text("+" + selisih);
-        cell.removeClass().addClass('selisih text-success font-weight-bold');
-
-    } 
-    else if (selisih < 0) {
-
-        cell.text(selisih);
-        cell.removeClass().addClass('selisih text-danger font-weight-bold');
-
-    } 
-    else {
-
-        cell.text("0");
-        cell.removeClass().addClass('selisih text-muted');
-
-    }
-
-});
-$(document).on('keydown', '.qty_fisik', function(e){
-
-    if(e.key === "Enter"){
-
-        e.preventDefault();
-        $(this).trigger('change');
-
-    }
-
-});
+        });
 
 
         $('#barcode_scan').on('keydown', function(e) {
@@ -502,6 +624,17 @@ $(document).on('keydown', '.qty_fisik', function(e){
                 $.get('/api/product/barcode/' + sku, function(product) {
 
                     addItem(product);
+                    flashRow(product.id)
+
+                }).fail(function() {
+
+                    Toast.fire({
+                        icon: "error",
+                        title: "Produk tidak ditemukan!"
+                    });
+
+                    beepError.play();
+                    vibrate([200, 100, 200]);
 
                 });
 
@@ -526,6 +659,7 @@ $(document).on('keydown', '.qty_fisik', function(e){
                 $.get('/api/product/barcode/' + sku, function(product) {
 
                     addItemQty(product, 10);
+                    flashRow(product.id)
 
                 });
 
@@ -550,6 +684,16 @@ $(document).on('keydown', '.qty_fisik', function(e){
                 $.get('/api/product/barcode/' + sku, function(product) {
 
                     addItem(product);
+                    flashRow(product.id)
+                }).fail(function() {
+
+                    Toast.fire({
+                        icon: "error",
+                        title: "Produk tidak ditemukan!"
+                    });
+
+                    beepError.play();
+                    vibrate([200, 100, 200]);
 
                 });
 

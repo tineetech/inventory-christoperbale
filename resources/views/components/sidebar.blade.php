@@ -103,7 +103,16 @@
                 <li class="sidenav-item {{ request()->routeIs('manage-stok.*') ? 'active' : '' }}">
                     <a href="{{ route('manage-stok.index') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-sliders"></i>
-                        <div>Manajemen Stok</div>
+                        <div>Manajemen Stok Global</div>
+                    </a>
+                </li>
+            @endif
+            
+            @if(hasPermission('lihat', 'hitung_stok'))
+                <li class="sidenav-item {{ request()->routeIs('hitung-stok.*') ? 'active' : '' }}">
+                    <a href="{{ route('hitung-stok.index') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-sliders"></i>
+                        <div>Hitung Stok</div>
                     </a>
                 </li>
             @endif

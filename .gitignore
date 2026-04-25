@@ -21,6 +21,8 @@
 /vendor
 backend-ocr/venv
 backend-ocr/venv/
+backend-ocr/uploads
+backend-ocr/uploads/
 backend-ocr/__pycache__
 backend-ocr/__pycache__/
 Homestead.json
