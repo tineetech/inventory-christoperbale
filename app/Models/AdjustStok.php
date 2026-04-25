@@ -12,6 +12,7 @@ class AdjustStok extends Model
         'kode_adjust',
         'tanggal',
         'keterangan',
+        'status',
         'created_by'
     ];
 

@@ -20,85 +20,81 @@ class AdjustStokController extends Controller
 
     public function create()
     {
-        $kode = 'AS-' . date('Ymd') . '-' . rand(100,999);
+        $kode = 'AS-' . date('Ymd') . '-' . rand(100, 999);
         return view('pages.transaksi.adjust_stok.create', compact('kode'));
     }
 
     public function store(Request $request)
     {
 
-    DB::beginTransaction();
+        DB::beginTransaction();
 
-    try{
+        try {
 
-    $items = json_decode($request->items,true);
+            $items = json_decode($request->items, true);
 
-    $adjust = AdjustStok::create([
+            $adjust = AdjustStok::create([
 
-    'kode_adjust'=>$request->kode_adjust,
-    'tanggal'=>$request->tanggal,
-    'keterangan'=>$request->keterangan,
-    'created_by'=>Auth::guard('pengguna')->user()->id
+                'kode_adjust' => $request->kode_adjust,
+                'tanggal' => $request->tanggal,
+                'keterangan' => $request->keterangan,
+                'created_by' => Auth::guard('pengguna')->user()->id
 
-    ]);
+            ]);
 
-    foreach($items as $item){
+            foreach ($items as $item) {
 
-    $barang = Barang::find($item['id']);
+                $barang = Barang::find($item['id']);
 
-    $stok = $barang->stok;
+                $stok = $barang->stok;
 
-    $stok_sebelum = $stok->jumlah_stok;
+                $stok_sebelum = $stok->jumlah_stok;
 
-    $selisih = $item['selisih'];
+                $selisih = $item['selisih'];
 
-    $stok_sesudah = $stok_sebelum + $selisih;
+                $stok_sesudah = $stok_sebelum + $selisih;
 
-    AdjustStokDetail::create([
+                AdjustStokDetail::create([
 
-    'adjust_stok_id'=>$adjust->id,
-    'barang_id'=>$item['id'],
-    'qty_sistem'=>$stok_sebelum,
-    'qty_fisik'=>$item['qty_fisik'],
-    'selisih'=>$selisih
+                    'adjust_stok_id' => $adjust->id,
+                    'barang_id' => $item['id'],
+                    'qty_sistem' => $stok_sebelum,
+                    'qty_fisik' => $item['qty_fisik'],
+                    'selisih' => $selisih
 
-    ]);
+                ]);
 
-    $stok->update([
+                $stok->update([
 
-    'jumlah_stok'=>$stok_sesudah
+                    'jumlah_stok' => $stok_sesudah
 
-    ]);
+                ]);
 
-    StokMovement::create([
+                StokMovement::create([
 
-    'barang_id'=>$item['id'],
-    'jenis'=>'adjustment',
-    'qty'=>$selisih,
-    'stok_sebelum'=>$stok_sebelum,
-    'stok_sesudah'=>$stok_sesudah,
-    'referensi_tipe'=>'adjust_stok',
-    'referensi_id'=>$adjust->id,
-    'keterangan'=>'Adjustment stok',
-    'created_by'=>Auth::guard('pengguna')->user()->id
+                    'barang_id' => $item['id'],
+                    'jenis' => 'adjustment',
+                    'qty' => $selisih,
+                    'stok_sebelum' => $stok_sebelum,
+                    'stok_sesudah' => $stok_sesudah,
+                    'referensi_tipe' => 'adjust_stok',
+                    'referensi_id' => $adjust->id,
+                    'keterangan' => 'Adjustment stok',
+                    'created_by' => Auth::guard('pengguna')->user()->id
 
-    ]);
+                ]);
+            }
 
-    }
+            DB::commit();
 
-    DB::commit();
+            return redirect()->route('manage-stok.index')
+                ->with('success', 'Adjustment stok berhasil');
+        } catch (\Exception $e) {
 
-    return redirect()->route('manage-stok.index')
-    ->with('success','Adjustment stok berhasil');
+            DB::rollback();
 
-    }catch(\Exception $e){
-
-    DB::rollback();
-
-    return back()->with('error',$e->getMessage());
-
-    }
-
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     public function show(string $id)

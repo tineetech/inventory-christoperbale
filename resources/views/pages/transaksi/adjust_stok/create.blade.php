@@ -1,5 +1,22 @@
 @extends('layouts.main')
 
+@section('style')
+    <style>
+        .flash-row {
+            animation: flashBg .5s;
+        }
+
+        @keyframes flashBg {
+            0% {
+                background: #d4edda;
+            }
+
+            100% {
+                background: transparent;
+            }
+        }
+    </style>
+@endsection
 @section('content')
     <div class="layout-content">
 

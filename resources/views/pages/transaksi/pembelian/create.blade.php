@@ -280,7 +280,7 @@
             placeholder: "Cari SKU / Nama Barang",
             multiple: true,
             width: '100%',
-            closeOnSelect: false, // ⭐ ini yang bikin dropdown tetap terbuka
+            closeOnSelect: false,
 
             ajax: {
                 url: "/api/product/search",

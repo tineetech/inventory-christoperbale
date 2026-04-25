@@ -129,6 +129,16 @@
                                     <textarea name="keterangan" class="form-control" rows="2"></textarea>
 
                                 </div>
+                                
+                                <div class="form-group col-md-12">
+                                    <label class="form-label">Scan Out</label>
+                                    <select name="scan_out" class="form-control">
+                                        <option value="">-- Pilih Status --</option>
+                                        <option value="pending" selected>Pending</option>
+                                        <option value="done" >Done</option>
+                                        <option value="failed" >Failed</option>
+                                    </select>
+                                </div>
 
                             </div>
 
@@ -139,6 +149,20 @@
 
                                 <!-- BARCODE -->
                                 <div class="row">
+                                    <div class="form-group col-md-12g">
+
+                                        <label class="">
+                                            Import Cepat Via File Resi Shopee/Tokped (Optional)
+                                        </label>
+
+                                        <div class="">
+
+                                            <input type="file" id="file_import" class="form-control"
+                                                placeholder="Scan barcode / SKU">
+
+                                        </div>
+
+                                    </div>
                                     <div class="form-group col-md-6">
 
                                         <label class="">
