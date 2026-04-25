@@ -36,26 +36,22 @@ async def scan_resi(
     with open(filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # OCR sesuai tipe file
+  
     if ext == "pdf":
         text = extract_text_pdf(filename)
+        items = []  # PDF belum support items
     else:
-        text = extract_text(filename)
-
-    text = " ".join(text.split())
+        text, items = extract_text(filename)  # unpack
 
     print("OCR TEXT:")
     print(text)
-    # parser marketplace
-    if mode == "shopee":
-        result = parse_shopee(text)
 
+    if mode == "shopee":
+        result = parse_shopee(text, items)  # pass items langsung
     elif mode == "tiktok":
         result = parse_tiktok(text)
-
     else:
         result = {"error": "mode tidak dikenali"}
-
     return {
         "mode": mode,
         "result": result
