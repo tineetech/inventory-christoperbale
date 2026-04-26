@@ -23,7 +23,7 @@
 
             <div class="card mb-4">
                 <div class="card-body">
-                    <form method="GET" action="{{ route('laporan.barang') }}">
+                    <form method="GET" action="{{ route('laporan.barang') }}" id="barangFilterForm">
                         <div class="form-row">
                             <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Dari Tanggal</label>
@@ -92,51 +92,33 @@
                     </div>
                 </div>
 
-                <div class="table-responsive px-3 pb-3">
-                    <table class="table table-modern table-hover mb-0">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Tanggal Input</th>
-                                <th>SKU</th>
-                                <th>Nama Barang</th>
-                                <th>Satuan</th>
-                                <th>Harga 1</th>
-                                <th>Harga 2</th>
-                                <th>Status</th>
-                                <th>Stok</th>
-                                <th>Keterangan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($barang as $index => $item)
-                                @php
-                                    $stokSaatIni = $item->stok->jumlah_stok ?? 0;
-                                    $minimum = $item->stok_minimum ?? 0;
-                                    $status = $stokSaatIni <= 0 ? 'Habis' : ($stokSaatIni <= $minimum ? 'Minimum' : 'Aman');
-                                    $badgeClass = $stokSaatIni <= 0 ? 'badge-danger' : ($stokSaatIni <= $minimum ? 'badge-warning' : 'badge-success');
-                                @endphp
-                                <tr>
-                                    <td>{{ $index + 1 }}</td>
-                                    <td>{{ $item->created_at?->format('d/m/Y') ?? '-' }}</td>
-                                    <td>{{ $item->sku }}</td>
-                                    <td><strong>{{ $item->nama_barang }}</strong></td>
-                                    <td>{{ $item->satuan->nama_satuan ?? '-' }}</td>
-                                    <td>Rp {{ number_format($item->harga_1 ?? 0, 0, ',', '.') }}</td>
-                                    <td>Rp {{ number_format($item->harga_2 ?? 0, 0, ',', '.') }}</td>
-                                    <td>{{ $stokSaatIni }}</td>
-                                    <td><span class="badge {{ $badgeClass }}">{{ $status }}</span></td>
-                                    <td>{{ $item->keterangan ?: '-' }}</td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="10" class="text-center text-muted py-4">Belum ada data barang pada filter ini.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                <div class="px-3 pb-3">
+                    @include('pages.laporan.partials.barang-table', [
+                        'barang' => $barang,
+                        'tableId' => 'barangReportTable',
+                    ])
                 </div>
+
+                @include('pages.laporan.partials.pagination-controls', [
+                    'prefix' => 'barangReport',
+                    'perPage' => $filters['per_page'],
+                    'totalRows' => $barang->count(),
+                    'formId' => 'barangFilterForm',
+                ])
             </div>
         </div>
     </div>
+@endsection
+
+@section('scripts')
+    @include('pages.laporan.partials.pagination-script')
+    <script>
+        window.initReportPagination({
+            tableIds: ['barangReportTable'],
+            entriesSelectId: 'barangReportEntriesSelect',
+            paginationId: 'barangReportPagination',
+            tableInfoId: 'barangReportTableInfo',
+            formId: 'barangFilterForm'
+        });
+    </script>
 @endsection

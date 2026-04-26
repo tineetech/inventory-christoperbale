@@ -73,13 +73,14 @@
         <thead>
             <tr>
                 <th>No</th>
+                <th>Barcode</th>
                 <th>Tanggal</th>
                 <th>SKU</th>
                 <th>Nama Barang</th>
                 <th>Satuan</th>
                 <th>Stok</th>
                 <th>Status</th>
-                <th>Barcode</th>
+                <th>Keterangan</th>
             </tr>
         </thead>
         <tbody>
@@ -91,22 +92,23 @@
                 @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td>{{ $item->created_at?->format('d/m/Y') ?? '-' }}</td>
-                    <td>{{ $item->sku }}</td>
-                    <td>{{ $item->nama_barang }}</td>
-                    <td>{{ $item->satuan->nama_satuan ?? '-' }}</td>
-                    <td class="text-center">{{ $stokSaatIni }}</td>
-                    <td>{{ $status }}</td>
                     <td class="barcode-box">
                         <img
                             src="data:image/png;base64,{{ \Milon\Barcode\Facades\DNS1DFacade::getBarcodePNG($item->sku, 'C128', 2, 50) }}"
                             alt="barcode-{{ $item->sku }}">
                         <div>{{ $item->sku }}</div>
                     </td>
+                    <td>{{ $item->created_at?->format('d/m/Y') ?? '-' }}</td>
+                    <td>{{ $item->sku }}</td>
+                    <td>{{ $item->nama_barang }}</td>
+                    <td>{{ $item->satuan->nama_satuan ?? '-' }}</td>
+                    <td class="text-center">{{ $stokSaatIni }}</td>
+                    <td>{{ $status }}</td>
+                    <td>{{ $item->keterangan ?: '-' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="text-center">Belum ada data barang pada filter ini.</td>
+                    <td colspan="9" class="text-center">Belum ada data barang pada filter ini.</td>
                 </tr>
             @endforelse
         </tbody>
