@@ -10,10 +10,13 @@ use App\Models\Barang;
 use App\Models\Dropshipper;
 use App\Models\Pembelian;
 use App\Models\Penjualan;
+use App\Models\StokReport;
 use App\Models\Supplier;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
@@ -46,6 +49,19 @@ class ReportController extends Controller
         );
     }
 
+    public function pembelianPdf(Request $request)
+    {
+        $filters = $this->resolvePembelianFilters($request);
+        $pembelian = $this->getPembelianReportQuery($filters)->get();
+
+        $pdf = Pdf::loadView('pages.laporan.exports.pembelian-pdf', [
+            'pembelian' => $pembelian,
+            'filters' => $filters,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('laporan-pembelian-' . now()->format('YmdHis') . '.pdf');
+    }
+
     public function penjualan(Request $request)
     {
         $filters = $this->resolvePenjualanFilters($request);
@@ -74,13 +90,100 @@ class ReportController extends Controller
         );
     }
 
+    public function penjualanPdf(Request $request)
+    {
+        $filters = $this->resolvePenjualanFilters($request);
+        $penjualan = $this->getPenjualanReportQuery($filters)->get();
+
+        $pdf = Pdf::loadView('pages.laporan.exports.penjualan-pdf', [
+            'penjualan' => $penjualan,
+            'filters' => $filters,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('laporan-penjualan-' . now()->format('YmdHis') . '.pdf');
+    }
+
     public function stok(Request $request)
     {
         $filters = $this->resolveStokFilters($request);
         $barang = $this->getStokReportQuery($filters)->get();
         $barangOptions = Barang::orderBy('nama_barang')->get(['id', 'nama_barang']);
+        $reportRows = $this->buildStokReportRows($barang, $filters);
 
-        return view('pages.laporan.stok', compact('barang', 'barangOptions', 'filters'));
+        return view('pages.laporan.stok', compact('barang', 'barangOptions', 'filters', 'reportRows'));
+    }
+
+    public function storeStokReport(Request $request)
+    {
+        $user = Auth::guard('pengguna')->user();
+
+        if (!$user || optional($user->role)->nama_role !== 'karyawan') {
+            abort(403);
+        }
+
+        $request->validate([
+            'dari_tanggal' => 'required|date',
+            'sampai_tanggal' => 'required|date',
+            'barang_filter_id' => 'nullable|exists:barang,id',
+            'status_filter' => 'nullable|in:semua,aman,minimum,habis',
+            'per_page' => 'nullable|in:10,25,50,100',
+            'items' => 'required|array',
+            'items.*.barang_id' => 'required|exists:barang,id',
+            'items.*.stok_saat_ini' => 'required|integer|min:0',
+            'items.*.stok_minimum' => 'required|integer|min:0',
+        ]);
+
+        [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
+            $request->dari_tanggal,
+            $request->sampai_tanggal
+        );
+
+        DB::transaction(function () use ($request, $dariTanggal, $sampaiTanggal, $user) {
+            foreach ($request->items as $item) {
+                StokReport::updateOrCreate(
+                    [
+                        'barang_id' => $item['barang_id'],
+                        'dari_tanggal' => $dariTanggal,
+                        'sampai_tanggal' => $sampaiTanggal,
+                    ],
+                    [
+                        'stok_saat_ini' => $item['stok_saat_ini'],
+                        'stok_minimum' => $item['stok_minimum'],
+                        'status' => 'pending',
+                        'input_by' => $user->id,
+                        'confirmed_by' => null,
+                        'confirmed_at' => null,
+                    ]
+                );
+            }
+        });
+
+        return redirect()->route('laporan.stok', [
+            'dari_tanggal' => $dariTanggal,
+            'sampai_tanggal' => $sampaiTanggal,
+            'barang_id' => $request->filled('barang_filter_id') ? (int) $request->barang_filter_id : null,
+            'status' => in_array($request->status_filter, ['aman', 'minimum', 'habis'], true)
+                ? $request->status_filter
+                : 'semua',
+            'per_page' => $this->resolvePerPage($request),
+        ])->with('success', 'Input laporan stok berhasil disimpan dan menunggu konfirmasi super admin.');
+    }
+
+    public function confirmStokReport(StokReport $stokReport)
+    {
+        $user = Auth::guard('pengguna')->user();
+
+        if (!$user || optional($user->role)->nama_role !== 'super_admin') {
+            abort(403);
+        }
+
+        $stokReport->update([
+            'status' => 'confirmed',
+            'confirmed_by' => $user->id,
+            'confirmed_at' => now(),
+        ]);
+
+        return redirect()->back()->with('success', 'Laporan stok berhasil dikonfirmasi.');
     }
 
     public function stokPrint(Request $request)
@@ -100,6 +203,19 @@ class ReportController extends Controller
             new LaporanStokExport($barang, $filters),
             'laporan-stok-' . now()->format('YmdHis') . '.xlsx'
         );
+    }
+
+    public function stokPdf(Request $request)
+    {
+        $filters = $this->resolveStokFilters($request);
+        $barang = $this->getStokReportQuery($filters)->get();
+
+        $pdf = Pdf::loadView('pages.laporan.exports.stok-pdf', [
+            'barang' => $barang,
+            'filters' => $filters,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('laporan-stok-' . now()->format('YmdHis') . '.pdf');
     }
 
     public function barang(Request $request)
@@ -182,7 +298,7 @@ class ReportController extends Controller
 
     private function getPembelianReportQuery(array $filters)
     {
-        $query = Pembelian::with('supplier', 'user')
+        $query = Pembelian::with('supplier', 'user', 'detail.barang.stok')
             ->whereDate('tanggal', '>=', $filters['dari_tanggal'])
             ->whereDate('tanggal', '<=', $filters['sampai_tanggal']);
 
@@ -195,7 +311,7 @@ class ReportController extends Controller
 
     private function getPenjualanReportQuery(array $filters)
     {
-        $query = Penjualan::with('dropshipper', 'user')
+        $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok')
             ->whereDate('tanggal', '>=', $filters['dari_tanggal'])
             ->whereDate('tanggal', '<=', $filters['sampai_tanggal']);
 
@@ -240,6 +356,52 @@ class ReportController extends Controller
         return $query->orderBy('nama_barang');
     }
 
+    private function buildStokReportRows($barang, array $filters)
+    {
+        $stokReports = StokReport::with(['inputByUser', 'confirmedByUser'])
+            ->whereDate('dari_tanggal', $filters['dari_tanggal'])
+            ->whereDate('sampai_tanggal', $filters['sampai_tanggal'])
+            ->get()
+            ->keyBy('barang_id');
+
+        return $barang->map(function ($item, $index) use ($stokReports) {
+            $report = $stokReports->get($item->id);
+            $stokSaatIni = (int) ($report->stok_saat_ini ?? ($item->stok->jumlah_stok ?? 0));
+            $stokMinimum = (int) ($report->stok_minimum ?? ($item->stok_minimum ?? 0));
+
+            return (object) [
+                'no' => $index + 1,
+                'barang_id' => $item->id,
+                'sku' => $item->sku,
+                'nama_barang' => $item->nama_barang,
+                'satuan' => $item->satuan->nama_satuan ?? '-',
+                'stok_saat_ini' => $stokSaatIni,
+                'stok_minimum' => $stokMinimum,
+                'selisih_minimum' => $stokSaatIni - $stokMinimum,
+                'stok_status' => $this->resolveStockStatus($stokSaatIni, $stokMinimum),
+                'report_id' => $report->id ?? null,
+                'approval_status' => $report->status ?? null,
+                'input_by_name' => optional($report?->inputByUser)->nama,
+                'confirmed_by_name' => optional($report?->confirmedByUser)->nama,
+                'confirmed_at' => $report->confirmed_at ?? null,
+                'has_input' => (bool) $report,
+            ];
+        });
+    }
+
+    private function resolveStockStatus(int $stokSaatIni, int $stokMinimum): string
+    {
+        if ($stokSaatIni <= 0) {
+            return 'habis';
+        }
+
+        if ($stokSaatIni <= $stokMinimum) {
+            return 'minimum';
+        }
+
+        return 'aman';
+    }
+
     private function resolveBarangFilters(Request $request): array
     {
         $request->validate([
@@ -247,6 +409,7 @@ class ReportController extends Controller
             'sampai_tanggal' => 'nullable|date',
             'barang_id' => 'nullable|exists:barang,id',
             'stok' => 'nullable|in:semua,aman,minimum,habis',
+            'per_page' => 'nullable|in:10,25,50,100',
         ]);
 
         $today = now();
@@ -270,6 +433,7 @@ class ReportController extends Controller
             'sampai_tanggal' => $sampaiTanggal,
             'barang_id' => $request->filled('barang_id') ? (int) $request->barang_id : null,
             'stok' => in_array($request->stok, ['aman', 'minimum', 'habis'], true) ? $request->stok : 'semua',
+            'per_page' => $this->resolvePerPage($request),
         ];
     }
 
@@ -279,17 +443,20 @@ class ReportController extends Controller
             'dari_tanggal' => 'nullable|date',
             'sampai_tanggal' => 'nullable|date',
             'supplier_id' => 'nullable|exists:supplier,id',
+            'per_page' => 'nullable|in:10,25,50,100',
         ]);
 
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
             $request->dari_tanggal,
-            $request->sampai_tanggal
+            $request->sampai_tanggal,
+            'today'
         );
 
         return [
             'dari_tanggal' => $dariTanggal,
             'sampai_tanggal' => $sampaiTanggal,
             'supplier_id' => $request->filled('supplier_id') ? (int) $request->supplier_id : null,
+            'per_page' => $this->resolvePerPage($request),
         ];
     }
 
@@ -299,17 +466,20 @@ class ReportController extends Controller
             'dari_tanggal' => 'nullable|date',
             'sampai_tanggal' => 'nullable|date',
             'dropshipper_id' => 'nullable|exists:dropshipper,id',
+            'per_page' => 'nullable|in:10,25,50,100',
         ]);
 
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
             $request->dari_tanggal,
-            $request->sampai_tanggal
+            $request->sampai_tanggal,
+            'today'
         );
 
         return [
             'dari_tanggal' => $dariTanggal,
             'sampai_tanggal' => $sampaiTanggal,
             'dropshipper_id' => $request->filled('dropshipper_id') ? (int) $request->dropshipper_id : null,
+            'per_page' => $this->resolvePerPage($request),
         ];
     }
 
@@ -320,6 +490,7 @@ class ReportController extends Controller
             'sampai_tanggal' => 'nullable|date',
             'barang_id' => 'nullable|exists:barang,id',
             'status' => 'nullable|in:semua,aman,minimum,habis',
+            'per_page' => 'nullable|in:10,25,50,100',
         ]);
 
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
@@ -332,14 +503,27 @@ class ReportController extends Controller
             'sampai_tanggal' => $sampaiTanggal,
             'barang_id' => $request->filled('barang_id') ? (int) $request->barang_id : null,
             'status' => in_array($request->status, ['aman', 'minimum', 'habis'], true) ? $request->status : 'semua',
+            'per_page' => $this->resolvePerPage($request),
         ];
     }
 
-    private function resolveDateRange(?string $startDate, ?string $endDate): array
+    private function resolvePerPage(Request $request): int
+    {
+        $allowedPerPage = [10, 25, 50, 100];
+        $perPage = (int) $request->input('per_page', 10);
+
+        return in_array($perPage, $allowedPerPage, true) ? $perPage : 10;
+    }
+
+    private function resolveDateRange(?string $startDate, ?string $endDate, string $defaultRange = 'month'): array
     {
         $today = now();
-        $defaultStart = $today->copy()->startOfMonth()->toDateString();
-        $defaultEnd = $today->copy()->endOfMonth()->toDateString();
+        $defaultStart = $defaultRange === 'today'
+            ? $today->copy()->toDateString()
+            : $today->copy()->startOfMonth()->toDateString();
+        $defaultEnd = $defaultRange === 'today'
+            ? $today->copy()->toDateString()
+            : $today->copy()->endOfMonth()->toDateString();
 
         $dariTanggal = $startDate ? Carbon::parse($startDate)->toDateString() : $defaultStart;
         $sampaiTanggal = $endDate ? Carbon::parse($endDate)->toDateString() : $defaultEnd;
