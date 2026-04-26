@@ -18,6 +18,7 @@ class Penjualan extends Model
         'total_harga',
         'keterangan',
         'scan_out',
+        'is_draft',
         'created_by'
     ];
 

@@ -186,7 +186,7 @@
                                 </thead>
                                 <tbody>
                                     @forelse ($stokKritis as $index => $item)
-                                        <tr>
+                                        <tr onclick="window.open('/master/barang/edit/' + {{ $item->id }})" style="cursor: pointer">
                                             <td>{{ $index + 1 }}</td>
                                             <td><code>{{ $item->sku }}</code></td>
                                             <td><strong>{{ $item->nama_barang }}</strong></td>

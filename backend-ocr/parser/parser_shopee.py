@@ -63,7 +63,9 @@ def parse_shopee(text, items=None):
     if items is None:
         items = []
 
-    skus = list(dict.fromkeys(item["sku"] for item in items))
+    # skus = list(dict.fromkeys(item["sku"] for item in items))
+
+    skus = [item["sku"] for item in items]
 
     return {
         "resi"    : resi,

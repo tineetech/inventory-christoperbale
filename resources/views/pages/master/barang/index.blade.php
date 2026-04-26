@@ -146,6 +146,10 @@
                                                 placeholder="Search barang..." style="width:150px">
 
                                         </div>
+                                        <a href="#" onclick="showImportModal()" class="btn btn-sm mr-3 text-white"
+                                            style="background: linear-gradient(135deg, #667eea, #764ba2); border: none; box-shadow: 0 6px 14px rgba(102, 126, 234, 0.25);">
+                                            <i class="feather icon-download"></i> Import Barang
+                                        </a>
                                         <a href="{{ route('barang.create') }}" class="btn btn-sm text-white"
                                             style="background: linear-gradient(135deg, #ff8a00, #ff5b00); border: none; box-shadow: 0 6px 14px rgba(255, 107, 0, 0.25);">
                                             <i class="feather icon-plus"></i> Tambah Barang
@@ -526,7 +530,7 @@
 
             Swal.fire({
                 title: "Are you sure?",
-                text: "Supplier akan dihapus!",
+                text: "Data akan dihapus!",
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -608,5 +612,114 @@
             });
 
         });
+        function showImportModal() {
+    Swal.fire({
+        title: '<strong>Import Barang</strong>',
+        icon: 'info',
+        html: `
+            <div class="text-left">
+
+                <a href="/api/barang/import/template" class="btn btn-outline-secondary btn-block mb-4">
+                    <i class="feather icon-download"></i> Download Template
+                </a>
+
+                <div class="form-group mb-3">
+                    <label class="font-weight-bold">Pilih File</label>
+                    <input type="file" id="import_file" class="form-control" accept=".xlsx,.xls,.csv">
+                    <small class="text-muted">Format: .xlsx, .xls, .csv</small>
+                </div>
+            </div>
+        `,
+        showCloseButton: true,
+        showCancelButton: true,
+        confirmButtonText: '<i class="feather icon-upload"></i> Import',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#667eea',
+        focusConfirm: false,
+        preConfirm: async () => {
+            const file = document.getElementById('import_file').files[0];
+
+            if (!file) {
+                Swal.showValidationMessage('Pilih file terlebih dahulu!');
+                return false;
+            }
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+                Swal.showValidationMessage('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv');
+                return false;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('_token', '{{ csrf_token() }}');
+
+            Swal.showLoading();
+
+            try {
+                const response = await fetch('/api/barang/import', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    Swal.showValidationMessage(result.message ?? 'Import gagal.');
+                    return false;
+                }
+
+                return result;
+
+            } catch (err) {
+                Swal.showValidationMessage('Terjadi kesalahan: ' + err.message);
+                return false;
+            }
+        }
+    }).then((result) => {
+        if (result.isConfirmed && result.value) {
+            const { message, imported, skipped, details } = result.value;
+
+            // Bangun tabel detail skip kalau ada
+            let detailHtml = '';
+            if (details && details.length > 0) {
+                const rows = details.map(d => `
+                    <tr>
+                        <td class="text-left px-2"><code>${d.sku}</code></td>
+                        <td class="text-left px-2 text-danger">${d.alasan}</td>
+                    </tr>
+                `).join('');
+
+                detailHtml = `
+                    <div class="mt-3 text-left">
+                        <p class="font-weight-bold mb-1">Detail baris dilewati:</p>
+                        <div style="max-height:200px; overflow-y:auto; border:1px solid #dee2e6; border-radius:4px">
+                            <table class="table table-sm table-bordered mb-0">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th class="text-left px-2">SKU</th>
+                                        <th class="text-left px-2">Alasan</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            Swal.fire({
+                icon: skipped > 0 ? 'warning' : 'success',
+                title: 'Import Selesai!',
+                html: `
+                    <p class="mb-2">✅ Berhasil diimport: <strong>${imported}</strong> barang</p>
+                    ${skipped > 0 ? `<p class="mb-2 text-warning">⚠️ Dilewati: <strong>${skipped}</strong> baris</p>` : ''}
+                    ${detailHtml}
+                `,
+                width: details?.length > 0 ? '600px' : '400px',
+            }).then(() => location.reload());
+        }
+    });
+}
     </script>
 @endsection
