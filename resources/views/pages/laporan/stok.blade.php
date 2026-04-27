@@ -273,7 +273,7 @@
                                         <th>Jenis</th>
                                         <th>Qty</th>
                                         <th>Stok Sesudah</th>
-                                        <th>Status Approval</th>
+                                        {{-- <th>Status Approval</th> --}}
                                         <th>Selisih Min.</th>
                                         @if ($isSuperAdmin)
                                             <th>Aksi</th>
@@ -311,7 +311,7 @@
                                             </td>
                                             <td>{{ $item->qty }}</td>
                                             <td>{{ $item->stok_sesudah }}</td>
-                                            <td>
+                                            {{-- <td>
                                                 @if (!$item->has_input)
                                                     <span class="badge badge-secondary">Belum Input</span>
                                                 @elseif ($item->approval_status === 'confirmed')
@@ -319,7 +319,7 @@
                                                 @else
                                                     <span class="badge badge-warning">Pending</span>
                                                 @endif
-                                            </td>
+                                            </td> --}}
                                             <td>
                                                 {{ $item->selisih_minimum }}
                                                 <div class="small text-muted text-capitalize">{{ $item->stok_status }}</div>

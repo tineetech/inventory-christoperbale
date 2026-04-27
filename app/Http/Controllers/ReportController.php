@@ -475,7 +475,7 @@ class ReportController extends Controller
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->get()
-            ->unique('barang_id')
+            // ->unique('barang_id')
             ->values();
 
         if ($filters['status'] !== 'semua') {
