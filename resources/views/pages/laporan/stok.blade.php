@@ -82,12 +82,6 @@
                         </div>
 
                         <div class="d-flex flex-wrap justify-content-end" style="gap: 10px;">
-                            <a href="{{ route('laporan.stok.print', $filters) }}" target="_blank" class="btn btn-success">
-                                <i class="feather icon-printer"></i> Print
-                            </a>
-                            <a href="{{ route('laporan.stok.excel', $filters) }}" class="btn btn-warning text-white">
-                                <i class="feather icon-download"></i> Excel
-                            </a>
                             <button type="submit" class="btn btn-info">
                                 <i class="feather icon-refresh-cw"></i> Proses
                             </button>
@@ -102,10 +96,25 @@
                         <div style="border: none !important" class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="card-header-title mb-0">
                                 <i class="feather icon-archive mr-2"></i>
-                                {{ $isKaryawan ? 'Input Laporan Stok' : 'Data Input Laporan Stok' }}
+                                {{ $isKaryawan ? 'Input Laporan Stok' : 'Data Laporan Stok' }}
                             </h6>
-                            <div class="d-flex align-items-center" style="gap: 12px;">
-                                <span class="badge badge-light">{{ $reportRows->count() }} barang</span>
+                            <div class="d-flex align-items-center flex-wrap justify-content-end" style="gap: 12px;">
+                                <span class="badge badge-light">{{ $leftTableRows->count() }} barang</span>
+                                <small class="text-muted">
+                                    Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
+                                    {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }}
+                                </small>
+                                <div class="d-flex flex-wrap" style="gap: 8px;">
+                                    <a href="{{ route('laporan.stok.input.print', $filters) }}" target="_blank" class="btn btn-success btn-sm">
+                                        <i class="feather icon-printer"></i> Print
+                                    </a>
+                                    <a href="{{ route('laporan.stok.input.pdf', $filters) }}" class="btn btn-danger btn-sm">
+                                        <i class="feather icon-file-text"></i> PDF
+                                    </a>
+                                    <a href="{{ route('laporan.stok.input.excel', $filters) }}" class="btn btn-warning btn-sm text-white">
+                                        <i class="feather icon-download"></i> Excel
+                                    </a>
+                                </div>
                             </div>
                         </div>
 
@@ -128,10 +137,11 @@
                                                 <th>Satuan</th>
                                                 <th>Stok Saat Ini</th>
                                                 <th>Stok Minimum</th>
+                                                <th>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            @forelse ($reportRows as $index => $item)
+                                            @forelse ($leftTableRows as $index => $item)
                                                 <tr>
                                                     <td>{{ $item->no }}</td>
                                                     <td>
@@ -151,17 +161,22 @@
                                                             name="items[{{ $index }}][stok_minimum]"
                                                             value="{{ old('items.' . $index . '.stok_minimum', $item->stok_minimum) }}">
                                                     </td>
+                                                    <td>
+                                                        <span class="badge badge-{{ $item->stok_status === 'aman' ? 'success' : ($item->stok_status === 'minimum' ? 'warning' : 'danger') }}">
+                                                            {{ ucfirst($item->stok_status) }}
+                                                        </span>
+                                                    </td>
                                                 </tr>
                                             @empty
                                                 <tr data-empty-row="true">
-                                                    <td colspan="6" class="text-center text-muted py-4">Belum ada data stok pada filter ini.</td>
+                                                    <td colspan="7" class="text-center text-muted py-4">Belum ada data stok pada filter ini.</td>
                                                 </tr>
                                             @endforelse
                                         </tbody>
                                     </table>
                                 </div>
 
-                                @if ($reportRows->count() > 0)
+                                @if ($leftTableRows->count() > 0)
                                     <div class="px-3 pb-3 text-right">
                                         <button type="submit" class="btn btn-primary">
                                             <i class="feather icon-save"></i> Simpan Input
@@ -180,10 +195,11 @@
                                             <th>Satuan</th>
                                             <th>Stok Saat Ini</th>
                                             <th>Stok Minimum</th>
+                                            <th>Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        @forelse ($reportRows as $item)
+                                        @forelse ($leftTableRows as $item)
                                             <tr>
                                                 <td>{{ $item->no }}</td>
                                                 <td>{{ $item->sku }}</td>
@@ -191,10 +207,15 @@
                                                 <td>{{ $item->satuan }}</td>
                                                 <td>{{ $item->stok_saat_ini }}</td>
                                                 <td>{{ $item->stok_minimum }}</td>
+                                                <td>
+                                                    <span class="badge badge-{{ $item->stok_status === 'aman' ? 'success' : ($item->stok_status === 'minimum' ? 'warning' : 'danger') }}">
+                                                        {{ ucfirst($item->stok_status) }}
+                                                    </span>
+                                                </td>
                                             </tr>
                                         @empty
                                             <tr data-empty-row="true">
-                                                <td colspan="6" class="text-center text-muted py-4">Belum ada data stok pada filter ini.</td>
+                                                <td colspan="7" class="text-center text-muted py-4">Belum ada data stok pada filter ini.</td>
                                             </tr>
                                         @endforelse
                                     </tbody>
@@ -205,7 +226,7 @@
                         @include('pages.laporan.partials.pagination-controls', [
                             'prefix' => 'stok',
                             'perPage' => $filters['per_page'],
-                            'totalRows' => $reportRows->count(),
+                            'totalRows' => max($leftTableRows->count(), $reportRows->count()),
                             'formId' => 'stokFilterForm',
                         ])
                     </div>
@@ -218,11 +239,22 @@
                                 <i class="feather icon-layers mr-2"></i>
                                 {{ $isSuperAdmin ? 'Review Laporan Stok' : 'Ringkasan Laporan Stok' }}
                             </h6>
-                            <div class="d-flex align-items-center" style="gap: 12px;">
+                            <div class="d-flex align-items-center flex-wrap justify-content-end" style="gap: 12px;">
                                 <small class="text-muted">
                                     Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
                                     {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }}
                                 </small>
+                                <div class="d-flex flex-wrap" style="gap: 8px;">
+                                    <a href="{{ route('laporan.stok.summary.print', $filters) }}" target="_blank" class="btn btn-success btn-sm">
+                                        <i class="feather icon-printer"></i> Print
+                                    </a>
+                                    <a href="{{ route('laporan.stok.summary.pdf', $filters) }}" class="btn btn-danger btn-sm">
+                                        <i class="feather icon-file-text"></i> PDF
+                                    </a>
+                                    <a href="{{ route('laporan.stok.summary.excel', $filters) }}" class="btn btn-warning btn-sm text-white">
+                                        <i class="feather icon-download"></i> Excel
+                                    </a>
+                                </div>
                             </div>
                         </div>
 
@@ -231,8 +263,12 @@
                                 <thead>
                                     <tr>
                                         <th>No</th>
-                                        <th>Nama Barang</th>
+                                        <th>Tanggal</th>
                                         <th>SKU</th>
+                                        <th>Nama Barang</th>
+                                        <th>Jenis</th>
+                                        <th>Qty</th>
+                                        <th>Stok Sesudah</th>
                                         <th>Status Approval</th>
                                         <th>Selisih Min.</th>
                                         @if ($isSuperAdmin)
@@ -245,12 +281,32 @@
                                         <tr>
                                             <td>{{ $item->no }}</td>
                                             <td>
+                                                {{ optional($item->movement_date)->format('d M Y H:i') ?? '-' }}
+                                            </td>
+                                            <td>{{ $item->sku }}</td>
+                                            <td>
                                                 <strong>{{ $item->nama_barang }}</strong>
+                                                <div class="small text-muted">{{ $item->satuan }}</div>
+                                                @if ($item->keterangan)
+                                                    <div class="small text-muted">{{ $item->keterangan }}</div>
+                                                @endif
                                                 @if ($item->input_by_name)
                                                     <div class="small text-muted">Input: {{ $item->input_by_name }}</div>
                                                 @endif
                                             </td>
-                                            <td>{{ $item->sku }}</td>
+                                            <td class="text-capitalize">
+                                                {{ str_replace('_', ' ', $item->jenis) }}
+                                                @if ($item->referensi_tipe)
+                                                    <div class="small text-muted">
+                                                        {{ str_replace('_', ' ', $item->referensi_tipe) }}
+                                                        @if ($item->referensi_id)
+                                                            #{{ $item->referensi_id }}
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            </td>
+                                            <td>{{ $item->qty }}</td>
+                                            <td>{{ $item->stok_sesudah }}</td>
                                             <td>
                                                 @if (!$item->has_input)
                                                     <span class="badge badge-secondary">Belum Input</span>
@@ -290,7 +346,7 @@
                                         </tr>
                                     @empty
                                         <tr data-empty-row="true">
-                                            <td colspan="{{ $isSuperAdmin ? 6 : 5 }}" class="text-center text-muted py-4">Belum ada data stok pada filter ini.</td>
+                                            <td colspan="{{ $isSuperAdmin ? 10 : 9 }}" class="text-center text-muted py-4">Belum ada data stok movement pada filter ini.</td>
                                         </tr>
                                     @endforelse
                                 </tbody>
