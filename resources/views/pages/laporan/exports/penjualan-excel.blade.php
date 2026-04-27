@@ -44,6 +44,53 @@
                 <td>{{ $draftLabel }}</td>
                 <td>{{ $item->keterangan ?: '-' }}</td>
             </tr>
+            <tr>
+                <td></td>
+                <td colspan="10"><strong>Detail Barang</strong></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>No Resi</td>
+                <td>SKU</td>
+                <td>Nama Barang</td>
+                <td>Stok Sekarang</td>
+                <td>Qty Terjual</td>
+                <td>Harga</td>
+                <td>Subtotal</td>
+                <td colspan="3"></td>
+            </tr>
+            @php
+                $totalDetail = 0;
+            @endphp
+            @forelse ($item->detail as $detail)
+                @php
+                    $totalDetail += $detail->subtotal;
+                @endphp
+                <tr>
+                    <td></td>
+                    <td>{{ $detail->nomor_resi ?: '-' }}</td>
+                    <td>{{ $detail->barang->sku ?? '-' }}</td>
+                    <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
+                    <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
+                    <td>{{ $detail->qty }}</td>
+                    <td>{{ $detail->harga }}</td>
+                    <td>{{ $detail->subtotal }}</td>
+                    <td colspan="3"></td>
+                </tr>
+            @empty
+                <tr>
+                    <td></td>
+                    <td colspan="10">Belum ada detail barang pada transaksi ini.</td>
+                </tr>
+            @endforelse
+            @if ($item->detail->isNotEmpty())
+                <tr>
+                    <td></td>
+                    <td colspan="6">Total Penjualan</td>
+                    <td>{{ $totalDetail }}</td>
+                    <td colspan="3"></td>
+                </tr>
+            @endif
         @empty
             <tr><td colspan="11">Belum ada data penjualan pada filter ini.</td></tr>
         @endforelse

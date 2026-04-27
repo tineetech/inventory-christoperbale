@@ -46,6 +46,8 @@
             <div class="card mb-4">
                 <div class="card-body">
                     <form method="GET" action="{{ route('laporan.stok') }}" id="stokFilterForm">
+                        <input type="hidden" name="input_per_page" value="{{ $filters['input_per_page'] }}">
+                        <input type="hidden" name="summary_per_page" value="{{ $filters['summary_per_page'] }}">
                         <div class="form-row">
                             <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Dari Tanggal</label>
@@ -126,6 +128,8 @@
                                 <input type="hidden" name="barang_filter_id" value="{{ $filters['barang_id'] }}">
                                 <input type="hidden" name="status_filter" value="{{ $filters['status'] }}">
                                 <input type="hidden" name="per_page" value="{{ $filters['per_page'] }}">
+                                <input type="hidden" name="input_per_page" value="{{ $filters['input_per_page'] }}">
+                                <input type="hidden" name="summary_per_page" value="{{ $filters['summary_per_page'] }}">
 
                                 <div class="table-responsive px-3 pb-3">
                                     <table class="table table-modern table-hover mb-0" id="stokTableMain">
@@ -224,9 +228,9 @@
                         @endif
 
                         @include('pages.laporan.partials.pagination-controls', [
-                            'prefix' => 'stok',
-                            'perPage' => $filters['per_page'],
-                            'totalRows' => max($leftTableRows->count(), $reportRows->count()),
+                            'prefix' => 'stokInput',
+                            'perPage' => $filters['input_per_page'],
+                            'totalRows' => $leftTableRows->count(),
                             'formId' => 'stokFilterForm',
                         ])
                     </div>
@@ -352,6 +356,13 @@
                                 </tbody>
                             </table>
                         </div>
+
+                        @include('pages.laporan.partials.pagination-controls', [
+                            'prefix' => 'stokSummary',
+                            'perPage' => $filters['summary_per_page'],
+                            'totalRows' => $reportRows->count(),
+                            'formId' => 'stokFilterForm',
+                        ])
                     </div>
                 </div>
             </div>
@@ -363,11 +374,21 @@
     @include('pages.laporan.partials.pagination-script')
     <script>
         window.initReportPagination({
-            tableIds: ['stokTableMain', 'stokTableSummary'],
-            entriesSelectId: 'stokEntriesSelect',
-            paginationId: 'stokPagination',
-            tableInfoId: 'stokTableInfo',
-            formId: 'stokFilterForm'
+            tableIds: ['stokTableMain'],
+            entriesSelectId: 'stokInputEntriesSelect',
+            paginationId: 'stokInputPagination',
+            tableInfoId: 'stokInputTableInfo',
+            formId: 'stokFilterForm',
+            perPageInputName: 'input_per_page'
+        });
+
+        window.initReportPagination({
+            tableIds: ['stokTableSummary'],
+            entriesSelectId: 'stokSummaryEntriesSelect',
+            paginationId: 'stokSummaryPagination',
+            tableInfoId: 'stokSummaryTableInfo',
+            formId: 'stokFilterForm',
+            perPageInputName: 'summary_per_page'
         });
     </script>
 @endsection
