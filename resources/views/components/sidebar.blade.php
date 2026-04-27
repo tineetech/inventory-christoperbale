@@ -128,7 +128,7 @@
                 <li class="sidenav-item {{ request()->routeIs('laporan-pembelian.*') ? 'active' : '' }}">
             <a href="{{ route('laporan.pembelian') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-file-text"></i>
-                        <div>Pembelian</div>
+                        <div>Lap. Pembelian</div>
                     </a>
                 </li>
             @endif
@@ -137,7 +137,7 @@
                 <li class="sidenav-item {{ request()->routeIs('laporan-penjualan.*') ? 'active' : '' }}">
             <a href="{{ route('laporan.penjualan') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-file-text"></i>
-                        <div>Penjualan</div>
+                        <div>Lap. Penjualan</div>
                     </a>
                 </li>
             @endif
@@ -146,7 +146,7 @@
                 <li class="sidenav-item {{ request()->routeIs('laporan-stok.*') ? 'active' : '' }}">
             <a href="{{ route('laporan.stok') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-archive" data-feather="archive" style="width:16px;height:18px;margin-right:15px"></i>
-                        <div>Stok</div>
+                        <div>Lap. Stok</div>
                     </a>
                 </li>
             @endif
@@ -155,7 +155,7 @@
                 <li class="sidenav-item {{ request()->routeIs('laporan-barang.*') ? 'active' : '' }}">
             <a href="{{ route('laporan.barang') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-box"></i>
-                        <div>Barang</div>
+                        <div>Lap. Barang</div>
                     </a>
                 </li>
             @endif

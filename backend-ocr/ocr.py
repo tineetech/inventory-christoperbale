@@ -110,7 +110,6 @@ def extract_shopee_order(image_path):
 
     return order_text
 
-
 def extract_shopee_items(image_path):
     img = cv2.imread(image_path)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -119,7 +118,6 @@ def extract_shopee_items(image_path):
 
     # Cari area tabel
     table_gray = None
-    table_offset_y = 0
     for start_pct in [0.55, 0.60, 0.65, 0.70]:
         y_start = int(height * start_pct)
         crop = gray[y_start:height, 0:width]
@@ -127,87 +125,106 @@ def extract_shopee_items(image_path):
         text = pytesseract.image_to_string(crop_bin, config="--psm 6")
         if re.search(r'nama\s*produk', text, re.IGNORECASE):
             table_gray = crop_bin
-            table_offset_y = y_start
             break
 
     if table_gray is None:
         print("[WARN] Tabel tidak ditemukan")
         return []
 
-    # Baca per-word dengan posisi x,y
     data = pytesseract.image_to_data(
         table_gray,
         output_type=pytesseract.Output.DICT,
         config="--psm 6"
     )
 
-    # === Step 1: Temukan baris header dan posisi x tiap kolom ===
-    # Kumpulkan semua word per baris (group by block_num + line_num)
-    rows = {}
+    # === Group by Y position (cluster kata yang Y-nya berdekatan) ===
+    # Lebih reliable daripada block_num/line_num untuk tabel
+    words_list = []
     for i, word in enumerate(data['text']):
-        if not word.strip():
+        if not word.strip() or data['conf'][i] < 0:
             continue
-        key = (data['block_num'][i], data['line_num'][i])
-        if key not in rows:
-            rows[key] = []
-        rows[key].append({
+        words_list.append({
             'text': word,
             'x'   : data['left'][i],
             'y'   : data['top'][i],
             'w'   : data['width'][i],
-            'conf': data['conf'][i],
+            'h'   : data['height'][i],
         })
 
-    # Cari baris header
+    if not words_list:
+        return []
+
+    # Cluster berdasarkan Y: kata dengan Y berdekatan (±15px) = 1 baris
+    words_list.sort(key=lambda w: w['y'])
+    
+    rows = []
+    current_row = [words_list[0]]
+    
+    for w in words_list[1:]:
+        # Bandingkan dengan rata-rata Y baris saat ini
+        avg_y = sum(r['y'] for r in current_row) / len(current_row)
+        if abs(w['y'] - avg_y) <= 20:  # threshold 20px
+            current_row.append(w)
+        else:
+            # Sort kata dalam baris berdasarkan X
+            current_row.sort(key=lambda r: r['x'])
+            rows.append(current_row)
+            current_row = [w]
+    
+    if current_row:
+        current_row.sort(key=lambda r: r['x'])
+        rows.append(current_row)
+
+    # Debug: print semua baris
+    print("=== All rows ===")
+    for r in rows:
+        print(f"  y={r[0]['y']:4d} | {' '.join(w['text'] for w in r)}")
+
+    # === Cari baris header ===
     header_row = None
-    header_key = None
-    for key, words in rows.items():
-        line_text = " ".join(w['text'] for w in words)
+    for row in rows:
+        line_text = " ".join(w['text'] for w in row)
         if re.search(r'nama.{0,5}produk', line_text, re.IGNORECASE):
-            header_row = words
-            header_key = key
+            header_row = row
             break
 
     if not header_row:
-        print("[WARN] Baris header tidak ditemukan")
+        print("[WARN] Header tidak ditemukan")
         return []
 
-    # === Step 2: Petakan x-position tiap kolom header ===
-    # Cari x center dari kata SKU, Variasi, Qty di header
-    col_x = {}
-    header_text_full = " ".join(w['text'] for w in header_row)
-    print(f"Header row: {header_text_full}")
+    print(f"Header: {' '.join(w['text'] for w in header_row)}")
 
+    # === Petakan posisi X kolom dari header ===
+    col_x = {}
     for w in header_row:
         t = w['text'].lower().strip('#').strip()
-        if t in ('sku',):
+        if t == 'sku':
             col_x['sku'] = w['x']
         elif t in ('variasi', 'varian'):
             col_x['variasi'] = w['x']
         elif t in ('qty', 'jumlah'):
             col_x['qty'] = w['x']
 
-    print(f"Column x positions: {col_x}")
+    print(f"Column X: {col_x}")
 
     if not col_x.get('sku'):
-        print("[WARN] Kolom SKU tidak ditemukan di header")
+        print("[WARN] Kolom SKU tidak ditemukan")
         return []
 
-    # === Step 3: Parse baris produk berdasarkan posisi x ===
+    sku_x     = col_x['sku']
+    variasi_x = col_x.get('variasi', width * 0.65)
+    qty_x     = col_x.get('qty', width * 0.85)
+
+    # === Parse baris produk ===
     items = []
     header_y = header_row[0]['y']
 
-    # Sort rows by y position
-    sorted_rows = sorted(rows.items(), key=lambda kv: kv[1][0]['y'])
-
-    for key, words in sorted_rows:
-        # Skip header dan baris di atas header
-        if words[0]['y'] <= header_y:
+    for row in rows:
+        if row[0]['y'] <= header_y:
             continue
 
-        line_text = " ".join(w['text'] for w in words)
+        line_text = " ".join(w['text'] for w in row)
 
-        # Stop di baris Pesan:
         if re.match(r'Pesan\s*:', line_text, re.IGNORECASE):
             break
 
@@ -215,34 +232,26 @@ def extract_shopee_items(image_path):
         if not re.match(r'^\d+', line_text):
             continue
 
-        # Pisahkan kata berdasarkan posisi x relatif terhadap kolom
-        sku_x     = col_x.get('sku', width * 0.5)
-        variasi_x = col_x.get('variasi', width * 0.65)
-        qty_x     = col_x.get('qty', width * 0.85)
+        nama_words = []
+        sku_words  = []
+        var_words  = []
+        qty_words  = []
 
-        nama_words    = []
-        sku_words     = []
-        variasi_words = []
-        qty_words     = []
-
-        for w in words:
+        for w in row:
             x = w['x']
             if x < sku_x - 10:
                 nama_words.append(w['text'])
             elif x < variasi_x - 10:
                 sku_words.append(w['text'])
             elif x < qty_x - 10:
-                variasi_words.append(w['text'])
+                var_words.append(w['text'])
             else:
                 qty_words.append(w['text'])
 
-        nama    = " ".join(nama_words).strip()
+        nama    = re.sub(r'^\d+\s*', '', " ".join(nama_words)).strip()
         sku     = " ".join(sku_words).strip()
-        variasi = " ".join(variasi_words).strip()
+        variasi = " ".join(var_words).strip()
         qty_str = " ".join(qty_words).strip()
-
-        # Hapus nomor urut dari nama
-        nama = re.sub(r'^\d+\s*', '', nama).strip()
 
         if not sku:
             print(f"[SKIP no sku] {repr(line_text)}")

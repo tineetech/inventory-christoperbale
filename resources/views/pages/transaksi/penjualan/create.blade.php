@@ -15,6 +15,10 @@
                 background: transparent;
             }
         }
+
+        .table-danger td {
+            background-color: #f8d7da !important;
+        }
     </style>
 @endsection
 @section('content')
@@ -129,15 +133,24 @@
                                     <textarea name="keterangan" class="form-control" rows="2"></textarea>
 
                                 </div>
-                                
-                                <div class="form-group col-md-12">
+
+                                <div class="form-group col-md-6">
                                     <label class="form-label">Scan Out</label>
                                     <select name="scan_out" class="form-control">
                                         <option value="">-- Pilih Status --</option>
                                         <option value="pending" selected>Pending</option>
-                                        <option value="done" >Done</option>
-                                        <option value="failed" >Failed</option>
+                                        <option value="done">Done</option>
+                                        <option value="failed">Failed</option>
                                     </select>
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label class="form-label">Penjualan Draft ?</label>
+                                    <select name="is_draft" value="no" class="form-control">
+                                        <option value="no" selected>Tidak</option>
+                                        <option value="yes">Ya</option>
+                                    </select>
+                                    <span class="text-muted">Penjualan draft disini jika YA dapat membuat penjualan namun
+                                        tidak mengurangi stok.</span>
                                 </div>
 
                             </div>
@@ -145,24 +158,26 @@
                             <hr>
                             <div class="mt-4">
 
-                                <hr>
 
                                 <!-- BARCODE -->
                                 <div class="row">
-                                    <div class="form-group col-md-12g">
-
-                                        <label class="">
-                                            Import Cepat Via File Resi Shopee/Tokped (Optional)
-                                        </label>
-
-                                        <div class="">
-
-                                            <input type="file" id="file_import" class="form-control"
-                                                placeholder="Scan barcode / SKU">
-
-                                        </div>
-
+                                    <div class="form-group col-md-6">
+                                        <label>Import Cepat Via File Resi Tokped JNT (Optional)</label>
+                                        <input type="file" id="file_import_tokped" class="form-control"
+                                            accept=".jpg,.jpeg,.png,.pdf">
                                     </div>
+
+                                    <div class="form-group col-md-6">
+                                        <label>Import Cepat Via File Resi Shopee (Optional)</label>
+                                        <input type="file" id="file_import_shopee" class="form-control"
+                                            accept=".jpg,.jpeg,.png,.pdf">
+                                    </div>
+
+                                    <div class="form-group col-md-12">
+                                        <button type="button" id="btn_import" class="btn btn-primary w-100 mb-5">IMPORT
+                                            CEPAT</button>
+                                    </div>
+
                                     <div class="form-group col-md-6">
 
                                         <label class="">
@@ -398,37 +413,32 @@
         });
 
 
-        function addItemQty(product, qty) {
 
-            if (!validateStock(product)) return;
+        function addItemQty(product, qty) {
+            const draft = isDraftMode();
+
+            if (!validateStock(product, draft)) return;
 
             if (items[product.id]) {
-
                 let newQty = items[product.id].qty + qty;
 
-                if (newQty > items[product.id].stok) {
-
+                // Cek qty hanya kalau bukan draft
+                if (!draft && newQty > items[product.id].stok) {
                     Toast.fire({
                         icon: "error",
                         title: "Qty melebihi stok tersedia"
                     });
-
                     return;
                 }
 
                 items[product.id].qty = newQty;
-
                 $('#row_' + product.id + ' .qty').val(newQty);
-
                 updateRow(product.id);
-
                 flashRow(product.id);
-
                 return;
             }
 
             let nomorUrut = Object.keys(items).length + 1;
-
             items[product.id] = {
                 id: product.id,
                 sku: product.sku,
@@ -496,8 +506,7 @@ value="${item.nomor_urut}">
 class="form-control qty"
 data-id="${id}"
 value="${item.qty}"
-min="1"
-max="${item.stok}">
+min="1">
 </td>
 
 <td class="total">
@@ -518,42 +527,48 @@ data-id="${id}">X</button>
 
         }
 
-        $(document).on('change', '.qty', function() {
 
+        $(document).on('change', '.qty', function() {
             let id = $(this).data('id');
             let input = $(this);
-
             let val = parseInt(input.val());
             let stok = items[id].stok;
-            let oldQty = items[id].qty; // simpan qty sebelumnya
+            let oldQty = items[id].qty;
+            const draft = isDraftMode();
 
             if (!val || val <= 0) {
-                val = 1;
-                input.val(1)
+                input.val(1);
                 Toast.fire({
                     icon: "error",
-                    title: "Qty tidak boleh mines !"
+                    title: "Qty tidak boleh minus!"
                 });
-            }
-
-            if (val > stok) {
-
-                Toast.fire({
-                    icon: "error",
-                    title: "Qty melebihi stok tersedia"
-                });
-
-                // kembalikan ke qty sebelumnya
-                input.val(oldQty);
-
+                items[id].qty = 1;
+                updateRow(id);
                 return;
             }
 
+            // Blok qty > stok hanya kalau bukan draft
+            if (!draft && val > stok) {
+                Toast.fire({
+                    icon: "error",
+                    title: `Qty melebihi stok tersedia (stok: ${stok})`
+                });
+                input.val(oldQty);
+                return;
+            }
+
+            // Draft tapi qty > stok: warning saja, tetap boleh
+            if (draft && val > stok) {
+                Toast.fire({
+                    icon: "warning",
+                    title: `Qty ${val} melebihi stok (${stok}), dicatat draft.`
+                });
+            }
+
             items[id].qty = val;
-
             updateRow(id);
-
         });
+
 
         $(document).on('keydown', '.qty', function(e) {
 
@@ -583,7 +598,7 @@ data-id="${id}">X</button>
             delete items[id];
 
             $('#row_' + id).remove();
-    reOrderNomorUrut();
+            reOrderNomorUrut();
 
             calculateTotal();
 
@@ -693,94 +708,154 @@ data-id="${id}">X</button>
 
         function reOrderNomorUrut() {
 
-    let index = 1;
+            let index = 1;
 
-    $('#tableItems tbody tr').each(function() {
+            $('#tableItems tbody tr').each(function() {
 
-        let id = $(this).attr('id').replace('row_', '');
+                let id = $(this).attr('id').replace('row_', '');
 
-        items[id].nomor_urut = index;
+                items[id].nomor_urut = index;
 
-        $(this).find('.nomor_transaksi').val(index);
+                $(this).find('.nomor_transaksi').val(index);
 
-        index++;
+                index++;
 
-    });
+            });
 
-}
+        }
 
-        function validateStock(product) {
-
+        function validateStock(product, isDraft = false) {
             let stok = product.stok.jumlah_stok;
             let min = product.stok_minimum ?? 1;
 
-            if (stok <= 0) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Produk SKU #" + product.sku + " Stok habis! Barang harus direstock."
-                });
-                return false;
+            if (!isDraft) {
+                // Non-draft: stok 0 = block
+                if (stok <= 0) {
+                    Toast.fire({
+                        icon: "error",
+                        title: `SKU #${product.sku} Stok habis! Harus restock dulu.`
+                    });
+                    return false;
+                }
+                if (stok < min) {
+                    Toast.fire({
+                        icon: "error",
+                        title: `SKU #${product.sku} Stok dibawah minimum! Harap restock.`
+                    });
+                    return false;
+                }
+            } else {
+                // Draft: tetap warning tapi tidak block
+                if (stok <= 0) {
+                    Toast.fire({
+                        icon: "warning",
+                        title: `SKU #${product.sku} Stok habis, dicatat sebagai draft.`
+                    });
+                }
             }
 
-            if (stok < min) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Produk SKU #" + product.sku + " Stok dibawah minimum! Harap restock."
-                });
-                return false;
-            }
-
-            if (stok <= 5) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Produk SKU #" + product.sku + " Stok kritis! Segera lakukan restock."
-                });
-            } else if (stok <= 10) {
+            // Warning stok kritis (tampil di kedua mode)
+            if (stok <= 5 && stok > 0) {
                 Toast.fire({
                     icon: "warning",
-                    title: "Produk SKU #" + product.sku + " Stok mulai menipis."
+                    title: `SKU #${product.sku} Stok kritis (${stok}).`
+                });
+            } else if (stok <= 10 && stok > 0) {
+                Toast.fire({
+                    icon: "warning",
+                    title: `SKU #${product.sku} Stok mulai menipis (${stok}).`
                 });
             }
 
             return true;
         }
+
+        // Helper: cek apakah mode draft aktif
+        function isDraftMode() {
+            return $('select[name="is_draft"]').val() === 'yes';
+        }
+
         $(document).ready(function() {
 
             $('#barcode_scan').focus();
 
         });
 
-        $('form').on('submit', function() {
 
+        $('form').on('submit', function(e) {
+            const draft = isDraftMode();
+            let valid = true;
+            let errorMessages = [];
+
+            // Validasi ulang semua item
+            Object.values(items).forEach(item => {
+                if (!draft && item.qty > item.stok) {
+                    valid = false;
+                    errorMessages.push(`SKU #${item.sku}: qty ${item.qty} melebihi stok ${item.stok}`);
+                }
+            });
+
+            if (!valid) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validasi Gagal',
+                    html: errorMessages.map(m => `<p>❌ ${m}</p>`).join(''),
+                });
+                return false;
+            }
+
+            // Cek tabel tidak kosong
+            if (Object.keys(items).length === 0) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Tambahkan minimal 1 barang!'
+                });
+                return false;
+            }
+
+            // Kumpulkan items untuk dikirim
             let result = [];
-
             $('#tableItems tbody tr').each(function() {
-
                 let id = $(this).attr('id').replace('row_', '');
-
                 result.push({
-
                     id: id,
                     qty: $(this).find('.qty').val(),
                     harga_2: items[id].harga_2,
                     nomor_resi: $(this).find('.nomor_resi').val(),
                     nomor_pesanan: $(this).find('.nomor_pesanan').val(),
                     nomor_transaksi: $(this).find('.nomor_transaksi').val()
-
                 });
-
             });
 
             $('#items_input').val(JSON.stringify(result));
 
             let total = 0;
-
             Object.values(items).forEach(i => {
                 total += i.qty * i.harga_2;
             });
-
             $('#total_harga_input').val(total);
+        });
 
+
+        // Kalau user ganti mode draft, update visual warning di tabel
+        $('select[name="is_draft"]').on('change', function() {
+            const draft = $(this).val() === 'yes';
+
+            Object.values(items).forEach(item => {
+                const row = $(`#row_${item.id}`);
+                if (draft) {
+                    row.removeClass('table-danger');
+                } else if (item.qty > item.stok) {
+                    // Highlight merah kalau qty > stok dan bukan draft
+                    row.addClass('table-danger');
+                    Toast.fire({
+                        icon: 'warning',
+                        title: `SKU #${item.sku}: qty melebihi stok!`
+                    });
+                }
+            });
         });
 
         $('#resi_global').on('keydown', function(e) {
@@ -837,6 +912,159 @@ data-id="${id}">X</button>
 
             }
 
+        });
+    </script>
+
+
+    <script>
+        document.getElementById('btn_import').addEventListener('click', async function() {
+            const fileTokped = document.getElementById('file_import_tokped').files[0];
+            const fileShopee = document.getElementById('file_import_shopee').files[0];
+
+            if (!fileTokped && !fileShopee) {
+                Swal.fire('Oops!', 'Pilih minimal satu file untuk diimport.', 'warning');
+                return;
+            }
+
+            const imports = [];
+            if (fileTokped) imports.push({
+                file: fileTokped,
+                route: '/api/penjualan/import/tokped-jnt',
+                inputId: 'file_import_tokped',
+                mode: 'Tokped JNT'
+            });
+            if (fileShopee) imports.push({
+                file: fileShopee,
+                route: '/api/penjualan/import/shopee',
+                inputId: 'file_import_shopee',
+                mode: 'Shopee'
+            });
+
+            // Tampilkan loading swal — tidak ada timer, tutup manual setelah selesai
+            Swal.fire({
+                title: 'Sedang memproses...',
+                html: 'Membaca file resi, mohon tunggu.',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            const results = [];
+
+            for (const item of imports) {
+                const formData = new FormData();
+                formData.append('file', item.file);
+                formData.append('_token', '{{ csrf_token() }}');
+
+                try {
+                    Swal.update({
+                        html: `Memproses file <b>${item.mode}</b>...`
+                    });
+
+                    const response = await fetch(item.route, {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    const result = await response.json();
+                    console.log(`[${item.mode}] Response:`, result);
+
+                    results.push({
+                        mode: item.mode,
+                        data: result
+                    });
+
+                    // Reset input
+                    document.getElementById(item.inputId).value = '';
+
+                } catch (error) {
+                    console.error(`[${item.mode}] Error:`, error);
+                    results.push({
+                        mode: item.mode,
+                        error: error.message
+                    });
+                }
+            }
+
+            // Semua selesai — tutup loading, tampilkan hasil
+            const sukses = results.filter(r => !r.error).length;
+            const gagal = results.filter(r => r.error).length;
+
+            Swal.fire({
+                icon: gagal === 0 ? 'success' : 'warning',
+                title: 'Selesai!',
+                html: `
+            ${sukses > 0 ? `<p>✅ ${sukses} file berhasil diproses</p>` : ''}
+            ${gagal  > 0 ? `<p>❌ ${gagal} file gagal</p>` : ''}
+        `,
+            }).then(async () => {
+                console.log('Semua hasil:', results);
+
+                for (const result of results) {
+                    if (result.error || !result.data?.result) continue;
+
+                    const {
+                        resi,
+                        order_id,
+                        skus,
+                        items: ocrItems
+                    } = result.data.result;
+
+                    $(`#resi_global`).val(resi);
+                    $(`#pesanan_global`).val(order_id);
+
+
+                    // Loop semua SKU, cari produk, tambah ke tabel
+                    for (let i = 0; i < skus.length; i++) {
+                        const sku = skus[i];
+
+                        try {
+                            const response = await fetch(
+                                `/api/product/search?q=${encodeURIComponent(sku)}`);
+                            const products = await response.json();
+
+                            if (!products || products.length === 0) {
+                                Toast.fire({
+                                    icon: 'warning',
+                                    title: `SKU "${sku}" tidak ditemukan di database`
+                                });
+                                continue;
+                            }
+
+                            // Ambil produk pertama yang SKU-nya exact match, fallback ke index 0
+                            const product = products.find(p => p.sku === sku) ?? products[0];
+
+                            // Tambah ke tabel dengan qty dari OCR
+                            const qty = ocrItems?.[i]?.qty ?? 1;
+                            addItemQty(product, qty);
+
+                            // Isi nomor resi & pesanan di baris yang baru ditambah
+                            setTimeout(() => {
+                                if (resi) {
+                                    $(`#row_${product.id} .nomor_resi`).val(resi);
+                                    items[product.id].nomor_resi = resi;
+                                }
+                                if (order_id) {
+                                    $(`#row_${product.id} .nomor_pesanan`).val(order_id);
+                                    items[product.id].nomor_pesanan = order_id;
+                                }
+                            }, 100); // timeout kecil supaya row sudah ke-render
+
+                        } catch (err) {
+                            console.error(`Gagal cari SKU ${sku}:`, err);
+                            Toast.fire({
+                                icon: 'error',
+                                title: `Gagal mencari SKU "${sku}"`
+                            });
+                        }
+                    }
+                }
+
+                // Kalau ada 2+ file, isi resi & pesanan global ke semua baris yang belum terisi
+                // (opsional, kalau mau semua baris dapat resi yang sama)
+            });
         });
     </script>
 @endsection

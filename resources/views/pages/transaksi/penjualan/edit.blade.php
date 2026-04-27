@@ -15,6 +15,9 @@
                 background: transparent;
             }
         }
+        .table-danger td {
+    background-color: #f8d7da !important;
+}
     </style>
 @endsection
 @section('content')
@@ -131,7 +134,7 @@
 
                                 </div>
 
-                                <div class="form-group col-md-12">
+                                <div class="form-group col-md-6">
                                     <label class="form-label">Scan Out</label>
                                     <select name="scan_out" class="form-control">
                                         <option value="">-- Pilih Status --</option>
@@ -141,6 +144,15 @@
                                     </select>
                                 </div>
 
+                                <div class="form-group col-md-6">
+                                    <label class="form-label">Penjualan Draft ?</label>
+                                    <select name="is_draft" value="{{ $penjualan->is_draft }}" class="form-control">
+                                        <option value="no" {{ $penjualan->is_draft == 'no' ? 'selected' : '' }}>Tidak</option>
+                                        <option value="yes" {{ $penjualan->is_draft == 'yes' ? 'selected' : '' }}>Ya</option>
+                                    </select>
+                                    <span class="text-muted">Penjualan draft disini jika YA dapat membuat penjualan namun
+                                        tidak mengurangi stok.</span>
+                                </div>
                             </div>
 
                             <hr>
@@ -345,6 +357,10 @@
 
         let items = {};
 
+        function isDraftMode() {
+    return $('select[name="is_draft"]').val() === 'yes';
+}
+
 
         $('#product_select').select2({
 
@@ -394,66 +410,50 @@
 
         });
 
+function addItemQty(product, qty) {
+    const draft = isDraftMode();
 
-        function addItemQty(product, qty) {
+    if (!validateStock(product, draft)) return;
 
-            if (!validateStock(product)) return;
+    if (items[product.id]) {
+        let newQty      = items[product.id].qty + qty;
+        let originalQty = items[product.id].original_qty ?? 0;
+        let availableStok = items[product.id].stok + originalQty;
+        let delta       = newQty - originalQty;
 
-            if (items[product.id]) {
-
-                let newQty = items[product.id].qty + qty;
-
-                // if (newQty > items[product.id].stok) {
-
-                //     Toast.fire({
-                //         icon: "error",
-                //         title: "Qty melebihi stok tersedia"
-                //     });
-
-                //     return;
-                // }
-                let original = items[product.id].original_qty ?? 0;
-                let delta = newQty - original;
-
-                if (delta > items[product.id].stok) {
-
-                    Toast.fire({
-                        icon: "error",
-                        title: "Qty melebihi stok tersedia"
-                    });
-
-
-                    return;
-                }
-
-                items[product.id].qty = newQty;
-
-                $('#row_' + product.id + ' .qty').val(newQty);
-
-                updateRow(product.id);
-
-                flashRow(product.id);
-
-                return;
-            }
-            let nomorUrut = Object.keys(items).length + 1;
-
-            items[product.id] = {
-                id: product.id,
-                sku: product.sku,
-                nama_barang: product.nama_barang,
-                stok: product.stok.jumlah_stok,
-                harga_2: product.harga_2,
-                qty: qty,
-                nomor_urut: nomorUrut
-            };
-
-            renderRow(product.id);
+        if (!draft && delta > items[product.id].stok) {
+            Toast.fire({ icon: "error", title: `Qty melebihi stok tersedia (stok: ${items[product.id].stok})` });
+            return;
         }
 
-        function addItem(product) {
-            addItemQty(product, 1);
+        if (draft && delta > items[product.id].stok) {
+            Toast.fire({ icon: "warning", title: `Qty ${newQty} melebihi stok (${items[product.id].stok}), dicatat draft.` });
         }
+
+        items[product.id].qty = newQty;
+        $('#row_' + product.id + ' .qty').val(newQty);
+        updateRow(product.id);
+        flashRow(product.id);
+        return;
+    }
+
+    let nomorUrut = Object.keys(items).length + 1;
+    items[product.id] = {
+        id: product.id,
+        sku: product.sku,
+        nama_barang: product.nama_barang,
+        stok: product.stok.jumlah_stok,
+        harga_2: product.harga_2,
+        qty: qty,
+        original_qty: 0, // barang baru ditambah saat edit = tidak punya original
+        nomor_urut: nomorUrut
+    };
+    renderRow(product.id);
+}
+
+function addItem(product) {
+    addItemQty(product, 1);
+}
 
         function flashRow(id) {
 
@@ -516,8 +516,7 @@ value="${item.nomor_urut}">
 class="form-control qty"
 data-id="${id}"
 value="${item.qty}"
-min="1"
-max="${item.stok + (item.original_qty ?? 0)}">
+min="1">
 </td>
 
 <td class="delta">${deltaText}</td>
@@ -542,43 +541,67 @@ data-id="${id}">X</button>
 
         }
 
-        $(document).on('change', '.qty', function() {
+        
 
-            let id = $(this).data('id');
-            let input = $(this);
+// Handler qty change dengan draft awareness
+$(document).on('change', '.qty', function () {
+    let id      = $(this).data('id');
+    let input   = $(this);
+    let val     = parseInt(input.val());
+    let oldQty  = items[id].qty;
+    const draft = isDraftMode();
 
-            let val = parseInt(input.val());
-            let stok = items[id].stok + (items[id].original_qty ?? 0);
-            let oldQty = items[id].qty; // simpan qty sebelumnya
+    let originalQty   = items[id].original_qty ?? 0;
+    let availableStok = items[id].stok + originalQty;
 
-            if (!val || val <= 0) {
-                val = 1;
-                input.val(1)
-                Toast.fire({
-                    icon: "error",
-                    title: "Qty tidak boleh mines !"
-                });
+    if (!val || val <= 0) {
+        input.val(1);
+        items[id].qty = 1;
+        Toast.fire({ icon: "error", title: "Qty tidak boleh minus!" });
+        updateRow(id);
+        return;
+    }
 
+    let delta = val - originalQty;
+
+    if (!draft && delta > items[id].stok) {
+        Toast.fire({ icon: "error", title: `Qty melebihi stok tersedia (stok: ${items[id].stok}, tersedia untuk tambah: ${items[id].stok})` });
+        input.val(oldQty);
+        return;
+    }
+
+    if (draft && delta > items[id].stok) {
+        Toast.fire({ icon: "warning", title: `Qty ${val} melebihi stok (${items[id].stok}), dicatat draft.` });
+    }
+
+    items[id].qty = val;
+    updateRow(id);
+});
+
+
+// Kalau user ganti draft mode, update highlight semua baris
+$('select[name="is_draft"]').on('change', function () {
+    const draft = $(this).val() === 'yes';
+
+    Object.values(items).forEach(item => {
+        const row   = $(`#row_${item.id}`);
+        const delta = item.qty - (item.original_qty ?? 0);
+        const over  = delta > item.stok;
+
+        if (draft) {
+            row.removeClass('table-danger');
+            if (over) {
+                Toast.fire({ icon: "warning", title: `SKU #${item.sku}: qty melebihi stok, mode draft aktif.` });
             }
-
-            if (val > stok) {
-
-                Toast.fire({
-                    icon: "error",
-                    title: "Qty melebihi stok tersedia"
-                });
-
-                // kembalikan ke qty sebelumnya
-                input.val(oldQty);
-
-                return;
+        } else {
+            if (over) {
+                row.addClass('table-danger');
+                Toast.fire({ icon: "warning", title: `SKU #${item.sku}: qty melebihi stok! Kurangi qty atau aktifkan draft.` });
             }
+        }
+    });
+});
 
-            items[id].qty = val;
-
-            updateRow(id);
-
-        });
 
         $(document).on('keydown', '.qty', function(e) {
 
@@ -753,80 +776,90 @@ data-id="${id}">X</button>
             }
 
         });
+        
+function validateStock(product, isDraft = false) {
+    let stok       = product.stok.jumlah_stok;
+    let originalQty = items[product.id]?.original_qty ?? 0;
+    let availableStok = stok + originalQty; // stok real + stok yang "dikembalikan" dari qty lama
 
-        function validateStock(product) {
-
-            let stok = product.stok.jumlah_stok;
-            let min = product.stok_minimum ?? 1;
-
-            if (stok <= 0) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Produk SKU #" + product.sku + " Stok habis! Barang harus direstock."
-                });
-                return false;
-            }
-
-            if (stok < min) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Produk SKU #" + product.sku + " Stok dibawah minimum! Harap restock."
-                });
-                return false;
-            }
-
-            if (stok <= 5) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Produk SKU #" + product.sku + " Stok kritis! Segera lakukan restock."
-                });
-            } else if (stok <= 10) {
-                Toast.fire({
-                    icon: "warning",
-                    title: "Produk SKU #" + product.sku + " Stok mulai menipis."
-                });
-            }
-
-            return true;
+    if (!isDraft) {
+        if (availableStok <= 0) {
+            Toast.fire({ icon: "error", title: `SKU #${product.sku} Stok habis! Harus restock dulu.` });
+            return false;
         }
+    } else {
+        if (availableStok <= 0) {
+            Toast.fire({ icon: "warning", title: `SKU #${product.sku} Stok habis, dicatat sebagai draft.` });
+        }
+    }
+
+    if (stok <= 5 && stok > 0) {
+        Toast.fire({ icon: "warning", title: `SKU #${product.sku} Stok kritis (${stok}).` });
+    } else if (stok <= 10 && stok > 0) {
+        Toast.fire({ icon: "warning", title: `SKU #${product.sku} Stok mulai menipis (${stok}).` });
+    }
+
+    return true;
+}
         $(document).ready(function() {
 
             $('#barcode_scan').focus();
 
         });
 
-        $('form').on('submit', function() {
+        
+// Form submit — validasi ulang
+$('form').on('submit', function (e) {
+    const draft = isDraftMode();
+    let valid   = true;
+    let errors  = [];
 
-            let result = [];
+    if (Object.keys(items).length === 0) {
+        e.preventDefault();
+        Swal.fire({ icon: 'warning', title: 'Tambahkan minimal 1 barang!' });
+        return false;
+    }
 
-            $('#tableItems tbody tr').each(function() {
-
-                let id = $(this).attr('id').replace('row_', '');
-
-                result.push({
-
-                    id: id,
-                    qty: $(this).find('.qty').val(),
-                    harga_2: items[id].harga_2,
-                    nomor_resi: $(this).find('.nomor_resi').val(),
-                    nomor_pesanan: $(this).find('.nomor_pesanan').val(),
-                    nomor_transaksi: $(this).find('.nomor_transaksi').val()
-
-                });
-
-            });
-
-            $('#items_input').val(JSON.stringify(result));
-
-            let total = 0;
-
-            Object.values(items).forEach(i => {
-                total += i.qty * i.harga_2;
-            });
-
-            $('#total_harga_input').val(total);
-
+    if (!draft) {
+        Object.values(items).forEach(item => {
+            let delta = item.qty - (item.original_qty ?? 0);
+            if (delta > item.stok) {
+                valid = false;
+                errors.push(`SKU #${item.sku}: butuh tambahan ${delta} tapi stok hanya ${item.stok}`);
+            }
         });
+    }
+
+    if (!valid) {
+        e.preventDefault();
+        Swal.fire({
+            icon: 'error',
+            title: 'Validasi Gagal',
+            html: errors.map(m => `<p>❌ ${m}</p>`).join(''),
+        });
+        return false;
+    }
+
+    // Kumpulkan items
+    let result = [];
+    $('#tableItems tbody tr').each(function () {
+        let id = $(this).attr('id').replace('row_', '');
+        result.push({
+            id: id,
+            qty: $(this).find('.qty').val(),
+            harga_2: items[id].harga_2,
+            nomor_resi: $(this).find('.nomor_resi').val(),
+            nomor_pesanan: $(this).find('.nomor_pesanan').val(),
+            nomor_transaksi: $(this).find('.nomor_transaksi').val()
+        });
+    });
+
+    $('#items_input').val(JSON.stringify(result));
+
+    let total = 0;
+    Object.values(items).forEach(i => { total += i.qty * i.harga_2; });
+    $('#total_harga_input').val(total);
+});
 
         $('#resi_global').on('keydown', function(e) {
 

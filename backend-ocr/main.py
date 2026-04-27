@@ -7,6 +7,8 @@ from ocr import extract_text
 from ocr_pdf import extract_text_pdf
 from parser.parser_shopee import parse_shopee
 from parser.parser_tiktok import parse_tiktok
+from ocr_tiktok import extract_tiktok_from_pdf, extract_tiktok_from_image
+
 
 app = FastAPI()
 
@@ -36,12 +38,18 @@ async def scan_resi(
     with open(filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-  
+
+    # di dalam scan_resi:
     if ext == "pdf":
-        text = extract_text_pdf(filename)
-        items = []  # PDF belum support items
+        if mode == "tiktok":
+            text, items = extract_tiktok_from_pdf(filename)
+        else:
+            text, items = extract_text_pdf(filename)  # shopee
     else:
-        text, items = extract_text(filename)  # unpack
+        if mode == "tiktok":
+            text, items = extract_tiktok_from_image(filename)
+        else:
+            text, items = extract_text(filename)  # shopee
 
     print("OCR TEXT:")
     print(text)
@@ -49,7 +57,7 @@ async def scan_resi(
     if mode == "shopee":
         result = parse_shopee(text, items)  # pass items langsung
     elif mode == "tiktok":
-        result = parse_tiktok(text)
+        result = parse_tiktok(text, items)
     else:
         result = {"error": "mode tidak dikenali"}
     return {

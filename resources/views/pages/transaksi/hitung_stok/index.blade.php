@@ -516,7 +516,7 @@
 
             Swal.fire({
                 title: "Are you sure?",
-                text: "Supplier akan dihapus!",
+                text: "Data akan dihapus!",
                 icon: "warning",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
