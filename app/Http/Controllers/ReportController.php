@@ -10,6 +10,7 @@ use App\Models\Barang;
 use App\Models\Dropshipper;
 use App\Models\Pembelian;
 use App\Models\Penjualan;
+use App\Models\StokMovement;
 use App\Models\StokReport;
 use App\Models\Supplier;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -98,7 +99,7 @@ class ReportController extends Controller
         $pdf = Pdf::loadView('pages.laporan.exports.penjualan-pdf', [
             'penjualan' => $penjualan,
             'filters' => $filters,
-        ])->setPaper('a4', 'portrait');
+        ])->setPaper('a4', 'landscape');
 
         return $pdf->download('laporan-penjualan-' . now()->format('YmdHis') . '.pdf');
     }
@@ -106,11 +107,11 @@ class ReportController extends Controller
     public function stok(Request $request)
     {
         $filters = $this->resolveStokFilters($request);
-        $barang = $this->getStokReportQuery($filters)->get();
         $barangOptions = Barang::orderBy('nama_barang')->get(['id', 'nama_barang']);
-        $reportRows = $this->buildStokReportRows($barang, $filters);
+        $leftTableRows = $this->getStokInputRows($filters);
+        $reportRows = $this->getStokSummaryRows($filters);
 
-        return view('pages.laporan.stok', compact('barang', 'barangOptions', 'filters', 'reportRows'));
+        return view('pages.laporan.stok', compact('barangOptions', 'filters', 'leftTableRows', 'reportRows'));
     }
 
     public function storeStokReport(Request $request)
@@ -188,34 +189,95 @@ class ReportController extends Controller
 
     public function stokPrint(Request $request)
     {
-        $filters = $this->resolveStokFilters($request);
-        $barang = $this->getStokReportQuery($filters)->get();
-
-        return view('pages.laporan.exports.stok-print', compact('barang', 'filters'));
+        return $this->stokSummaryPrint($request);
     }
 
     public function stokExcel(Request $request)
     {
-        $filters = $this->resolveStokFilters($request);
-        $barang = $this->getStokReportQuery($filters)->get();
-
-        return Excel::download(
-            new LaporanStokExport($barang, $filters),
-            'laporan-stok-' . now()->format('YmdHis') . '.xlsx'
-        );
+        return $this->stokSummaryExcel($request);
     }
 
     public function stokPdf(Request $request)
     {
+        return $this->stokSummaryPdf($request);
+    }
+
+    public function stokInputPrint(Request $request)
+    {
         $filters = $this->resolveStokFilters($request);
-        $barang = $this->getStokReportQuery($filters)->get();
+        $rows = $this->getStokInputRows($filters);
+
+        return view('pages.laporan.exports.stok-print', [
+            'rows' => $rows,
+            'filters' => $filters,
+            'tableType' => 'input',
+            'title' => 'Data Laporan Stok',
+        ]);
+    }
+
+    public function stokInputExcel(Request $request)
+    {
+        $filters = $this->resolveStokFilters($request);
+        $rows = $this->getStokInputRows($filters);
+
+        return Excel::download(
+            new LaporanStokExport($rows, $filters, 'input'),
+            'laporan-stok-data-' . now()->format('YmdHis') . '.xlsx'
+        );
+    }
+
+    public function stokInputPdf(Request $request)
+    {
+        $filters = $this->resolveStokFilters($request);
+        $rows = $this->getStokInputRows($filters);
 
         $pdf = Pdf::loadView('pages.laporan.exports.stok-pdf', [
-            'barang' => $barang,
+            'rows' => $rows,
             'filters' => $filters,
-        ])->setPaper('a4', 'portrait');
+            'tableType' => 'input',
+            'title' => 'Data Laporan Stok',
+        ])->setPaper('a4', 'landscape');
 
-        return $pdf->download('laporan-stok-' . now()->format('YmdHis') . '.pdf');
+        return $pdf->download('laporan-stok-data-' . now()->format('YmdHis') . '.pdf');
+    }
+
+    public function stokSummaryPrint(Request $request)
+    {
+        $filters = $this->resolveStokFilters($request);
+        $rows = $this->getStokSummaryRows($filters);
+
+        return view('pages.laporan.exports.stok-print', [
+            'rows' => $rows,
+            'filters' => $filters,
+            'tableType' => 'summary',
+            'title' => 'Ringkasan Laporan Stok',
+        ]);
+    }
+
+    public function stokSummaryExcel(Request $request)
+    {
+        $filters = $this->resolveStokFilters($request);
+        $rows = $this->getStokSummaryRows($filters);
+
+        return Excel::download(
+            new LaporanStokExport($rows, $filters, 'summary'),
+            'laporan-stok-ringkasan-' . now()->format('YmdHis') . '.xlsx'
+        );
+    }
+
+    public function stokSummaryPdf(Request $request)
+    {
+        $filters = $this->resolveStokFilters($request);
+        $rows = $this->getStokSummaryRows($filters);
+
+        $pdf = Pdf::loadView('pages.laporan.exports.stok-pdf', [
+            'rows' => $rows,
+            'filters' => $filters,
+            'tableType' => 'summary',
+            'title' => 'Ringkasan Laporan Stok',
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download('laporan-stok-ringkasan-' . now()->format('YmdHis') . '.pdf');
     }
 
     public function barang(Request $request)
@@ -322,7 +384,7 @@ class ReportController extends Controller
         return $query->latest('tanggal');
     }
 
-    private function getStokReportQuery(array $filters)
+    private function getLegacyStokTableQuery(array $filters)
     {
         $query = Barang::with('satuan', 'stok')
             ->whereDate('created_at', '>=', $filters['dari_tanggal'])
@@ -356,7 +418,14 @@ class ReportController extends Controller
         return $query->orderBy('nama_barang');
     }
 
-    private function buildStokReportRows($barang, array $filters)
+    private function getStokInputRows(array $filters)
+    {
+        $stokItems = $this->getLegacyStokTableQuery($filters)->get();
+
+        return $this->buildLegacyStokTableRows($stokItems, $filters);
+    }
+
+    private function buildLegacyStokTableRows($stokItems, array $filters)
     {
         $stokReports = StokReport::with(['inputByUser', 'confirmedByUser'])
             ->whereDate('dari_tanggal', $filters['dari_tanggal'])
@@ -364,7 +433,7 @@ class ReportController extends Controller
             ->get()
             ->keyBy('barang_id');
 
-        return $barang->map(function ($item, $index) use ($stokReports) {
+        return $stokItems->values()->map(function ($item, $index) use ($stokReports) {
             $report = $stokReports->get($item->id);
             $stokSaatIni = (int) ($report->stok_saat_ini ?? ($item->stok->jumlah_stok ?? 0));
             $stokMinimum = (int) ($report->stok_minimum ?? ($item->stok_minimum ?? 0));
@@ -377,6 +446,80 @@ class ReportController extends Controller
                 'satuan' => $item->satuan->nama_satuan ?? '-',
                 'stok_saat_ini' => $stokSaatIni,
                 'stok_minimum' => $stokMinimum,
+                'stok_status' => $this->resolveStockStatus($stokSaatIni, $stokMinimum),
+                'report_id' => $report->id ?? null,
+                'approval_status' => $report->status ?? null,
+                'input_by_name' => optional($report?->inputByUser)->nama,
+                'confirmed_by_name' => optional($report?->confirmedByUser)->nama,
+                'confirmed_at' => $report->confirmed_at ?? null,
+                'has_input' => (bool) $report,
+            ];
+        });
+    }
+
+    private function getStokReportQuery(array $filters)
+    {
+        $movements = StokMovement::with(['barang.satuan', 'user'])
+            ->whereDate('created_at', '>=', $filters['dari_tanggal'])
+            ->whereDate('created_at', '<=', $filters['sampai_tanggal']);
+
+        if ($filters['barang_id']) {
+            $movements->where('barang_id', $filters['barang_id']);
+        }
+
+        $movements = $movements
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('barang_id')
+            ->values();
+
+        if ($filters['status'] !== 'semua') {
+            $movements = $movements->filter(function ($movement) use ($filters) {
+                $stokSaatIni = (int) $movement->stok_sesudah;
+                $stokMinimum = (int) optional($movement->barang)->stok_minimum;
+
+                return $this->resolveStockStatus($stokSaatIni, $stokMinimum) === $filters['status'];
+            })->values();
+        }
+
+        return $movements->sortBy(function ($movement) {
+            return strtolower(optional($movement->barang)->nama_barang ?? '');
+        })->values();
+    }
+
+    private function buildStokReportRows($stokMovements, array $filters)
+    {
+        $stokReports = StokReport::with(['inputByUser', 'confirmedByUser'])
+            ->whereDate('dari_tanggal', $filters['dari_tanggal'])
+            ->whereDate('sampai_tanggal', $filters['sampai_tanggal'])
+            ->get()
+            ->keyBy('barang_id');
+
+        return $stokMovements->values()->map(function ($movement, $index) use ($stokReports) {
+            $barang = $movement->barang;
+            $report = $stokReports->get($movement->barang_id);
+            $stokSaatIni = (int) ($movement->stok_sesudah ?? 0);
+            $stokMinimum = (int) ($barang->stok_minimum ?? 0);
+
+            return (object) [
+                'no' => $index + 1,
+                'movement_id' => $movement->id,
+                'movement_date' => $movement->created_at,
+                'barang_id' => $movement->barang_id,
+                'sku' => $barang->sku ?? '-',
+                'nama_barang' => $barang->nama_barang ?? '-',
+                'satuan' => $barang->satuan->nama_satuan ?? '-',
+                'jenis' => $movement->jenis,
+                'qty' => (int) $movement->qty,
+                'stok_sebelum' => (int) $movement->stok_sebelum,
+                'stok_sesudah' => (int) $movement->stok_sesudah,
+                'referensi_tipe' => $movement->referensi_tipe,
+                'referensi_id' => $movement->referensi_id,
+                'keterangan' => $movement->keterangan,
+                'movement_by_name' => optional($movement->user)->nama,
+                'stok_saat_ini' => $stokSaatIni,
+                'stok_minimum' => $stokMinimum,
                 'selisih_minimum' => $stokSaatIni - $stokMinimum,
                 'stok_status' => $this->resolveStockStatus($stokSaatIni, $stokMinimum),
                 'report_id' => $report->id ?? null,
@@ -387,6 +530,13 @@ class ReportController extends Controller
                 'has_input' => (bool) $report,
             ];
         });
+    }
+
+    private function getStokSummaryRows(array $filters)
+    {
+        $stokMovements = $this->getStokReportQuery($filters);
+
+        return $this->buildStokReportRows($stokMovements, $filters);
     }
 
     private function resolveStockStatus(int $stokSaatIni, int $stokMinimum): string

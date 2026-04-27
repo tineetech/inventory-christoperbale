@@ -8,16 +8,18 @@ use Maatwebsite\Excel\Concerns\FromView;
 class LaporanStokExport implements FromView
 {
     public function __construct(
-        private $barang,
-        private array $filters
+        private $rows,
+        private array $filters,
+        private string $tableType = 'summary'
     ) {
     }
 
     public function view(): View
     {
         return view('pages.laporan.exports.stok-excel', [
-            'barang' => $this->barang,
+            'rows' => $this->rows,
             'filters' => $this->filters,
+            'tableType' => $this->tableType,
         ]);
     }
 }

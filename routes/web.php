@@ -462,6 +462,12 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/laporan/stok/pdf', [ReportController::class, 'stokPdf'])->name('laporan.stok.pdf');
     Route::get('/laporan/stok/excel', [ReportController::class, 'stokExcel'])->name('laporan.stok.excel');
     Route::get('/laporan/stok/print', [ReportController::class, 'stokPrint'])->name('laporan.stok.print');
+    Route::get('/laporan/stok/input/pdf', [ReportController::class, 'stokInputPdf'])->name('laporan.stok.input.pdf');
+    Route::get('/laporan/stok/input/excel', [ReportController::class, 'stokInputExcel'])->name('laporan.stok.input.excel');
+    Route::get('/laporan/stok/input/print', [ReportController::class, 'stokInputPrint'])->name('laporan.stok.input.print');
+    Route::get('/laporan/stok/summary/pdf', [ReportController::class, 'stokSummaryPdf'])->name('laporan.stok.summary.pdf');
+    Route::get('/laporan/stok/summary/excel', [ReportController::class, 'stokSummaryExcel'])->name('laporan.stok.summary.excel');
+    Route::get('/laporan/stok/summary/print', [ReportController::class, 'stokSummaryPrint'])->name('laporan.stok.summary.print');
     Route::get('/laporan/barang', [ReportController::class, 'barang'])->name('laporan.barang');
     Route::get('/laporan/barang/pdf', [ReportController::class, 'barangPdf'])->name('laporan.barang.pdf');
     Route::get('/laporan/barang/excel', [ReportController::class, 'barangExcel'])->name('laporan.barang.excel');

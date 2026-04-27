@@ -96,28 +96,54 @@
                             <tr>
                                 <th>No</th>
                                 <th>Kode Penjualan</th>
+                                <th>Nomor Resi</th>
+                                <th>No. Pesanan</th>
+                                <th>No. Transaksi</th>
                                 <th>Dropshipper</th>
                                 <th>Tanggal</th>
                                 <th>Total Harga</th>
-                                <th>Dibuat Oleh</th>
+                                <th>Scan Out</th>
+                                <th>Draft</th>
                                 <th>Keterangan</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse ($penjualan as $index => $item)
+                                @php
+                                    $scanOutClass = match ($item->scan_out) {
+                                        'pending' => 'badge badge-warning',
+                                        'done' => 'badge badge-success',
+                                        'failed' => 'badge badge-danger',
+                                        default => 'badge badge-secondary',
+                                    };
+
+                                    $scanOutLabel = $item->scan_out ? ucfirst($item->scan_out) : '-';
+                                @endphp
                                 <tr class="main-row" data-report-main="true" data-id="{{ $item->id }}"
                                     data-expanded="false">
                                     <td>{{ $index + 1 }}</td>
-                                    <td class="kode-click"><strong>{{ $item->kode_penjualan }}</strong></td>
+                                    <td class="kode-click" style="white-space: nowrap;"><strong>{{ $item->kode_penjualan }}</strong></td>
+                                    <td style="white-space: nowrap;">{{ $item->nomor_resi ?: '-' }}</td>
+                                    <td>{{ $item->nomor_pesanan ?: '-' }}</td>
+                                    <td>{{ $item->nomor_transaksi ?: '-' }}</td>
                                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
-                                    <td>{{ date('d M Y', strtotime($item->tanggal)) }}</td>
-                                    <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
-                                    <td>{{ $item->user->nama ?? '-' }}</td>
+                                    <td style="white-space: nowrap;">{{ date('d M Y', strtotime($item->tanggal)) }}</td>
+                                    <td style="white-space: nowrap;">Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
+                                    <td><span class="{{ $scanOutClass }}">{{ $scanOutLabel }}</span></td>
+                                    <td>
+                                        @if ($item->is_draft === 'yes')
+                                            <span class="badge text-white" style="background:#00499b">Ya</span>
+                                        @elseif ($item->is_draft === 'no')
+                                            <span class="badge badge-danger">Tidak</span>
+                                        @else
+                                            <span class="badge badge-secondary">-</span>
+                                        @endif
+                                    </td>
                                     <td>{{ $item->keterangan ?: '-' }}</td>
                                 </tr>
                                 <tr class="detail-row" data-report-detail="true" id="detail-{{ $item->id }}"
                                     style="display:none; background:#f9f9f9;">
-                                    <td colspan="7">
+                                    <td colspan="11">
                                         <div class="p-3">
                                             <table class="table table-sm table-bordered mb-0">
                                                 <thead class="thead-light">
@@ -170,7 +196,7 @@
                                 </tr>
                             @empty
                                 <tr data-empty-row="true">
-                                    <td colspan="7" class="text-center text-muted py-4">Belum ada data penjualan pada filter ini.</td>
+                                    <td colspan="11" class="text-center text-muted py-4">Belum ada data penjualan pada filter ini.</td>
                                 </tr>
                             @endforelse
                         </tbody>
