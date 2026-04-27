@@ -98,7 +98,7 @@ class ReportController extends Controller
         $pdf = Pdf::loadView('pages.laporan.exports.penjualan-pdf', [
             'penjualan' => $penjualan,
             'filters' => $filters,
-        ])->setPaper('a4', 'portrait');
+        ])->setPaper('a4', 'landscape');
 
         return $pdf->download('laporan-penjualan-' . now()->format('YmdHis') . '.pdf');
     }

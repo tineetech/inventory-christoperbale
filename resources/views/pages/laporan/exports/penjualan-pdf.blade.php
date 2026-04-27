@@ -85,26 +85,42 @@
             <tr>
                 <th>No</th>
                 <th>Kode Penjualan</th>
+                <th>Nomor Resi</th>
+                <th>No. Pesanan</th>
+                <th>No. Transaksi</th>
                 <th>Dropshipper</th>
                 <th>Tanggal</th>
                 <th>Total Harga</th>
-                <th>Dibuat Oleh</th>
+                <th>Scan Out</th>
+                <th>Draft</th>
                 <th>Keterangan</th>
             </tr>
         </thead>
         <tbody>
             @forelse ($penjualan as $index => $item)
+                @php
+                    $scanOutLabel = $item->scan_out ? ucfirst($item->scan_out) : '-';
+                    $draftLabel = match ($item->is_draft) {
+                        'yes' => 'Ya',
+                        'no' => 'Tidak',
+                        default => '-',
+                    };
+                @endphp
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td>{{ $item->kode_penjualan }}</td>
+                    <td>{{ $item->nomor_resi ?: '-' }}</td>
+                    <td>{{ $item->nomor_pesanan ?: '-' }}</td>
+                    <td>{{ $item->nomor_transaksi ?: '-' }}</td>
                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                     <td>{{ date('d M Y', strtotime($item->tanggal)) }}</td>
                     <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
-                    <td>{{ $item->user->nama ?? '-' }}</td>
+                    <td>{{ $scanOutLabel }}</td>
+                    <td>{{ $draftLabel }}</td>
                     <td>{{ $item->keterangan ?: '-' }}</td>
                 </tr>
                 <tr>
-                    <td colspan="7" class="detail-cell">
+                    <td colspan="11" class="detail-cell">
                         <div class="detail-header">Detail Barang</div>
                         <table class="detail-table">
                             <thead>
@@ -154,7 +170,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7">Belum ada data penjualan pada filter ini.</td>
+                    <td colspan="11">Belum ada data penjualan pada filter ini.</td>
                 </tr>
             @endforelse
         </tbody>
