@@ -11,6 +11,11 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #d9d9d9; padding: 8px; font-size: 12px; vertical-align: top; }
         th { background: #f5f5f5; }
+        .detail-cell { background: #fafafa; padding: 10px; }
+        .detail-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+        .detail-table th, .detail-table td { font-size: 11px; padding: 6px; }
+        .detail-header { font-weight: bold; margin-bottom: 6px; }
+        .detail-total td { background: #f1f1f1; font-weight: bold; }
         @media print { body { margin: 0; } }
     </style>
 </head>
@@ -43,6 +48,55 @@
                     <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
                     <td>{{ $item->user->nama ?? '-' }}</td>
                     <td>{{ $item->keterangan ?: '-' }}</td>
+                </tr>
+                <tr>
+                    <td colspan="7" class="detail-cell">
+                        <div class="detail-header">Detail Barang</div>
+                        <table class="detail-table">
+                            <thead>
+                                <tr>
+                                    <th>No Resi</th>
+                                    <th>SKU</th>
+                                    <th>Nama Barang</th>
+                                    <th>Stok Sekarang</th>
+                                    <th>Qty Terjual</th>
+                                    <th>Harga</th>
+                                    <th>Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $totalDetail = 0;
+                                @endphp
+
+                                @forelse ($item->detail as $detail)
+                                    @php
+                                        $totalDetail += $detail->subtotal;
+                                    @endphp
+                                    <tr>
+                                        <td>{{ $detail->nomor_resi ?: '-' }}</td>
+                                        <td>{{ $detail->barang->sku ?? '-' }}</td>
+                                        <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
+                                        <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
+                                        <td>{{ $detail->qty }}</td>
+                                        <td>Rp {{ number_format($detail->harga, 0, ',', '.') }}</td>
+                                        <td>Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="7">Belum ada detail barang pada transaksi ini.</td>
+                                    </tr>
+                                @endforelse
+
+                                @if ($item->detail->isNotEmpty())
+                                    <tr class="detail-total">
+                                        <td colspan="6" style="text-align: right;">Total Penjualan</td>
+                                        <td>Rp {{ number_format($totalDetail, 0, ',', '.') }}</td>
+                                    </tr>
+                                @endif
+                            </tbody>
+                        </table>
+                    </td>
                 </tr>
             @empty
                 <tr>
