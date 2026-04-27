@@ -12,6 +12,10 @@
             const entriesSelect = document.getElementById(config.entriesSelectId);
             const pagination = document.getElementById(config.paginationId);
             const tableInfo = document.getElementById(config.tableInfoId);
+            const filterForm = config.formId ? document.getElementById(config.formId) : null;
+            const perPageInput = filterForm && config.perPageInputName
+                ? filterForm.querySelector(`[name="${config.perPageInputName}"]`)
+                : null;
             const emptyRowSelector = 'tr[data-empty-row="true"]';
             const mainRowSelector = config.mainRowSelector || 'tbody tr[data-report-main]';
             const detailRowSelector = config.detailRowSelector || 'tbody tr[data-report-detail]';
@@ -65,7 +69,7 @@
                 return Array.from(table.querySelectorAll('tbody tr')).filter((row) => !row.matches(emptyRowSelector));
             });
             const emptyRows = tables.map((table) => table.querySelector(emptyRowSelector));
-            const totalRows = dataRowsPerTable[0]?.length || 0;
+            const totalRows = dataRowsPerTable.reduce((maxRows, rows) => Math.max(maxRows, rows.length), 0);
 
             function updateInfo() {
                 if (totalRows === 0) {
@@ -144,7 +148,7 @@
                     });
 
                     if (emptyRows[index]) {
-                        emptyRows[index].style.display = totalRows === 0 ? '' : 'none';
+                        emptyRows[index].style.display = rows.length === 0 ? '' : 'none';
                     }
                 });
 
@@ -154,6 +158,11 @@
 
             entriesSelect.addEventListener('change', function() {
                 currentPage = 1;
+
+                if (perPageInput) {
+                    perPageInput.value = entriesSelect.value;
+                }
+
                 displayTable();
             });
 

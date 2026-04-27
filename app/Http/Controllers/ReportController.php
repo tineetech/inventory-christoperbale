@@ -128,6 +128,8 @@ class ReportController extends Controller
             'barang_filter_id' => 'nullable|exists:barang,id',
             'status_filter' => 'nullable|in:semua,aman,minimum,habis',
             'per_page' => 'nullable|in:10,25,50,100',
+            'input_per_page' => 'nullable|in:10,25,50,100',
+            'summary_per_page' => 'nullable|in:10,25,50,100',
             'items' => 'required|array',
             'items.*.barang_id' => 'required|exists:barang,id',
             'items.*.stok_saat_ini' => 'required|integer|min:0',
@@ -167,6 +169,8 @@ class ReportController extends Controller
                 ? $request->status_filter
                 : 'semua',
             'per_page' => $this->resolvePerPage($request),
+            'input_per_page' => $this->resolvePerPageValue($request->input('input_per_page', $request->input('per_page'))),
+            'summary_per_page' => $this->resolvePerPageValue($request->input('summary_per_page', $request->input('per_page'))),
         ])->with('success', 'Input laporan stok berhasil disimpan dan menunggu konfirmasi super admin.');
     }
 
@@ -641,6 +645,8 @@ class ReportController extends Controller
             'barang_id' => 'nullable|exists:barang,id',
             'status' => 'nullable|in:semua,aman,minimum,habis',
             'per_page' => 'nullable|in:10,25,50,100',
+            'input_per_page' => 'nullable|in:10,25,50,100',
+            'summary_per_page' => 'nullable|in:10,25,50,100',
         ]);
 
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
@@ -654,13 +660,20 @@ class ReportController extends Controller
             'barang_id' => $request->filled('barang_id') ? (int) $request->barang_id : null,
             'status' => in_array($request->status, ['aman', 'minimum', 'habis'], true) ? $request->status : 'semua',
             'per_page' => $this->resolvePerPage($request),
+            'input_per_page' => $this->resolvePerPageValue($request->input('input_per_page', $request->input('per_page'))),
+            'summary_per_page' => $this->resolvePerPageValue($request->input('summary_per_page', $request->input('per_page'))),
         ];
     }
 
     private function resolvePerPage(Request $request): int
     {
+        return $this->resolvePerPageValue($request->input('per_page', 10));
+    }
+
+    private function resolvePerPageValue($value): int
+    {
         $allowedPerPage = [10, 25, 50, 100];
-        $perPage = (int) $request->input('per_page', 10);
+        $perPage = (int) $value;
 
         return in_array($perPage, $allowedPerPage, true) ? $perPage : 10;
     }
