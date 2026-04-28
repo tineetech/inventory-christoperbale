@@ -45,10 +45,6 @@
             text-align: center;
         }
 
-        .barcode {
-            text-align: center;
-        }
-
         .barcode img {
             width: 170px;
             height: 44px;
@@ -72,6 +68,7 @@
         <thead>
             <tr>
                 <th width="4%">No</th>
+                <th width="18%">Barcode</th>
                 <th width="10%">Tanggal</th>
                 <th width="10%">SKU</th>
                 <th width="16%">Nama Barang</th>
@@ -80,7 +77,7 @@
                 <th width="9%">Harga 2</th>
                 <th width="6%">Stok</th>
                 <th width="8%">Status</th>
-                <th width="20%">Barcode</th>
+                <th width="12%">Keterangan</th>
             </tr>
         </thead>
         <tbody>
@@ -92,6 +89,12 @@
                 @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
+                    <td class="text-center">
+                        <img
+                            src="data:image/png;base64,{{ \Milon\Barcode\Facades\DNS1DFacade::getBarcodePNG($item->sku, 'C128', 2, 50) }}"
+                            alt="barcode-{{ $item->sku }}">
+                        <div>{{ $item->sku }}</div>
+                    </td>
                     <td>{{ $item->created_at?->format('d/m/Y') ?? '-' }}</td>
                     <td>{{ $item->sku }}</td>
                     <td>{{ $item->nama_barang }}</td>
@@ -100,16 +103,11 @@
                     <td>Rp {{ number_format($item->harga_2 ?? 0, 0, ',', '.') }}</td>
                     <td class="text-center">{{ $stokSaatIni }}</td>
                     <td>{{ $status }}</td>
-                    <td class="barcode">
-                        <img
-                            src="data:image/png;base64,{{ \Milon\Barcode\Facades\DNS1DFacade::getBarcodePNG($item->sku, 'C128', 2, 50) }}"
-                            alt="barcode-{{ $item->sku }}">
-                        <div>{{ $item->sku }}</div>
-                    </td>
+                    <td>{{ $item->keterangan ?: '-' }}</td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10" class="text-center">Belum ada data barang pada filter ini.</td>
+                    <td colspan="11" class="text-center">Belum ada data barang pada filter ini.</td>
                 </tr>
             @endforelse
         </tbody>

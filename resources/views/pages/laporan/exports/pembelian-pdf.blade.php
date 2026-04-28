@@ -1,81 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print Laporan Penjualan</title>
+    <title>Laporan Pembelian PDF</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 24px; color: #222; }
-        h2 { margin-bottom: 4px; }
-        .meta { margin-bottom: 20px; color: #666; font-size: 13px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #d9d9d9; padding: 8px; font-size: 10px; vertical-align: top; }
-        th { background: #f5f5f5; }
-        .detail-cell { background: #fafafa; padding: 10px; }
-        .detail-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-        .detail-table th, .detail-table td { font-size: 11px; padding: 6px; }
-        .detail-header { font-weight: bold; margin-bottom: 6px; }
-        .detail-total td { background: #f1f1f1; font-weight: bold; }
-        @media print { body { margin: 0; } }
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 11px;
+            color: #222;
+        }
+
+        .header {
+            margin-bottom: 18px;
+        }
+
+        .header h2 {
+            margin: 0 0 6px;
+        }
+
+        .meta {
+            font-size: 10px;
+            color: #555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #d9d9d9;
+            padding: 8px;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f3f3f3;
+            text-align: left;
+        }
+
+        .detail-cell {
+            background: #fafafa;
+            padding: 10px;
+        }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+        }
+
+        .detail-table th,
+        .detail-table td {
+            font-size: 10px;
+            padding: 6px;
+        }
+
+        .detail-header {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .detail-total td {
+            background: #f1f1f1;
+            font-weight: bold;
+        }
     </style>
 </head>
-<body onload="window.print()">
-    <h2>Laporan Penjualan</h2>
-    <div class="meta">
-        Periode: {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
-        {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }} |
-        Dicetak: {{ now()->format('d M Y H:i') }}
+
+<body>
+    <div class="header">
+        <h2>Laporan Pembelian</h2>
+        <div class="meta">
+            Periode: {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
+            {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }} |
+            Dicetak: {{ now()->format('d M Y H:i') }}
+        </div>
     </div>
+
     <table>
         <thead>
             <tr>
                 <th>No</th>
-                <th>Kode Penjualan</th>
-                <th>Nomor Resi</th>
-                <th>No. Pesanan</th>
-                <th>No. Transaksi</th>
-                <th>Dropshipper</th>
+                <th>Kode Pembelian</th>
+                <th>Supplier</th>
                 <th>Tanggal</th>
                 <th>Total Harga</th>
-                <th>Scan Out</th>
-                <th>Draft</th>
+                <th>Dibuat Oleh</th>
                 <th>Keterangan</th>
             </tr>
         </thead>
         <tbody>
-            @forelse ($penjualan as $index => $item)
-                @php
-                    $scanOutLabel = $item->scan_out ? ucfirst($item->scan_out) : '-';
-                    $draftLabel = match ($item->is_draft) {
-                        'yes' => 'Ya',
-                        'no' => 'Tidak',
-                        default => '-',
-                    };
-                @endphp
+            @forelse ($pembelian as $index => $item)
                 <tr>
                     <td>{{ $index + 1 }}</td>
-                    <td>{{ $item->kode_penjualan }}</td>
-                    <td>{{ $item->nomor_resi ?: '-' }}</td>
-                    <td>{{ $item->nomor_pesanan ?: '-' }}</td>
-                    <td>{{ $item->nomor_transaksi ?: '-' }}</td>
-                    <td>{{ $item->dropshipper->nama ?? '-' }}</td>
+                    <td>{{ $item->kode_pembelian }}</td>
+                    <td>{{ $item->supplier->nama_supplier ?? '-' }}</td>
                     <td>{{ date('d M Y', strtotime($item->tanggal)) }}</td>
                     <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
-                    <td>{{ $scanOutLabel }}</td>
-                    <td>{{ $draftLabel }}</td>
+                    <td>{{ $item->user->nama ?? '-' }}</td>
                     <td>{{ $item->keterangan ?: '-' }}</td>
                 </tr>
                 <tr>
-                    <td colspan="11" class="detail-cell">
+                    <td colspan="7" class="detail-cell">
                         <div class="detail-header">Detail Barang</div>
                         <table class="detail-table">
                             <thead>
                                 <tr>
-                                    <th>No Resi</th>
                                     <th>SKU</th>
                                     <th>Nama Barang</th>
                                     <th>Stok Sekarang</th>
-                                    <th>Qty Terjual</th>
+                                    <th>Qty Dibeli</th>
                                     <th>Harga</th>
                                     <th>Subtotal</th>
                                 </tr>
@@ -90,7 +127,6 @@
                                         $totalDetail += $detail->subtotal;
                                     @endphp
                                     <tr>
-                                        <td>{{ $detail->nomor_resi ?: '-' }}</td>
                                         <td>{{ $detail->barang->sku ?? '-' }}</td>
                                         <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                                         <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
@@ -100,13 +136,13 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="7">Belum ada detail barang pada transaksi ini.</td>
+                                        <td colspan="6">Belum ada detail barang pada transaksi ini.</td>
                                     </tr>
                                 @endforelse
 
                                 @if ($item->detail->isNotEmpty())
                                     <tr class="detail-total">
-                                        <td colspan="6" style="text-align: right;">Total Penjualan</td>
+                                        <td colspan="5" style="text-align: right;">Total Pembelian</td>
                                         <td>Rp {{ number_format($totalDetail, 0, ',', '.') }}</td>
                                     </tr>
                                 @endif
@@ -116,10 +152,11 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="11">Belum ada data penjualan pada filter ini.</td>
+                    <td colspan="7">Belum ada data pembelian pada filter ini.</td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 </body>
+
 </html>

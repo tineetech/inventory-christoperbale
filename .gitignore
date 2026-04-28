@@ -25,6 +25,8 @@ backend-ocr/uploads
 backend-ocr/uploads/
 backend-ocr/__pycache__
 backend-ocr/__pycache__/
+backend-ocr/parser/__pycache__/
+*.pyc
 Homestead.json
 Homestead.yaml
 Thumbs.db

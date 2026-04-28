@@ -28,6 +28,48 @@
                 <td>{{ $item->user->nama ?? '-' }}</td>
                 <td>{{ $item->keterangan ?: '-' }}</td>
             </tr>
+            <tr>
+                <td></td>
+                <td colspan="6"><strong>Detail Barang</strong></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td>SKU</td>
+                <td>Nama Barang</td>
+                <td>Stok Sekarang</td>
+                <td>Qty Dibeli</td>
+                <td>Harga</td>
+                <td>Subtotal</td>
+            </tr>
+            @php
+                $totalDetail = 0;
+            @endphp
+            @forelse ($item->detail as $detail)
+                @php
+                    $totalDetail += $detail->subtotal;
+                @endphp
+                <tr>
+                    <td></td>
+                    <td>{{ $detail->barang->sku ?? '-' }}</td>
+                    <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
+                    <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
+                    <td>{{ $detail->qty }}</td>
+                    <td>{{ $detail->harga }}</td>
+                    <td>{{ $detail->subtotal }}</td>
+                </tr>
+            @empty
+                <tr>
+                    <td></td>
+                    <td colspan="6">Belum ada detail barang pada transaksi ini.</td>
+                </tr>
+            @endforelse
+            @if ($item->detail->isNotEmpty())
+                <tr>
+                    <td></td>
+                    <td colspan="5">Total Pembelian</td>
+                    <td>{{ $totalDetail }}</td>
+                </tr>
+            @endif
         @empty
             <tr><td colspan="7">Belum ada data pembelian pada filter ini.</td></tr>
         @endforelse

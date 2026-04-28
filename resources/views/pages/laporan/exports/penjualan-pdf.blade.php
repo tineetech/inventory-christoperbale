@@ -1,31 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print Laporan Penjualan</title>
+    <title>Laporan Penjualan PDF</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 24px; color: #222; }
-        h2 { margin-bottom: 4px; }
-        .meta { margin-bottom: 20px; color: #666; font-size: 13px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #d9d9d9; padding: 8px; font-size: 10px; vertical-align: top; }
-        th { background: #f5f5f5; }
-        .detail-cell { background: #fafafa; padding: 10px; }
-        .detail-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
-        .detail-table th, .detail-table td { font-size: 11px; padding: 6px; }
-        .detail-header { font-weight: bold; margin-bottom: 6px; }
-        .detail-total td { background: #f1f1f1; font-weight: bold; }
-        @media print { body { margin: 0; } }
+        body {
+            font-family: DejaVu Sans, sans-serif;
+            font-size: 11px;
+            color: #222;
+        }
+
+        .header {
+            margin-bottom: 18px;
+        }
+
+        .header h2 {
+            margin: 0 0 6px;
+        }
+
+        .meta {
+            font-size: 10px;
+            color: #555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #d9d9d9;
+            padding: 8px;
+            vertical-align: top;
+        }
+
+        th {
+            background: #f3f3f3;
+            text-align: left;
+        }
+
+        .detail-cell {
+            background: #fafafa;
+            padding: 10px;
+        }
+
+        .detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+        }
+
+        .detail-table th,
+        .detail-table td {
+            font-size: 10px;
+            padding: 6px;
+        }
+
+        .detail-header {
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+
+        .detail-total td {
+            background: #f1f1f1;
+            font-weight: bold;
+        }
     </style>
 </head>
-<body onload="window.print()">
-    <h2>Laporan Penjualan</h2>
-    <div class="meta">
-        Periode: {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
-        {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }} |
-        Dicetak: {{ now()->format('d M Y H:i') }}
+
+<body>
+    <div class="header">
+        <h2>Laporan Penjualan</h2>
+        <div class="meta">
+            Periode: {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
+            {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }} |
+            Dicetak: {{ now()->format('d M Y H:i') }}
+        </div>
     </div>
+
     <table>
         <thead>
             <tr>
@@ -122,4 +176,5 @@
         </tbody>
     </table>
 </body>
+
 </html>
