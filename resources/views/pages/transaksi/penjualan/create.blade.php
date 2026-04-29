@@ -78,7 +78,7 @@
 
                     <div class="card-body">
 
-                        <form action="{{ route('penjualan.store') }}" method="POST">
+                        <form action="{{ route('penjualan.store') }}" method="POST" enctype="multipart/form-data">
                             @csrf
 
                             <div class="form-row">
@@ -86,6 +86,13 @@
                                 <input type="hidden" name="items" id="items_input">
                                 <input type="hidden" name="total_harga" id="total_harga_input">
 
+                                <div class="form-group col-md-12">
+
+                                    <label class="form-label">File resi </label>
+
+                                    <input type="file" name="file_resi" class="form-control" required />
+
+                                </div>
                                 {{-- DROPSHIPPER --}}
                                 <div class="form-group col-md-6">
 

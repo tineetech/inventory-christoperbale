@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\DB;
 use App\Models\PenjualanDetail;
 use App\Models\StokBarang;
 use App\Models\StokMovement;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
 class PenjualanController extends Controller
 {
     public function index()
@@ -36,32 +40,70 @@ class PenjualanController extends Controller
     {
         $request->validate([
             'kode_penjualan'  => 'required|string|unique:penjualan,kode_penjualan',
+            'file_resi'       => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048', // ← validasi file
             'dropshipper_id'  => 'nullable|exists:dropshipper,id',
             'tanggal'         => 'required|date',
             'scan_out'        => 'required',
             'total_harga'     => 'required|numeric|min:0',
-            'is_draft'     => 'required',
+            'is_draft'        => 'required',
             'items'           => 'required'
         ]);
-
 
         DB::beginTransaction();
 
         try {
 
-            $items = json_decode($request->items, true);
-            $isDraft = $request->is_draft ?? 'no';
-
-            $nomorResi = $items[0]['nomor_resi'] ?? null;
-            $nomorPesanan = $items[0]['nomor_pesanan'];
-            $nomorTransaksi = $items[0]['nomor_transaksi'];
+            $items           = json_decode($request->items, true);
+            $isDraft         = $request->is_draft ?? 'no';
+            $nomorResi       = $items[0]['nomor_resi'] ?? null;
+            $nomorPesanan    = $items[0]['nomor_pesanan'];
+            $nomorTransaksi  = $items[0]['nomor_transaksi'];
 
             if ($nomorResi) {
                 $duplicate = Penjualan::where('nomor_resi', $nomorResi)->exists();
                 if ($duplicate) {
-                    // dd('woi');
-                    // return back()->with('error','Nomor resi sudah digunakan, tidak boleh duplikat.');
-                    throw new \Exception("Nomor resi sudah digunakan, tidak boleh duplikat ");
+                    throw new \Exception("Nomor resi sudah digunakan, tidak boleh duplikat");
+                }
+            }
+
+            $fileResiPath = null;
+            $fastApiUrl = env('FASTAPI_URL');
+
+            if ($request->hasFile('file_resi') && $request->file('file_resi')->isValid()) {
+                // dd('adafile');
+                
+                $file = $request->file('file_resi');
+                
+                if ($file->getClientOriginalExtension() === 'pdf') {
+                    // dd('ini file pdf');
+
+                    // kirim ke FastAPI
+                    $response = Http::attach(
+                        'file',
+                        file_get_contents($file->getRealPath()),
+                        $file->getClientOriginalName()
+                    )->post($fastApiUrl . '/convert-pdf');
+
+                    if (!$response->successful()) {
+                        throw new \Exception("Gagal convert PDF ke gambar");
+                    }
+
+                    $images = $response->json(); // array base64 / url
+
+                    // contoh: ambil halaman pertama saja
+                    $imageBase64 = $images[0];
+
+                    $imageData = base64_decode($imageBase64);
+
+                    $fileName = 'resi/' . Str::uuid() . '.jpg';
+
+                    Storage::disk('public')->put($fileName, $imageData);
+
+                    $fileResiPath = $fileName;
+
+                } else {
+                    // kalau bukan PDF → langsung simpan
+                    $fileResiPath = $file->store('resi', 'public');
                 }
             }
 
@@ -77,6 +119,7 @@ class PenjualanController extends Controller
                 'keterangan'      => $request->keterangan,
                 'scan_out'        => $request->scan_out,
                 'is_draft'        => $request->is_draft ?? 'no',
+                'file_resi'       => $fileResiPath, // ✅ simpan path, null jika tidak upload
                 'created_by'      => Auth::guard('pengguna')->user()->id
             ]);
 
@@ -85,30 +128,25 @@ class PenjualanController extends Controller
                 $barangId = $item['id'];
                 $qty      = $item['qty'];
                 $harga    = $item['harga_2'];
-
                 $subtotal = $qty * $harga;
 
                 // 2️⃣ insert penjualan_detail
                 PenjualanDetail::create([
-                    'penjualan_id' => $penjualan->id,
-                    'barang_id'    => $barangId,
-                    'qty'          => $qty,
-                    'harga'        => $harga,
-                    'subtotal'     => $subtotal,
-                    'nomor_resi'=>$item['nomor_resi'],
-                    'nomor_pesanan'=>$item['nomor_pesanan'],
-                    'nomor_transaksi'=>$item['nomor_transaksi']
+                    'penjualan_id'    => $penjualan->id,
+                    'barang_id'       => $barangId,
+                    'qty'             => $qty,
+                    'harga'           => $harga,
+                    'subtotal'        => $subtotal,
+                    'nomor_resi'      => $item['nomor_resi'],
+                    'nomor_pesanan'   => $item['nomor_pesanan'],
+                    'nomor_transaksi' => $item['nomor_transaksi']
                 ]);
 
-                // ambil stok lama
-                $stok = StokBarang::where('barang_id', $barangId)
-                    ->lockForUpdate()
-                    ->first();
-
+                $stok        = StokBarang::where('barang_id', $barangId)->lockForUpdate()->first();
                 $stokSebelum = $stok->jumlah_stok ?? 0;
 
                 if ($isDraft === 'no' && $stokSebelum < $qty) {
-                    throw new \Exception("Stok tidak cukup untuk barang ID ".$barangId);
+                    throw new \Exception("Stok tidak cukup untuk barang ID " . $barangId);
                 }
 
                 $stokSesudah = $stokSebelum - $qty;
@@ -119,6 +157,7 @@ class PenjualanController extends Controller
                         ['barang_id' => $barangId],
                         ['jumlah_stok' => $stokSesudah]
                     );
+
                     // 4️⃣ create stok movement
                     StokMovement::create([
                         'barang_id'      => $barangId,
@@ -128,24 +167,27 @@ class PenjualanController extends Controller
                         'stok_sesudah'   => $stokSesudah,
                         'referensi_tipe' => 'penjualan',
                         'referensi_id'   => $penjualan->id,
-                        'keterangan'     => 'Penjualan '.$penjualan->kode_penjualan,
+                        'keterangan'     => 'Penjualan ' . $penjualan->kode_penjualan,
                         'created_by'     => Auth::guard('pengguna')->user()->id
                     ]);
                 }
-
             }
 
             DB::commit();
 
+            // return redirect()
+            //     ->route('penjualan.index')
+            //     ->with('success', 'Penjualan berhasil disimpan');
+
             return redirect()
-                ->route('penjualan.index')
-                ->with('success','Penjualan berhasil disimpan');
+                ->route('penjualan.struk', $penjualan->id)
+                ->with('success', 'Penjualan berhasil disimpan');
 
         } catch (\Exception $e) {
 
             DB::rollBack();
 
-            return back()->with('error','Terjadi kesalahan : '.$e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan : ' . $e->getMessage());
         }
     }
 
@@ -462,5 +504,67 @@ class PenjualanController extends Controller
                 'Terjadi kesalahan : '.$e->getMessage()
             );
         }
+    }
+
+    public function struk($id)
+    {
+        $penjualan = Penjualan::findOrFail($id);
+
+        // Hitung nomor urut: posisi data ini di antara semua penjualan terurut by id
+        $nomorUrut = Penjualan::where('id', '<=', $penjualan->id)->count();
+
+        // Format: CHRISBALE-0001-20250429
+        $nomorStruk = sprintf(
+            'CHRISBALE-%04d-%s',
+            $nomorUrut,
+            \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY')
+        );
+
+        return view('pages.transaksi.penjualan.struk', compact('penjualan', 'nomorStruk'));
+    }
+
+    public function strukDownload($id)
+    {
+        $penjualan = Penjualan::findOrFail($id);
+
+        $nomorUrut = Penjualan::where('id', '<=', $penjualan->id)->count();
+
+        $nomorStruk = sprintf(
+            'CHRISBALE-%04d-%s',
+            $nomorUrut,
+            \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY')
+        );
+
+        // Encode file resi ke base64 agar bisa ditampilkan di PDF
+        $resiBase64 = null;
+        $resiMime   = null;
+        $resiIsPdf  = false;
+
+        if ($penjualan->file_resi) {
+            $resiPath = storage_path('app/public/' . $penjualan->file_resi);
+            $ext      = strtolower(pathinfo($resiPath, PATHINFO_EXTENSION));
+
+            if (file_exists($resiPath)) {
+                if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                    $resiBase64 = base64_encode(file_get_contents($resiPath));
+                    $resiMime   = match($ext) {
+                        'jpg', 'jpeg' => 'image/jpeg',
+                        'png'         => 'image/png',
+                        'webp'        => 'image/webp',
+                        default       => 'image/jpeg',
+                    };
+                } elseif ($ext === 'pdf') {
+                    $resiIsPdf = true; // PDF tidak bisa di-embed langsung di DomPDF
+                }
+            }
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pages.transaksi.penjualan.struk_pdf', compact(
+            'penjualan', 'nomorStruk', 'resiBase64', 'resiMime', 'resiIsPdf'
+        ))->setPaper([0, 0, 419.53, 595.28]); // A5
+
+        $filename = 'struk-' . $nomorStruk . '.pdf';
+
+        return $pdf->download($filename);
     }
 }

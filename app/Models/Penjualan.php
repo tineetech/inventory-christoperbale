@@ -9,6 +9,7 @@ class Penjualan extends Model
     protected $table = 'penjualan';
 
     protected $fillable = [
+        'file_resi',
         'kode_penjualan',
         'nomor_resi',
         'nomor_pesanan',

@@ -319,6 +319,10 @@
                     <i class="feather icon-edit"></i> 
                     Retur
                 </a>
+                <a href="/transaksi/penjualan/${pj.id}/struk/download" class="btn btn-sm btn-info">
+                    <i class="feather icon-download"></i> 
+                    File
+                </a>
                 <a href="/penjualan/${pj.id}/edit" class="btn btn-sm btn-warning">
                     <i class="feather icon-edit"></i>
                 </a>

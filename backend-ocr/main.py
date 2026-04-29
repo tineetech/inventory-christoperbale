@@ -8,6 +8,9 @@ from ocr_pdf import extract_text_pdf
 from parser.parser_shopee import parse_shopee
 from parser.parser_tiktok import parse_tiktok
 from ocr_tiktok import extract_tiktok_from_pdf, extract_tiktok_from_image
+from pdf2image import convert_from_bytes
+import base64
+import io
 
 
 app = FastAPI()
@@ -64,3 +67,20 @@ async def scan_resi(
         "mode": mode,
         "result": result
     }
+
+
+@app.post("/convert-pdf")
+async def convert_pdf(file: UploadFile = File(...)):
+    contents = await file.read()
+
+    images = convert_from_bytes(contents)
+
+    result = []
+
+    for img in images:
+        buffered = io.BytesIO()
+        img.save(buffered, format="JPEG")
+        img_str = base64.b64encode(buffered.getvalue()).decode()
+        result.append(img_str)
+
+    return result

@@ -383,6 +383,8 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::delete('/transaksi/penjualan/delete/{id}', [PenjualanController::class, 'destroy'])
         ->name('penjualan.destroy')
         ->middleware('permission:hapus,penjualan');
+    Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
+    Route::get('/transaksi/penjualan/{id}/struk/download', [PenjualanController::class, 'strukDownload'])->name('penjualan.struk.download');
 
 
     /*
