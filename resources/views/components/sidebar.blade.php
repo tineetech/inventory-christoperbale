@@ -159,6 +159,15 @@
                     </a>
                 </li>
             @endif
+
+            @if(hasPermission('lihat', 'laporan_retur'))
+                <li class="sidenav-item {{ request()->routeIs('laporan-retur.*') ? 'active' : '' }}">
+            <a href="{{ route('laporan.retur') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-box"></i>
+                        <div>Lap. Retur Penjualan</div>
+                    </a>
+                </li>
+            @endif
         @endif
 
 

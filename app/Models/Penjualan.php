@@ -20,6 +20,7 @@ class Penjualan extends Model
         'keterangan',
         'scan_out',
         'is_draft',
+        'is_retur',
         'created_by'
     ];
 

@@ -132,9 +132,12 @@
                                                             <th class="sortable d-none d-sm-table-cell" data-column="10">
                                                                 Draft? <i class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
-                                                            <th class="sortable d-none d-xl-table-cell" data-column="11">
+                                                            <th class="sortable d-none d-sm-table-cell" data-column="10">
+                                                                Retur? <i class="feather icon-chevrons-up sort-icon"></i>
+                                                            </th>
+                                                            {{-- <th class="sortable d-none d-xl-table-cell" data-column="11">
                                                                 Keterangan <i
-                                                                    class="feather icon-chevrons-up sort-icon"></i></th>
+                                                                    class="feather icon-chevrons-up sort-icon"></i></th> --}}
                                                             <th style="width:90px">Action</th>
                                                         </tr>
                                                     </thead>
@@ -295,6 +298,12 @@
                 else if (pj.is_draft === 'no') draftBadge = `<span class="badge badge-danger">Tidak</span>`;
                 else draftBadge = `<span class="badge badge-secondary">-</span>`;
 
+                let returBadge = '';
+                if (pj.is_retur === 'yes') returBadge =
+                    `<span class="badge text-white" style="background:#00499b">Ya</span>`;
+                else if (pj.is_retur === 'no') returBadge = `<span class="badge badge-danger">Tidak</span>`;
+                else returBadge = `<span class="badge badge-secondary">-</span>`;
+                
                 const rowBg = pj._justScanned ? 'background:#e8f5e9;' : '';
                 // Restore state: buka kembali detail yang sebelumnya terbuka
                 const detailShow = openDetailIds.has(pj.id) ? 'table-row' : 'none';
@@ -313,20 +322,26 @@
             <td class="d-none d-md-table-cell" style="font-weight:bold;white-space:nowrap">Rp ${formatRupiah(pj.total_harga)}</td>
             <td>${scanBadge}</td>
             <td class="d-none d-sm-table-cell">${draftBadge}</td>
-            <td class="d-none d-xl-table-cell">${pj.keterangan ?? ''}</td>
+            <td class="d-none d-sm-table-cell">${returBadge}</td>
             <td style="white-space:nowrap">
-                <a href="/penjualan/${pj.id}/edit" class="btn btn-sm btn-danger">
-                    <i class="feather icon-edit"></i> 
-                    Retur
-                </a>
+
+                ${
+                    pj.is_retur === 'no' ? `
+                        <a href="/transaksi/penjualan/retur/${pj.id}" class="btn btn-sm btn-danger">
+                            <i class="feather icon-edit"></i> 
+                            Retur
+                        </a>
+                    ` : ''
+                }
+
                 <a href="/transaksi/penjualan/${pj.id}/struk/download" class="btn btn-sm btn-info">
                     <i class="feather icon-download"></i> 
                     File
                 </a>
-                <a href="/penjualan/${pj.id}/edit" class="btn btn-sm btn-warning">
+                <a href="/transaksi/penjualan/edit/${pj.id}" class="btn btn-sm btn-warning">
                     <i class="feather icon-edit"></i>
                 </a>
-                <form id="delete-form-${pj.id}" action="/penjualan/${pj.id}" method="POST" style="display:inline">
+                <form id="delete-form-${pj.id}" action="/transaksi/penjualan/delete/${pj.id}" method="POST" style="display:inline">
                     <input type="hidden" name="_token" value="${CSRF_TOKEN}">
                     <input type="hidden" name="_method" value="DELETE">
                     <button type="button" onclick="confirmDelete(${pj.id})" class="btn btn-sm btn-danger">

@@ -33,12 +33,7 @@ Route::post('/penjualan/import/shopee', [ImportPenjualanController::class, 'impo
 
 
 Route::prefix('penjualan')->group(function () {
- 
-    // GET  /api/penjualan/list      → ambil semua data penjualan (auto-refresh)
     Route::get('/list', [PenjualanScanOutController::class, 'list']);
- 
-    // POST /api/penjualan/scan-out  → scan SKU & update scan_out = done
     Route::post('/scan-out', [PenjualanScanOutController::class, 'scanOut']);
- 
 });
  

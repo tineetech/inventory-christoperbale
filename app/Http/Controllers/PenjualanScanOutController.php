@@ -86,6 +86,7 @@ class PenjualanScanOutController extends Controller
                     'total_harga_fmt' => 'Rp ' . number_format($pj->total_harga, 0, ',', '.'),
                     'scan_out'        => $pj->scan_out ?? 'nothing',
                     'is_draft'        => $pj->is_draft,
+                    'is_retur'        => $pj->is_retur,
                     'keterangan'      => $pj->keterangan,
                     'detail'          => $pj->detail->map(fn($d) => [
                         'nomor_resi'   => $d->nomor_resi,

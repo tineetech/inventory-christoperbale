@@ -21,6 +21,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HitungStokController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReturPenjualanController;
 use Illuminate\Support\Facades\Auth;
 
 /*
@@ -384,8 +385,19 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->name('penjualan.destroy')
         ->middleware('permission:hapus,penjualan');
     Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
+    Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
     Route::get('/transaksi/penjualan/{id}/struk/download', [PenjualanController::class, 'strukDownload'])->name('penjualan.struk.download');
 
+    Route::get('/transaksi/penjualan/retur/{id}', [ReturPenjualanController::class, 'create'])
+        ->name('penjualan.retur.create');
+    Route::post('/transaksi/penjualan/return/{id}', [ReturPenjualanController::class, 'store'])
+        ->name('penjualan.retur.store');
+
+    Route::get('/laporan/penjualan/list-retur', [ReturPenjualanController::class, 'index'])->name('laporan.retur');
+    Route::get('/laporan/penjualan/list-retur/{id}', [ReturPenjualanController::class, 'show'])->name('laporan.retur.show');
+    Route::get('/laporan/penjualan/list-retur/{id}/edit',    [ReturPenjualanController::class, 'edit'])   ->name('laporan.retur.edit');
+    Route::put('/laporan/penjualan/list-retur/{id}',         [ReturPenjualanController::class, 'update']) ->name('laporan.retur.update');
+    Route::patch('/laporan/penjualan/list-retur/{id}/status', [ReturPenjualanController::class, 'updateStatus'])->name('laporan.retur.update-status');
 
     /*
     |--------------------------------------------------------------------------
