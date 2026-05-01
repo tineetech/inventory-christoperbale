@@ -66,9 +66,11 @@
 
                                 </div>
 
+                                @if(hasPermission('tambah', 'pengguna'))
                                 <a href="{{ route('pengguna.create') }}" class="btn btn-primary btn-sm">
                                     <i class="feather icon-plus"></i> Tambah Pengguna
                                 </a>
+                                @endif
 
                             </div>
 
@@ -100,7 +102,9 @@
 
                                                     <th>Role</th>
 
+                                                    @if(hasPermission('edit', 'pengguna') || hasPermission('hapus', 'pengguna'))
                                                     <th width="140">Action</th>
+                                                    @endif
 
                                                 </tr>
 
@@ -134,16 +138,20 @@
                                                             @endif
 
                                                         </td>
-
+                                                        
+                                                        @if(hasPermission('edit', 'pengguna') || hasPermission('hapus', 'pengguna'))
                                                         <td>
 
+                                                            @if(hasPermission('edit', 'pengguna'))
                                                             <a href="{{ route('pengguna.edit', $user->id) }}"
                                                                 class="btn btn-sm btn-info action-btn">
 
                                                                 <i class="feather icon-edit"></i>
 
                                                             </a>
+                                                            @endif
 
+                                                            @if(hasPermission('hapus', 'pengguna'))
                                                             <form id="delete-form-{{ $user->id }}"
                                                                 action="{{ route('pengguna.destroy', $user->id) }}"
                                                                 method="POST" style="display:inline">
@@ -160,8 +168,10 @@
                                                                 </button>
 
                                                             </form>
-
+                                                            @endif
+                                                            
                                                         </td>
+                                                        @endif
 
                                                     </tr>
                                                 @endforeach

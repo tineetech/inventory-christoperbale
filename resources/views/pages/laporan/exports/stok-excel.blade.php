@@ -29,6 +29,7 @@
                 <th>Stok Sesudah</th>
                 <th>Stok Minimum</th>
                 <th>Status</th>
+                <th>Keterangan</th>
             </tr>
         @endif
     </thead>
@@ -56,6 +57,7 @@
                     <td>{{ $item->stok_sesudah }}</td>
                     <td>{{ $item->stok_minimum }}</td>
                     <td>{{ ucfirst($item->stok_status) }}</td>
+                    <td>{{ ucfirst($item->keterangan) }}</td>
                 </tr>
             @endif
         @empty

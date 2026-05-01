@@ -122,9 +122,12 @@
                                                 style="width:150px">
 
                                         </div>
+                                        
+                                        @if(hasPermission('tambah', 'dropshipper'))
                                         <a href="{{ route('dropshipper.create') }}" class="btn btn-primary btn-sm">
                                             <i class="feather icon-plus"></i> Tambah Dropshipper
                                         </a>
+                                        @endif
 
                                     </div>
                                 </div>
@@ -148,7 +151,9 @@
                                                             <th class="sortable" data-column="4">Alamat <i class="feather icon-chevrons-up sort-icon"></i></th>
                                                             <th>Keterangan </th>
 
+                                                            @if(hasPermission('edit', 'dropshipper') || hasPermission('hapus', 'dropshipper'))
                                                             <th width="140">Action</th>
+                                                            @endif
 
                                                         </tr>
                                                     </thead>
@@ -180,12 +185,17 @@
                                                                 </td>
 
 
+                                                            @if(hasPermission('edit', 'dropshipper') || hasPermission('hapus', 'dropshipper'))
                                                                 <td>
 
+                                                                    
+                                                                    @if(hasPermission('edit', 'dropshipper'))
                                                                     <a href="{{ route('dropshipper.edit', $sup->id) }}" class="btn btn-sm btn-info action-btn">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
-
+                                                                    @endif
+                                                                    
+                                                                    @if(hasPermission('hapus', 'dropshipper'))
                                                                     <form id="delete-form-{{ $sup->id }}" 
                                                                         action="{{ route('dropshipper.destroy', $sup->id) }}" 
                                                                         method="POST" 
@@ -203,7 +213,9 @@
                                                                         </button>
 
                                                                     </form>
+                                                                    @endif
                                                                 </td>
+                                                                @endif
 
                                                             </tr>
                                                         @endforeach

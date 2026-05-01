@@ -12,7 +12,7 @@
             <th>Kode Penjualan</th>
             <th>Nomor Resi</th>
             <th>No. Pesanan</th>
-            <th>No. Transaksi</th>
+            {{-- <th>No. Transaksi</th> --}}
             <th>Dropshipper</th>
             <th>Tanggal</th>
             <th>Total Harga</th>
@@ -36,7 +36,7 @@
                 <td>{{ $item->kode_penjualan }}</td>
                 <td>{{ $item->nomor_resi ?: '-' }}</td>
                 <td>{{ $item->nomor_pesanan ?: '-' }}</td>
-                <td>{{ $item->nomor_transaksi ?: '-' }}</td>
+                {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                 <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                 <td>{{ date('d/m/Y', strtotime($item->tanggal)) }}</td>
                 <td>{{ $item->total_harga }}</td>

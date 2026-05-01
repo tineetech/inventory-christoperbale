@@ -146,9 +146,12 @@
                                                 placeholder="Search pembelian..." style="width:150px">
 
                                         </div>
+
+                                        @if(hasPermission('tambah', 'pembelian'))
                                         <a href="{{ route('pembelian.create') }}" class="btn btn-primary btn-sm">
                                             <i class="feather icon-plus"></i> Buat Penambahan Barang
                                         </a>
+                                        @endif
 
                                     </div>
                                 </div>
@@ -184,8 +187,10 @@
                                                             <th>Dibuat Oleh</th>
 
                                                             <th>Keterangan</th>
-
+                                                            
+                                                            @if(hasPermission('edit', 'pembelian') || hasPermission('hapus', 'pembelian'))
                                                             <th width="140">Action</th>
+                                                            @endif
 
                                                         </tr>
                                                     </thead>
@@ -217,11 +222,16 @@
 
                                                                 <td>{{ $pb->keterangan }}</td>
 
+                                                                @if(hasPermission('edit', 'pembelian') || hasPermission('hapus', 'pembelian'))
                                                                 <td>
+                                                                    @if(hasPermission('edit', 'pembelian'))
                                                                     <a href="{{ route('pembelian.edit', $pb->id) }}"
                                                                         class="btn btn-sm btn-warning">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
+                                                                    @endif
+
+                                                                    @if(hasPermission('hapus', 'pembelian'))
                                                                     <form id="delete-form-{{ $pb->id }}" 
                                                                         action="{{ route('pembelian.destroy', $pb->id) }}" 
                                                                         method="POST" 
@@ -239,7 +249,9 @@
                                                                         </button>
 
                                                                     </form>
+                                                                    @endif
                                                                 </td>
+                                                                @endif
 
                                                             </tr>
 

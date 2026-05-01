@@ -146,6 +146,7 @@
                                                 placeholder="Search barang..." style="width:150px">
 
                                         </div>
+                                        @if(hasPermission('tambah', 'barang'))
                                         <a href="#" onclick="showImportModal()" class="btn btn-sm mr-3 text-white"
                                             style="background: linear-gradient(135deg, #667eea, #764ba2); border: none; box-shadow: 0 6px 14px rgba(102, 126, 234, 0.25);">
                                             <i class="feather icon-download"></i> Import Barang
@@ -154,6 +155,7 @@
                                             style="background: linear-gradient(135deg, #ff8a00, #ff5b00); border: none; box-shadow: 0 6px 14px rgba(255, 107, 0, 0.25);">
                                             <i class="feather icon-plus"></i> Tambah Barang
                                         </a>
+                                        @endif
 
                                     </div>
                                 </div>
@@ -236,7 +238,7 @@
                                                                 </td>
 
                                                                 <td>
-                                                                    <strong>{{ $sup->nama_barang }}</strong>
+                                                                    <strong>{{ \Illuminate\Support\Str::limit($sup->nama_barang, 25, '...') }}</strong>
                                                                 </td>
 
                                                                 <td>
@@ -270,11 +272,15 @@
                                                                         <span>Barcode</span>
                                                                     </a>
 
+                                                                    
+                                                                    @if(hasPermission('edit', 'barang'))
                                                                     <a href="{{ route('barang.edit', $sup->id) }}"
                                                                         class="btn btn-sm btn-info action-btn">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
-
+                                                                    @endif
+                                                                    
+                                                                    @if(hasPermission('hapus', 'barang'))
                                                                     <form id="delete-form-{{ $sup->id }}"
                                                                         action="{{ route('barang.destroy', $sup->id) }}"
                                                                         method="POST" style="display:inline">
@@ -291,6 +297,7 @@
                                                                         </button>
 
                                                                     </form>
+                                                                    @endif
                                                                 </td>
 
                                                             </tr>

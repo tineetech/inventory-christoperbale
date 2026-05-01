@@ -98,7 +98,7 @@
                                 <th>Kode Penjualan</th>
                                 <th>Nomor Resi</th>
                                 <th>No. Pesanan</th>
-                                <th>No. Transaksi</th>
+                                {{-- <th>No. Transaksi</th> --}}
                                 <th>Dropshipper</th>
                                 <th>Tanggal</th>
                                 <th>Total Harga</th>
@@ -125,7 +125,7 @@
                                     <td class="kode-click" style="white-space: nowrap;"><strong>{{ $item->kode_penjualan }}</strong></td>
                                     <td style="white-space: nowrap;">{{ $item->nomor_resi ?: '-' }}</td>
                                     <td>{{ $item->nomor_pesanan ?: '-' }}</td>
-                                    <td>{{ $item->nomor_transaksi ?: '-' }}</td>
+                                    {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                                     <td style="white-space: nowrap;">{{ date('d M Y', strtotime($item->tanggal)) }}</td>
                                     <td style="white-space: nowrap;">Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>

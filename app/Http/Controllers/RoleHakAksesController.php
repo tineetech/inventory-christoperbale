@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class RoleHakAksesController extends Controller
 {
-    
+
     public function index(Request $request)
     {
         $roles = Role::all();
@@ -18,16 +18,30 @@ class RoleHakAksesController extends Controller
 
         $role = Role::findOrFail($roleId);
 
-        $permissions = HakAkses::all();
+        $order = ['dashboard','supplier','satuan','barang','dropshipper','pembelian','penjualan','manajemen_stok','hitung_stok'];
 
-        $rolePermissions = RoleHakAkses::where('role_id',$roleId)
-                        ->pluck('hak_akses_id')
-                        ->toArray();
+        $permissions = HakAkses::all()->sortBy(function ($p) use ($order) {
+            $module = explode('_', $p->nama_permission)[1] ?? '';
+            
+            $index = array_search($module, $order);
 
-        return view('pages.role_hak_akses.index',compact(
+            return $index !== false ? $index : 999;
+        });
+
+        // 🔹 Group berdasarkan method (sebelum underscore)
+        $groupedPermissions = $permissions->groupBy(function ($p) {
+            return explode('_', $p->nama_permission)[0]; // lihat, tambah, edit, dll
+        });
+
+        
+        $rolePermissions = RoleHakAkses::where('role_id', $roleId)
+            ->pluck('hak_akses_id')
+            ->toArray();
+
+        return view('pages.role_hak_akses.index', compact(
             'roles',
             'role',
-            'permissions',
+            'groupedPermissions', // 🔥 kirim yang sudah rapi
             'rolePermissions'
         ));
     }
@@ -70,27 +84,25 @@ class RoleHakAksesController extends Controller
         return view('pages.role_hak_akses.edit', compact('roleHakAkses', 'roles', 'hakAkses'));
     }
 
-    
-    public function update(Request $request,$roleId)
+
+    public function update(Request $request, $roleId)
     {
-        RoleHakAkses::where('role_id',$roleId)->delete();
+        RoleHakAkses::where('role_id', $roleId)->delete();
 
-        if($request->permissions){
+        if ($request->permissions) {
 
-            foreach($request->permissions as $permission){
+            foreach ($request->permissions as $permission) {
 
                 RoleHakAkses::create([
-                    'role_id'=>$roleId,
-                    'hak_akses_id'=>$permission
+                    'role_id' => $roleId,
+                    'hak_akses_id' => $permission
                 ]);
-
             }
-
         }
 
         return redirect()
             ->back()
-            ->with('success','Hak akses berhasil diperbarui');
+            ->with('success', 'Hak akses berhasil diperbarui');
     }
 
     public function destroy(string $id)

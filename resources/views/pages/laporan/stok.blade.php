@@ -98,7 +98,7 @@
                         <div style="border: none !important" class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="card-header-title mb-0">
                                 <i class="feather icon-archive mr-2"></i>
-                                {{ $isKaryawan ? 'Input Laporan Stok' : 'Data Laporan Stok' }}
+                                {{ $isKaryawan ? 'Laporan Stok Barang' : 'Laporan Stok Barang' }}
                             </h6>
                             <div class="d-flex align-items-center flex-wrap justify-content-end" style="gap: 12px;">
                                 <span class="badge badge-light">{{ $leftTableRows->count() }} barang</span>
@@ -153,7 +153,7 @@
                                                             value="{{ $item->barang_id }}">
                                                         {{ $item->sku }}
                                                     </td>
-                                                    <td><strong>{{ $item->nama_barang }}</strong></td>
+                                                    <td><strong>{{ \Illuminate\Support\Str::limit($item->nama_barang, 25, '...') }}</strong></td>
                                                     <td>{{ $item->satuan }}</td>
                                                     <td style="min-width: 140px;">
                                                         <input type="number" min="0" class="form-control"
@@ -207,7 +207,7 @@
                                             <tr>
                                                 <td>{{ $item->no }}</td>
                                                 <td>{{ $item->sku }}</td>
-                                                <td><strong>{{ $item->nama_barang }}</strong></td>
+                                                <td><strong>{{ \Illuminate\Support\Str::limit($item->nama_barang, 25, '...') }}</strong></td>
                                                 <td>{{ $item->satuan }}</td>
                                                 <td>{{ $item->stok_saat_ini }}</td>
                                                 <td>{{ $item->stok_minimum }}</td>
@@ -241,7 +241,7 @@
                         <div style="border: none !important" class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="card-header-title mb-0">
                                 <i class="feather icon-layers mr-2"></i>
-                                {{ $isSuperAdmin ? 'Review Laporan Stok' : 'Ringkasan Laporan Stok' }}
+                                {{ $isSuperAdmin ? 'Laporan Stok Movement' : 'Laporan Stok Movement' }}
                             </h6>
                             <div class="d-flex align-items-center flex-wrap justify-content-end" style="gap: 12px;">
                                 <small class="text-muted">
@@ -272,12 +272,14 @@
                                         <th>Nama Barang</th>
                                         <th>Jenis</th>
                                         <th>Qty</th>
+                                        <th>Stok Sebelum</th>
                                         <th>Stok Sesudah</th>
                                         {{-- <th>Status Approval</th> --}}
-                                        <th>Selisih Min.</th>
-                                        @if ($isSuperAdmin)
+                                        <th>Selisih</th>
+                                        <th>Keterangan</th>
+                                        {{-- @if ($isSuperAdmin)
                                             <th>Aksi</th>
-                                        @endif
+                                        @endif --}}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -289,8 +291,7 @@
                                             </td>
                                             <td>{{ $item->sku }}</td>
                                             <td>
-                                                <strong>{{ $item->nama_barang }}</strong>
-                                                <div class="small text-muted">{{ $item->satuan }}</div>
+                                                <strong>{{ \Illuminate\Support\Str::limit($item->nama_barang, 25, '...') }}</strong>
                                                 @if ($item->keterangan)
                                                     <div class="small text-muted">{{ $item->keterangan }}</div>
                                                 @endif
@@ -310,6 +311,7 @@
                                                 @endif
                                             </td>
                                             <td>{{ $item->qty }}</td>
+                                            <td>{{ $item->stok_sebelum }}</td>
                                             <td>{{ $item->stok_sesudah }}</td>
                                             {{-- <td>
                                                 @if (!$item->has_input)
@@ -321,10 +323,14 @@
                                                 @endif
                                             </td> --}}
                                             <td>
-                                                {{ $item->selisih_minimum }}
-                                                <div class="small text-muted text-capitalize">{{ $item->stok_status }}</div>
+                                                <span class="
+                                                    {{ $item->selisih_minimum > 0 ? 'text-success' : ($item->selisih_minimum < 0 ? 'text-danger' : 'text-muted') }}
+                                                ">
+                                                    {{ sprintf('%+d', $item->selisih_minimum) }}
+                                                </span>
                                             </td>
-                                            @if ($isSuperAdmin)
+                                            <td>{{ $item->keterangan }}</td>
+                                            {{-- @if ($isSuperAdmin)
                                                 <td>
                                                     @if ($item->has_input && $item->approval_status !== 'confirmed')
                                                         <form method="POST"
@@ -346,7 +352,7 @@
                                                         <span class="text-muted">-</span>
                                                     @endif
                                                 </td>
-                                            @endif
+                                            @endif --}}
                                         </tr>
                                     @empty
                                         <tr data-empty-row="true">

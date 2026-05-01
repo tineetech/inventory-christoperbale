@@ -180,7 +180,7 @@ class ReturPenjualanController extends Controller
             }
 
             return redirect()
-                ->route('laporan.retur.show', $retur->id)
+                ->route('laporan.retur', $retur->id)
                 ->with('success', 'Retur penjualan berhasil diperbarui.');
 
         } catch (\Throwable $e) {

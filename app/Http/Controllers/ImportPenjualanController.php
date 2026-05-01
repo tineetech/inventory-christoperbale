@@ -7,8 +7,10 @@ use Illuminate\Support\Facades\Http;
 
 class ImportPenjualanController extends Controller
 {
+    
     public function importTokped(Request $request)
     {
+        $url = env('FASTAPI_URL') . '/scan-resi';
         $request->validate([
             'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
         ]);
@@ -17,7 +19,7 @@ class ImportPenjualanController extends Controller
             'file',
             file_get_contents($request->file('file')->getRealPath()),
             $request->file('file')->getClientOriginalName()
-        )->post('http://localhost:8009/scan-resi', [
+        )->post($url, [
             'mode' => 'tiktok',
         ]);
 
@@ -26,6 +28,7 @@ class ImportPenjualanController extends Controller
 
     public function importShopee(Request $request)
     {
+        $url = env('FASTAPI_URL') . '/scan-resi';
         $request->validate([
             'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
         ]);
@@ -34,7 +37,7 @@ class ImportPenjualanController extends Controller
             'file',
             file_get_contents($request->file('file')->getRealPath()),
             $request->file('file')->getClientOriginalName()
-        )->post('http://localhost:8009/scan-resi', [
+        )->post($url, [
             'mode' => 'shopee',
         ]);
 

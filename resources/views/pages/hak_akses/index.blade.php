@@ -66,9 +66,11 @@
 
                                 </div>
 
+                                @if(hasPermission('tambah', 'hak_akses'))
                                 <a href="{{ route('hak_akses.create') }}" class="btn btn-primary btn-sm">
                                     <i class="feather icon-plus"></i> Tambah Hak Akses
                                 </a>
+                                @endif
 
                             </div>
 
@@ -96,7 +98,9 @@
 
                                                     <th>Nama Permission</th>
 
+                                                    @if(hasPermission('edit', 'hak_akses') || hasPermission('hapus', 'hak_akses'))
                                                     <th width="140">Action</th>
+                                                    @endif
 
                                                 </tr>
 
@@ -117,15 +121,19 @@
                                                             <strong>{{ $akses->nama_permission }}</strong>
                                                         </td>
 
+                                                        @if(hasPermission('edit', 'hak_akses') || hasPermission('hapus', 'hak_akses'))
                                                         <td>
 
+                                                            @if(hasPermission('edit', 'hak_akses'))
                                                             <a href="{{ route('hak_akses.edit', $akses->id) }}"
                                                                 class="btn btn-sm btn-info action-btn">
 
                                                                 <i class="feather icon-edit"></i>
 
                                                             </a>
+                                                            @endif
 
+                                                            @if(hasPermission('hapus', 'hak_akses'))
                                                             <form id="delete-form-{{ $akses->id }}"
                                                                 action="{{ route('hak_akses.destroy', $akses->id) }}"
                                                                 method="POST" style="display:inline">
@@ -142,8 +150,10 @@
                                                                 </button>
 
                                                             </form>
-
+                                                            @endif
+                                                            
                                                         </td>
+                                                        @endif
 
                                                     </tr>
                                                 @endforeach

@@ -365,8 +365,12 @@ class ReportController extends Controller
     private function getPembelianReportQuery(array $filters)
     {
         $query = Pembelian::with('supplier', 'user', 'detail.barang.stok')
-            ->whereDate('tanggal', '>=', $filters['dari_tanggal'])
-            ->whereDate('tanggal', '<=', $filters['sampai_tanggal']);
+            ->when($filters['dari_tanggal'], function ($q) use ($filters) {
+                $q->whereDate('tanggal', '>=', $filters['dari_tanggal']);
+            })
+            ->when($filters['sampai_tanggal'], function ($q) use ($filters) {
+                $q->whereDate('tanggal', '<=', $filters['sampai_tanggal']);
+            });
 
         if ($filters['supplier_id']) {
             $query->where('supplier_id', $filters['supplier_id']);
@@ -378,8 +382,12 @@ class ReportController extends Controller
     private function getPenjualanReportQuery(array $filters)
     {
         $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok')
-            ->whereDate('tanggal', '>=', $filters['dari_tanggal'])
-            ->whereDate('tanggal', '<=', $filters['sampai_tanggal']);
+            ->when($filters['dari_tanggal'], function ($q) use ($filters) {
+                $q->whereDate('tanggal', '>=', $filters['dari_tanggal']);
+            })
+            ->when($filters['sampai_tanggal'], function ($q) use ($filters) {
+                $q->whereDate('tanggal', '<=', $filters['sampai_tanggal']);
+            });
 
         if ($filters['dropshipper_id']) {
             $query->where('dropshipper_id', $filters['dropshipper_id']);
@@ -391,8 +399,12 @@ class ReportController extends Controller
     private function getLegacyStokTableQuery(array $filters)
     {
         $query = Barang::with('satuan', 'stok')
-            ->whereDate('created_at', '>=', $filters['dari_tanggal'])
-            ->whereDate('created_at', '<=', $filters['sampai_tanggal']);
+            ->when($filters['dari_tanggal'], function ($q) use ($filters) {
+                $q->whereDate('created_at', '>=', $filters['dari_tanggal']);
+            })
+            ->when($filters['sampai_tanggal'], function ($q) use ($filters) {
+                $q->whereDate('created_at', '<=', $filters['sampai_tanggal']);
+            });
 
         if ($filters['barang_id']) {
             $query->where('id', $filters['barang_id']);
@@ -464,8 +476,12 @@ class ReportController extends Controller
     private function getStokReportQuery(array $filters)
     {
         $movements = StokMovement::with(['barang.satuan', 'user'])
-            ->whereDate('created_at', '>=', $filters['dari_tanggal'])
-            ->whereDate('created_at', '<=', $filters['sampai_tanggal']);
+            ->when($filters['dari_tanggal'], function ($q) use ($filters) {
+                $q->whereDate('created_at', '>=', $filters['dari_tanggal']);
+            })
+            ->when($filters['sampai_tanggal'], function ($q) use ($filters) {
+                $q->whereDate('created_at', '<=', $filters['sampai_tanggal']);
+            });
 
         if ($filters['barang_id']) {
             $movements->where('barang_id', $filters['barang_id']);
@@ -524,7 +540,7 @@ class ReportController extends Controller
                 'movement_by_name' => optional($movement->user)->nama,
                 'stok_saat_ini' => $stokSaatIni,
                 'stok_minimum' => $stokMinimum,
-                'selisih_minimum' => $stokSaatIni - $stokMinimum,
+                'selisih_minimum' => $stokSaatIni - $movement->stok_sebelum,
                 'stok_status' => $this->resolveStockStatus($stokSaatIni, $stokMinimum),
                 'report_id' => $report->id ?? null,
                 'approval_status' => $report->status ?? null,
@@ -681,12 +697,14 @@ class ReportController extends Controller
     private function resolveDateRange(?string $startDate, ?string $endDate, string $defaultRange = 'month'): array
     {
         $today = now();
-        $defaultStart = $defaultRange === 'today'
-            ? $today->copy()->toDateString()
-            : $today->copy()->startOfMonth()->toDateString();
-        $defaultEnd = $defaultRange === 'today'
-            ? $today->copy()->toDateString()
-            : $today->copy()->endOfMonth()->toDateString();
+        // $defaultStart = $defaultRange === 'today'
+        //     ? $today->copy()->toDateString()
+        //     : $today->copy()->startOfMonth()->toDateString();
+        // $defaultEnd = $defaultRange === 'today'
+        //     ? $today->copy()->toDateString()
+        //     : $today->copy()->endOfMonth()->toDateString();
+        $defaultStart = null;
+        $defaultEnd   = null;
 
         $dariTanggal = $startDate ? Carbon::parse($startDate)->toDateString() : $defaultStart;
         $sampaiTanggal = $endDate ? Carbon::parse($endDate)->toDateString() : $defaultEnd;

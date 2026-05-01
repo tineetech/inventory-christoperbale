@@ -57,11 +57,13 @@
                                             <span id="lastRefreshed"
                                                 class="text-muted small ml-1 d-none d-md-inline"></span>
                                         </h6>
+                                        @if(hasPermission('tambah', 'penjualan'))
                                         <a href="{{ route('penjualan.create') }}" class="btn btn-primary btn-sm">
                                             <i class="feather icon-plus"></i>
                                             <span class="d-none d-sm-inline">Tambah Penjualan</span>
                                             <span class="d-inline d-sm-none">Tambah</span>
                                         </a>
+                                        @endif
                                     </div>
 
                                     {{-- Row 2: Scan input (full width on mobile) --}}
@@ -138,6 +140,7 @@
                                                             {{-- <th class="sortable d-none d-xl-table-cell" data-column="11">
                                                                 Keterangan <i
                                                                     class="feather icon-chevrons-up sort-icon"></i></th> --}}
+                                                                    
                                                             <th style="width:90px">Action</th>
                                                         </tr>
                                                     </thead>
@@ -338,9 +341,12 @@
                     <i class="feather icon-download"></i> 
                     File
                 </a>
+                @if(hasPermission('edit', 'penjualan'))
                 <a href="/transaksi/penjualan/edit/${pj.id}" class="btn btn-sm btn-warning">
                     <i class="feather icon-edit"></i>
                 </a>
+                @endif
+                @if(hasPermission('hapus', 'penjualan'))
                 <form id="delete-form-${pj.id}" action="/transaksi/penjualan/delete/${pj.id}" method="POST" style="display:inline">
                     <input type="hidden" name="_token" value="${CSRF_TOKEN}">
                     <input type="hidden" name="_method" value="DELETE">
@@ -348,6 +354,7 @@
                         <i class="feather icon-trash"></i>
                     </button>
                 </form>
+                @endif
             </td>
         </tr>
         <tr class="detail-row" id="detail-${pj.id}" style="display:${detailShow};background:#f9f9f9">

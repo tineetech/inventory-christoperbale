@@ -91,7 +91,7 @@
                                     </label>
 
                                 </div>
-                                @php
+                                {{-- @php
                                     $lihat = $permissions->filter(
                                         fn($p) => str_starts_with($p->nama_permission, 'lihat'),
                                     );
@@ -110,111 +110,27 @@
                                     $export = $permissions->filter(
                                         fn($p) => str_starts_with($p->nama_permission, 'export'),
                                     );
-                                @endphp
+                                @endphp --}}
 
 
                                 <div class="row">
 
-                                    <!-- LIHAT -->
-                                    <div class="col-md-2">
-                                        <h6 class="mb-3">Lihat</h6>
+                                    @foreach (['lihat', 'tambah', 'edit', 'hapus', 'buat', 'export'] as $group)
+                                        <div class="col-md-2">
+                                            <h6 class="mb-3 text-capitalize">{{ $group }}</h6>
 
-                                        @foreach ($lihat as $permission)
-                                            <div class="mb-2">
-                                                <label>
-                                                    <input type="checkbox" class="permission-checkbox" name="permissions[]"
-                                                        value="{{ $permission->id }}"
-                                                        {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
-                                                    {{ $permission->nama_permission }}
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-
-                                    <!-- TAMBAH -->
-                                    <div class="col-md-2">
-                                        <h6 class="mb-3">Tambah</h6>
-
-                                        @foreach ($tambah as $permission)
-                                            <div class="mb-2">
-                                                <label>
-                                                    <input type="checkbox" class="permission-checkbox" name="permissions[]"
-                                                        value="{{ $permission->id }}"
-                                                        {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
-                                                    {{ $permission->nama_permission }}
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-
-                                    <!-- EDIT -->
-                                    <div class="col-md-2">
-                                        <h6 class="mb-3">Edit</h6>
-
-                                        @foreach ($edit as $permission)
-                                            <div class="mb-2">
-                                                <label>
-                                                    <input type="checkbox" class="permission-checkbox" name="permissions[]"
-                                                        value="{{ $permission->id }}"
-                                                        {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
-                                                    {{ $permission->nama_permission }}
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-
-                                    <!-- HAPUS -->
-                                    <div class="col-md-2">
-                                        <h6 class="mb-3">Hapus</h6>
-
-                                        @foreach ($hapus as $permission)
-                                            <div class="mb-2">
-                                                <label>
-                                                    <input type="checkbox" class="permission-checkbox" name="permissions[]"
-                                                        value="{{ $permission->id }}"
-                                                        {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
-                                                    {{ $permission->nama_permission }}
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-
-                                    <!-- BUAT -->
-                                    <div class="col-md-2">
-                                        <h6 class="mb-3">Buat</h6>
-
-                                        @foreach ($buat as $permission)
-                                            <div class="mb-2">
-                                                <label>
-                                                    <input type="checkbox" class="permission-checkbox" name="permissions[]"
-                                                        value="{{ $permission->id }}"
-                                                        {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
-                                                    {{ $permission->nama_permission }}
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
-
-
-                                    <!-- EXPORT -->
-                                    <div class="col-md-2">
-                                        <h6 class="mb-3">Export</h6>
-
-                                        @foreach ($export as $permission)
-                                            <div class="mb-2">
-                                                <label>
-                                                    <input type="checkbox" class="permission-checkbox" name="permissions[]"
-                                                        value="{{ $permission->id }}"
-                                                        {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
-                                                    {{ $permission->nama_permission }}
-                                                </label>
-                                            </div>
-                                        @endforeach
-                                    </div>
+                                            @foreach ($groupedPermissions[$group] ?? [] as $permission)
+                                                <div class="mb-2">
+                                                    <label>
+                                                        <input type="checkbox" class="permission-checkbox"
+                                                            name="permissions[]" value="{{ $permission->id }}"
+                                                            {{ in_array($permission->id, $rolePermissions) ? 'checked' : '' }}>
+                                                        {{ $permission->nama_permission }}
+                                                    </label>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @endforeach
 
                                 </div>
 
@@ -259,23 +175,22 @@
             });
 
         });
-        
-setTimeout(function(){
 
-    let alertCard = document.querySelector('.border-success');
+        setTimeout(function() {
 
-    if(alertCard){
+            let alertCard = document.querySelector('.border-success');
 
-        alertCard.style.transition = "0.5s";
-        alertCard.style.opacity = "0";
+            if (alertCard) {
 
-        setTimeout(()=>{
-            alertCard.remove();
-        },500);
+                alertCard.style.transition = "0.5s";
+                alertCard.style.opacity = "0";
 
-    }
+                setTimeout(() => {
+                    alertCard.remove();
+                }, 500);
 
-},4000);
+            }
 
+        }, 4000);
     </script>
 @endsection

@@ -97,7 +97,9 @@
                                                             <th>Status</th>
                                                             <th>File</th>
                                                             <th>Dibuat Oleh</th>
+                                                            @if(hasPermission('edit', 'laporan_retur') || hasPermission('hapus', 'laporan_retur'))
                                                             <th width="100">Action</th>
+                                                            @endif
                                                         </tr>
                                                     </thead>
 
@@ -164,17 +166,22 @@
 
                                                                 <td>{{ $retur->createdBy->nama ?? '-' }}</td>
 
+                                                                @if(hasPermission('edit', 'laporan_retur') || hasPermission('hapus', 'laporan_retur'))
                                                                 <td>
-                                                                    <a href="{{ route('laporan.retur.show', $retur->id) }}"
+                                                                    {{-- <a href="{{ route('laporan.retur.show', $retur->id) }}"
                                                                         class="btn btn-sm btn-info"
                                                                         onclick="event.stopPropagation()">
                                                                         <i class="feather icon-eye"></i>
-                                                                    </a>
+                                                                    </a> --}}
 
+                                                                    
+                                                                    @if(hasPermission('edit', 'laporan_retur'))
                                                                     <a href="{{ route('laporan.retur.edit', $retur->id) }}" class="btn btn-sm btn-warning">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
+                                                                    @endif
                                                                 </td>
+                                                                @endif
 
                                                             </tr>
 
@@ -189,7 +196,7 @@
                                                                                 <tr>
                                                                                     <th>SKU</th>
                                                                                     <th>Nama Barang</th>
-                                                                                    <th>Qty Beli</th>
+                                                                                    <th>Qty Dijual</th>
                                                                                     <th>Qty Retur</th>
                                                                                     <th>No. Resi</th>
                                                                                     <th>Keterangan Item</th>

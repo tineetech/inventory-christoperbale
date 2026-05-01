@@ -122,9 +122,11 @@
                                                 style="width:150px">
 
                                         </div>
+                                        @if(hasPermission('tambah', 'supplier'))
                                         <a href="{{ route('supplier.create') }}" class="btn btn-primary btn-sm">
                                             <i class="feather icon-plus"></i> Tambah Supplier
                                         </a>
+                                        @endif
 
                                     </div>
                                 </div>
@@ -153,8 +155,10 @@
                                                             </th>
 
                                                             <th>Keterangan</th>
-
+                                                            
+                                                            @if(hasPermission('edit', 'supplier') || hasPermission('hapus', 'supplier'))
                                                             <th width="140">Action</th>
+                                                            @endif
 
                                                         </tr>
                                                     </thead>
@@ -184,13 +188,16 @@
                                                                 <td>
                                                                     <span class="text-muted">{{ $sup->keterangan }}</span>
                                                                 </td>
-
+                                                                @if(hasPermission('edit', 'supplier') || hasPermission('hapus', 'supplier'))
                                                                 <td>
 
+                                                                    @if(hasPermission('edit', 'supplier'))
                                                                     <a href="{{ route('supplier.edit', $sup->id) }}" class="btn btn-sm btn-info action-btn">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
+                                                                    @endif
 
+                                                                    @if(hasPermission('hapus', 'supplier'))
                                                                     <form id="delete-form-{{ $sup->id }}" 
                                                                         action="{{ route('supplier.destroy', $sup->id) }}" 
                                                                         method="POST" 
@@ -208,7 +215,9 @@
                                                                         </button>
 
                                                                     </form>
+                                                                    @endif
                                                                 </td>
+                                                                @endif
 
                                                             </tr>
                                                         @endforeach

@@ -90,9 +90,12 @@
                                                 placeholder="Search data riwayat stok..." style="width:150px">
 
                                         </div>
+
+                                        @if(hasPermission('tambah', 'manajemen_stok'))
                                         <a href="{{ route('manage-stok.create') }}" class="btn btn-primary btn-sm">
                                             <i class="feather icon-plus"></i> Tambah Manajemen Stok
                                         </a>
+                                        @endif
 
                                     </div>
                                 </div>
