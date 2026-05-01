@@ -14,7 +14,7 @@
 
     <div class="sidenav-divider mt-0"></div>
 
-    <ul class="sidenav-inner py-1">
+    <ul class="sidenav-inner py-1 pb-5">
 
         <!-- DASHBOARD -->
         @if(hasPermission('lihat', 'dashboard'))
