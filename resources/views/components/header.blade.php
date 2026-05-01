@@ -1,9 +1,9 @@
 <nav class="layout-navbar navbar navbar-expand-lg align-items-lg-center bg-dark container-p-x" id="layout-navbar">
 
     <!-- Brand demo (see assets/css/demo/demo.css) -->
-    <a href="index.html" class="navbar-brand app-brand demo d-lg-none py-0 mr-4">
-        <span class="app-brand-logo demo">
-            <img src="{{ asset('assets/img/logo-inv.png') }}" alt="Brand Logo" class="img-fluid">
+    <a href="" class="navbar-brand app-brand demo d-lg-none py-0 mr-4">
+        <span class="">
+            <img src="{{ asset('assets/img/logo-inv.png') }}" style="width:40px;" alt="Brand Logo" class="img-fluid">
         </span>
         <span class="app-brand-text demo font-weight-normal ml-2">POS Inventory</span>
     </a>
