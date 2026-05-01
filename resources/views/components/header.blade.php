@@ -5,7 +5,7 @@
         <span class="app-brand-logo demo">
             <img src="{{ asset('assets/img/logo-dark.png') }}" alt="Brand Logo" class="img-fluid">
         </span>
-        <span class="app-brand-text demo font-weight-normal ml-2">Empire</span>
+        <span class="app-brand-text demo font-weight-normal ml-2">POS Inventory</span>
     </a>
 
     <!-- Sidenav toggle (see assets/css/demo/demo.css) -->

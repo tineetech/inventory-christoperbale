@@ -1,4 +1,4 @@
-<div id="layout-sidenav" class="layout-sidenav sidenav sidenav-vertical bg-white logo-dark">
+<div id="layout-sidenav" style="z-index: 9999" class="layout-sidenav sidenav sidenav-vertical bg-white logo-dark">
 
     <div class="app-brand demo">
         <span class="app-brand-logo demo">
