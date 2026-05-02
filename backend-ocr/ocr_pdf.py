@@ -40,12 +40,15 @@ def extract_resi_from_barcode_cv(img_cv):
 
 
 def extract_items_from_img_cv(img_cv):
-    """Parse tabel produk dari numpy array BGR — logic sama dengan extract_shopee_items di ocr.py"""
+    """
+    Parse tabel produk dari numpy array BGR.
+    Support nama produk multi-baris (wrap).
+    """
     gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
     gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
     height, width = gray.shape
 
-    # Cari area tabel
+    # --- Cari area tabel ---
     table_gray = None
     for start_pct in [0.55, 0.60, 0.65, 0.70]:
         y_start = int(height * start_pct)
@@ -66,17 +69,17 @@ def extract_items_from_img_cv(img_cv):
         config="--psm 6"
     )
 
-    # Cluster words by Y position
+    # --- Cluster words by Y position ---
     words_list = []
     for i, word in enumerate(data['text']):
         if not word.strip() or data['conf'][i] < 0:
             continue
         words_list.append({
             'text': word,
-            'x': data['left'][i],
-            'y': data['top'][i],
-            'w': data['width'][i],
-            'h': data['height'][i],
+            'x'   : data['left'][i],
+            'y'   : data['top'][i],
+            'w'   : data['width'][i],
+            'h'   : data['height'][i],
         })
 
     if not words_list:
@@ -94,12 +97,11 @@ def extract_items_from_img_cv(img_cv):
             current_row.sort(key=lambda r: r['x'])
             rows.append(current_row)
             current_row = [w]
-
     if current_row:
         current_row.sort(key=lambda r: r['x'])
         rows.append(current_row)
 
-    # Cari header
+    # --- Cari header row ---
     header_row = None
     for row in rows:
         line_text = " ".join(w['text'] for w in row)
@@ -111,7 +113,7 @@ def extract_items_from_img_cv(img_cv):
         print("[WARN PDF] Header tabel tidak ditemukan")
         return []
 
-    # Posisi kolom
+    # --- Posisi kolom dari header ---
     col_x = {}
     for w in header_row:
         t = w['text'].lower().strip('#').strip()
@@ -128,40 +130,82 @@ def extract_items_from_img_cv(img_cv):
 
     sku_x     = col_x['sku']
     variasi_x = col_x.get('variasi', width * 0.65)
-    qty_x     = col_x.get('qty', width * 0.85)
+    qty_x     = col_x.get('qty',     width * 0.85)
     header_y  = header_row[0]['y']
 
-    items = []
+    # ----------------------------------------------------------------
+    # Kelompokkan rows menjadi "item groups"
+    # Item baru: line_text diawali angka (nomor urut) diikuti spasi + huruf
+    # Toleran terhadap OCR noise (misal '1Christian' → tetap match r'^\d+\s*\S')
+    # Baris wrap: tidak diawali angka, atau angka tapi bukan nomor urut item
+    # ----------------------------------------------------------------
+    item_groups: list[list] = []   # tiap elemen = list of rows (1 item)
+
     for row in rows:
         if row[0]['y'] <= header_y:
             continue
 
         line_text = " ".join(w['text'] for w in row)
 
+        # Sentinel: baris "Pesan:" → stop
         if re.match(r'Pesan\s*:', line_text, re.IGNORECASE):
             break
-        if not re.match(r'^\d+', line_text):
-            continue
 
-        nama_words, sku_words, var_words, qty_words = [], [], [], []
+        # Deteksi item baru: line_text diawali angka kecil (1-99) lalu spasi/huruf
+        # AND word paling kiri ada di zona kolom nama (bukan zona SKU/variasi/qty)
+        leftmost = min(row, key=lambda w: w['x'])
+        line_starts_with_num = bool(re.match(r'^\d{1,2}[\s\.]', line_text))
+        leftmost_in_nama_zone = leftmost['x'] < sku_x
 
-        for w in row:
-            x = w['x']
-            if x < sku_x - 10:
-                nama_words.append(w['text'])
-            elif x < variasi_x - 10:
-                sku_words.append(w['text'])
-            elif x < qty_x - 10:
-                var_words.append(w['text'])
-            else:
-                qty_words.append(w['text'])
+        # Fallback: kalau line_text diawali angka tapi tanpa spasi (OCR noise)
+        # cek apakah word pertama murni angka kecil
+        if not line_starts_with_num:
+            first_word = row[0]['text'] if row else ''
+            line_starts_with_num = bool(re.match(r'^\d{1,2}$', first_word))
 
-        nama    = re.sub(r'^\d+\s*', '', " ".join(nama_words)).strip()
-        sku     = " ".join(sku_words).strip()
-        variasi = " ".join(var_words).strip()
-        qty_str = " ".join(qty_words).strip()
+        is_new_item = line_starts_with_num and leftmost_in_nama_zone
+
+        print(f"[ROW] y={row[0]['y']} is_new={is_new_item} text={repr(line_text[:60])}")
+
+        if is_new_item:
+            item_groups.append([row])
+        elif item_groups:
+            # Baris lanjutan (wrap nama produk / kolom lain)
+            item_groups[-1].append(row)
+        # Kalau belum ada grup, skip (sisa header dll)
+
+    # ----------------------------------------------------------------
+    # Parse tiap grup → 1 item
+    # ----------------------------------------------------------------
+    items = []
+
+    for group in item_groups:
+        nama_parts  = []
+        sku_parts   = []
+        var_parts   = []
+        qty_parts   = []
+
+        for row in group:
+            for w in row:
+                x = w['x']
+                t = w['text']
+                if x < sku_x - 10:
+                    nama_parts.append(t)
+                elif x < variasi_x - 10:
+                    sku_parts.append(t)
+                elif x < qty_x - 10:
+                    var_parts.append(t)
+                else:
+                    qty_parts.append(t)
+
+        # Buang nomor urut dari nama
+        nama    = re.sub(r'^\d+\s*', '', " ".join(nama_parts)).strip()
+        sku     = " ".join(sku_parts).strip()
+        variasi = " ".join(var_parts).strip()
+        qty_str = " ".join(qty_parts).strip()
 
         if not sku:
+            print(f"[SKIP grup, no SKU] nama={repr(nama)}")
             continue
 
         try:
@@ -181,7 +225,7 @@ def extract_items_from_img_cv(img_cv):
 
 
 def extract_text_pdf(pdf_path):
-    """Return (text, items) — sama seperti extract_text di ocr.py"""
+    """Return (text, items)"""
     images = convert_from_path(pdf_path, dpi=300)
     full_text = ""
     all_items = []
@@ -189,11 +233,9 @@ def extract_text_pdf(pdf_path):
     for img_pil in images:
         img_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
 
-        # Resi dari barcode
         resi = extract_resi_from_barcode_cv(img_cv)
 
-        # OCR untuk order_id dll
-        gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+        gray   = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
         thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
         ocr_text = pytesseract.image_to_string(thresh)
 
@@ -202,8 +244,7 @@ def extract_text_pdf(pdf_path):
         else:
             full_text += ocr_text + "\n"
 
-        # Parse tabel produk
         page_items = extract_items_from_img_cv(img_cv)
         all_items.extend(page_items)
 
-    return full_text, all_items  # return tuple seperti ocr.py
+    return full_text, all_items

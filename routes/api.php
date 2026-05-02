@@ -28,6 +28,10 @@ Route::get('/barang/import/template', [BarangImportController::class, 'downloadT
 | IMPORT PENJUALAN
 |--------------------------------------------------------------------------
 */
+Route::post(
+    '/penjualan/import/multiple-resi',
+    [ImportPenjualanController::class, 'importMultipleResi']
+)->name('api.penjualan.import.multiple-resi');
 Route::post('/penjualan/import/tokped-jnt', [ImportPenjualanController::class, 'importTokped']);
 Route::post('/penjualan/import/shopee', [ImportPenjualanController::class, 'importShopee']);
 

@@ -384,6 +384,15 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::delete('/transaksi/penjualan/delete/{id}', [PenjualanController::class, 'destroy'])
         ->name('penjualan.destroy')
         ->middleware('permission:hapus,penjualan');
+
+    Route::get('/transaksi/penjualan/multiple/create', [PenjualanController::class, 'createMultiple'])
+        ->name('penjualan.create.multiple')
+        ->middleware('permission:buat,penjualan');
+
+    Route::post('/transaksi/penjualan/multiple/store', [PenjualanController::class, 'storeMultiple'])
+        ->name('penjualan.store.multiple')
+        ->middleware('permission:buat,penjualan');
+
     Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
     Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
     Route::get('/transaksi/penjualan/{id}/struk/download', [PenjualanController::class, 'strukDownload'])->name('penjualan.struk.download');

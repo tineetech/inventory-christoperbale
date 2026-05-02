@@ -32,6 +32,7 @@
     <link rel="stylesheet" href="{{ asset('assets/css/bootstrap-material.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/shreerang-material.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/uikit.css') }}">
+    <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
 
     <!-- Libs -->
     <link rel="stylesheet" href="{{ asset('assets/libs/perfect-scrollbar/perfect-scrollbar.css') }}">

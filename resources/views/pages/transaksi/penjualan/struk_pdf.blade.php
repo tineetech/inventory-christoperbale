@@ -48,7 +48,7 @@
             margin-top: 16px;
             text-align: center;
             font-size: 10px;
-            color: #aaa;
+            color: #000;
             border-top: 1px dashed #ddd;
             padding-top: 10px;
         }
@@ -99,7 +99,7 @@
         </tr>
     </table> --}}
 
-    <div class="footer">{{ $nomorStruk }}</div>
+    <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
 
 </body>
 </html>

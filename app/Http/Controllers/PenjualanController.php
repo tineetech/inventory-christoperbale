@@ -12,6 +12,7 @@ use App\Models\PenjualanDetail;
 use App\Models\StokBarang;
 use App\Models\StokMovement;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -32,7 +33,7 @@ class PenjualanController extends Controller
     {
         $dropshippers = Dropshipper::all();
         $supplier = Supplier::all();
-        $kode = 'PJ-' . date('Ymd') . '-' . rand(100,999);
+        $kode = 'PJ-' . date('Ymd') . '-' . rand(100, 999);
         return view('pages.transaksi.penjualan.create', compact('dropshippers', 'supplier', 'kode'));
     }
 
@@ -71,9 +72,9 @@ class PenjualanController extends Controller
 
             if ($request->hasFile('file_resi') && $request->file('file_resi')->isValid()) {
                 // dd('adafile');
-                
+
                 $file = $request->file('file_resi');
-                
+
                 if ($file->getClientOriginalExtension() === 'pdf') {
                     // dd('ini file pdf');
 
@@ -100,7 +101,6 @@ class PenjualanController extends Controller
                     Storage::disk('public')->put($fileName, $imageData);
 
                     $fileResiPath = $fileName;
-
                 } else {
                     // kalau bukan PDF → langsung simpan
                     $fileResiPath = $file->store('resi', 'public');
@@ -182,13 +182,182 @@ class PenjualanController extends Controller
             return redirect()
                 ->route('penjualan.struk', $penjualan->id)
                 ->with('success', 'Penjualan berhasil disimpan');
-
         } catch (\Exception $e) {
 
             DB::rollBack();
 
             return back()->with('error', 'Terjadi kesalahan : ' . $e->getMessage());
         }
+    }
+
+    public function createMultiple()
+    {
+        $dropshippers = Dropshipper::all();
+        $supplier = Supplier::all();
+        $kode = 'PJ-' . date('Ymd') . '-' . rand(100, 999);
+        return view('pages.transaksi.penjualan.create_multi', compact('dropshippers', 'supplier', 'kode'));
+    }
+
+    public function storeMultiple(Request $request)
+    {
+        $request->validate(['payload' => 'required|string']);
+
+        $payload = json_decode($request->input('payload'), true);
+        if (!is_array($payload) || count($payload) === 0) {
+            return back()->with('error', 'Payload kosong atau tidak valid.');
+        }
+
+        $userId   = Auth::guard('pengguna')->user()->id;
+        $savedIds = [];
+        $skipped  = [];
+
+        foreach ($payload as $index => $data) {
+
+            $resiLabel = 'Resi #' . ($index + 1);
+            $items     = $data['items'] ?? [];
+            $nomorResi = $items[0]['nomor_resi'] ?? $data['resi'] ?? null;
+
+            // Pre-flight checks (sama seperti sebelumnya)
+            if (empty($items)) {
+                $skipped[] = ['label' => $resiLabel, 'resi' => $nomorResi ?? '-', 'reason' => 'Tidak ada item.', 'type' => 'no_items'];
+                continue;
+            }
+            if ($nomorResi && \App\Models\Penjualan::where('nomor_resi', $nomorResi)->exists()) {
+                $skipped[] = [
+                    'label' => $resiLabel,
+                    'resi' => $nomorResi,
+                    'reason' => "Nomor resi <strong>{$nomorResi}</strong> sudah ada.",
+                    'type' => 'duplicate_resi'
+                ];
+                continue;
+            }
+
+            // ★ Simpan file resi dari base64 (jika ada)
+            $fileResiPath = null;
+            if (!empty($data['file_resi_base64'])) {
+                try {
+                    $base64   = $data['file_resi_base64'];
+                    // Bersihkan prefix data:image/...;base64, jika masih ada
+                    if (str_contains($base64, ',')) {
+                        $base64 = explode(',', $base64)[1];
+                    }
+                    $imgBin   = base64_decode($base64);
+                    $filename = 'resi_' . ($nomorResi ?? uniqid()) . '_' . time() . '.jpg';
+                    $dir      = storage_path('app/public/resi');
+                    if (!is_dir($dir)) mkdir($dir, 0755, true);
+                    file_put_contents($dir . '/' . $filename, $imgBin);
+                    $fileResiPath = 'resi/' . $filename;   // path relatif dari storage/app/public
+                } catch (\Throwable $ex) {
+                    // Gagal simpan gambar tidak fatal — lanjut tanpa file
+                    Log::warning("[storeMultiple] Gagal simpan file resi: " . $ex->getMessage());
+                }
+            }
+
+            DB::beginTransaction();
+            try {
+                $isDraft       = $data['is_draft']      ?? 'no';
+                $kodePenjualan = $data['kode_penjualan'] ?? ('PJL-' . now()->format('YmdHis') . '-' . ($index + 1));
+                $tanggal       = $data['tanggal']        ?? now()->format('Y-m-d');
+                $nomorPesanan  = $items[0]['nomor_pesanan']   ?? null;
+                $nomorTransaksi = $items[0]['nomor_transaksi'] ?? null;
+
+                if (\App\Models\Penjualan::where('kode_penjualan', $kodePenjualan)->exists()) {
+                    $kodePenjualan .= '-' . ($index + 1) . '-' . now()->format('His');
+                }
+
+                $totalHargaCalc = 0;
+                foreach ($items as $item) {
+                    $totalHargaCalc += (int)($item['qty'] ?? 0) * (float)($item['harga_2'] ?? 0);
+                }
+
+                if ($isDraft === 'no') {
+                    foreach ($items as $item) {
+                        $stok    = \App\Models\StokBarang::where('barang_id', $item['id'])->lockForUpdate()->first();
+                        $stokAda = $stok->jumlah_stok ?? 0;
+                        if ($stokAda < (int)($item['qty'] ?? 0)) {
+                            throw new \Exception("Stok tidak cukup untuk barang ID {$item['id']} (ada: {$stokAda}, butuh: {$item['qty']})");
+                        }
+                    }
+                }
+
+                $penjualan = \App\Models\Penjualan::create([
+                    'kode_penjualan'  => $kodePenjualan,
+                    'nomor_resi'      => $nomorResi,
+                    'nomor_pesanan'   => $nomorPesanan,
+                    'nomor_transaksi' => $nomorTransaksi,
+                    'dropshipper_id'  => $data['dropshipper_id'] ?? null,
+                    'tanggal'         => $tanggal,
+                    'total_harga'     => $totalHargaCalc,
+                    'keterangan'      => $data['keterangan']  ?? null,
+                    'scan_out'        => $data['scan_out']    ?? 'pending',
+                    'is_draft'        => $isDraft,
+                    'file_resi'       => $fileResiPath,   // ★ simpan path
+                    'created_by'      => $userId,
+                ]);
+
+                foreach ($items as $item) {
+                    $barangId = $item['id'];
+                    $qty      = (int)($item['qty'] ?? 0);
+                    $harga    = (float)($item['harga_2'] ?? 0);
+
+                    \App\Models\PenjualanDetail::create([
+                        'penjualan_id'    => $penjualan->id,
+                        'barang_id'       => $barangId,
+                        'qty'             => $qty,
+                        'harga'           => $harga,
+                        'subtotal'        => $qty * $harga,
+                        'nomor_resi'      => $item['nomor_resi']      ?? $nomorResi,
+                        'nomor_pesanan'   => $item['nomor_pesanan']   ?? $nomorPesanan,
+                        'nomor_transaksi' => $item['nomor_transaksi'] ?? null,
+                    ]);
+
+                    if ($isDraft === 'no') {
+                        $stok        = \App\Models\StokBarang::where('barang_id', $barangId)->lockForUpdate()->first();
+                        $stokSebelum = $stok->jumlah_stok ?? 0;
+                        $stokSesudah = $stokSebelum - $qty;
+
+                        \App\Models\StokBarang::updateOrCreate(
+                            ['barang_id' => $barangId],
+                            ['jumlah_stok' => $stokSesudah]
+                        );
+
+                        \App\Models\StokMovement::create([
+                            'barang_id'      => $barangId,
+                            'jenis'          => 'keluar',
+                            'qty'            => $qty,
+                            'stok_sebelum'   => $stokSebelum,
+                            'stok_sesudah'   => $stokSesudah,
+                            'referensi_tipe' => 'penjualan',
+                            'referensi_id'   => $penjualan->id,
+                            'keterangan'     => 'Penjualan ' . $penjualan->kode_penjualan,
+                            'created_by'     => $userId,
+                        ]);
+                    }
+                }
+
+                DB::commit();
+                $savedIds[] = $penjualan->id;
+            } catch (\Exception $e) {
+                DB::rollBack();
+                // ★ Hapus file yang sudah terlanjur disimpan jika transaksi gagal
+                if ($fileResiPath) {
+                    $fullPath = storage_path('app/public/' . $fileResiPath);
+                    if (file_exists($fullPath)) @unlink($fullPath);
+                }
+                $skipped[] = ['label' => $resiLabel, 'resi' => $nomorResi ?? '-', 'reason' => $e->getMessage(), 'type' => 'error'];
+            }
+        } // end foreach
+
+        $totalSaved   = count($savedIds);
+        $totalSkipped = count($skipped);
+
+        if ($totalSaved === 0) {
+            return back()->with('error', 'Semua penjualan gagal disimpan.')->with('store_errors', $skipped);
+        }
+
+        return redirect()->route('penjualan.index')
+            ->with('success', "{$totalSaved} penjualan berhasil disimpan." . ($totalSkipped > 0 ? " {$totalSkipped} dilewati." : ''))
+            ->with('store_warnings', $skipped);
     }
 
     public function show(string $id)
@@ -202,13 +371,13 @@ class PenjualanController extends Controller
         $penjualan = Penjualan::with('detail.barang.stok')->findOrFail($id);
         $dropshippers = Dropshipper::all();
 
-        return view('pages.transaksi.penjualan.edit', compact('penjualan','dropshippers'));
+        return view('pages.transaksi.penjualan.edit', compact('penjualan', 'dropshippers'));
     }
-    
+
     public function update(Request $request, $id)
     {
         $request->validate([
-            'kode_penjualan' => 'required|string|unique:penjualan,kode_penjualan,'.$id,
+            'kode_penjualan' => 'required|string|unique:penjualan,kode_penjualan,' . $id,
             'dropshipper_id' => 'nullable|exists:dropshipper,id',
             'tanggal'        => 'required|date',
             'total_harga'    => 'required|numeric|min:0',
@@ -230,9 +399,11 @@ class PenjualanController extends Controller
             $nomorPesanan   = $items[0]['nomor_pesanan'] ?? null;
             $nomorTransaksi = $items[0]['nomor_transaksi'] ?? null;
 
-            if ($nomorResi && Penjualan::where('nomor_resi', $nomorResi)
-                    ->where('id', '!=', $penjualan->id)
-                    ->exists()) {
+            if (
+                $nomorResi && Penjualan::where('nomor_resi', $nomorResi)
+                ->where('id', '!=', $penjualan->id)
+                ->exists()
+            ) {
                 throw new \Exception("Nomor resi sudah digunakan, tidak boleh duplikat");
             }
 
@@ -293,7 +464,7 @@ class PenjualanController extends Controller
                     if ($stokSebelum < $newQty) {
                         throw new \Exception(
                             "Stok tidak cukup untuk barang ID {$barangId}. " .
-                            "Stok tersedia: {$stokSebelum}, dibutuhkan: {$newQty}"
+                                "Stok tersedia: {$stokSebelum}, dibutuhkan: {$newQty}"
                         );
                     }
                     $stokSesudah = $stokSebelum - $newQty;
@@ -324,7 +495,7 @@ class PenjualanController extends Controller
                     if ($delta > 0 && $stokSebelum < $delta) {
                         throw new \Exception(
                             "Stok tidak cukup untuk barang ID {$barangId}. " .
-                            "Stok tersedia: {$stokSebelum}, tambahan dibutuhkan: {$delta}"
+                                "Stok tersedia: {$stokSebelum}, tambahan dibutuhkan: {$delta}"
                         );
                     }
 
@@ -414,7 +585,6 @@ class PenjualanController extends Controller
 
             return redirect()->route('penjualan.index')
                 ->with('success', 'Penjualan berhasil diupdate');
-
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Terjadi kesalahan : ' . $e->getMessage());
@@ -467,7 +637,7 @@ class PenjualanController extends Controller
                         'stok_sesudah'   => $stokSesudah,
                         'referensi_tipe' => 'penjualan_delete',
                         'referensi_id'   => $penjualan->id,
-                        'keterangan'     => 'Hapus penjualan '.$penjualan->kode_penjualan,
+                        'keterangan'     => 'Hapus penjualan ' . $penjualan->kode_penjualan,
                         'created_by'     => Auth::guard('pengguna')->user()->id
                     ]);
                 }
@@ -494,14 +664,13 @@ class PenjualanController extends Controller
             return redirect()
                 ->route('penjualan.index')
                 ->with('success', 'Penjualan berhasil dihapus');
-
         } catch (\Exception $e) {
 
             DB::rollBack();
 
             return back()->with(
                 'error',
-                'Terjadi kesalahan : '.$e->getMessage()
+                'Terjadi kesalahan : ' . $e->getMessage()
             );
         }
     }
@@ -547,7 +716,7 @@ class PenjualanController extends Controller
             if (file_exists($resiPath)) {
                 if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
                     $resiBase64 = base64_encode(file_get_contents($resiPath));
-                    $resiMime   = match($ext) {
+                    $resiMime   = match ($ext) {
                         'jpg', 'jpeg' => 'image/jpeg',
                         'png'         => 'image/png',
                         'webp'        => 'image/webp',
@@ -560,7 +729,11 @@ class PenjualanController extends Controller
         }
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pages.transaksi.penjualan.struk_pdf', compact(
-            'penjualan', 'nomorStruk', 'resiBase64', 'resiMime', 'resiIsPdf'
+            'penjualan',
+            'nomorStruk',
+            'resiBase64',
+            'resiMime',
+            'resiIsPdf'
         ))->setPaper([0, 0, 419.53, 595.28]); // A5
 
         $filename = 'struk-' . $nomorStruk . '.pdf';

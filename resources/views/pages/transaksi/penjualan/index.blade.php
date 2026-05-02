@@ -51,18 +51,25 @@
                                 <div style="border:none !important" class="card-header">
 
                                     {{-- Row 1: Title + Tambah button --}}
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <div class="d-flex justify-content-between align-items-center mb-2 flex-row sm-flex-col">
                                         <h6 class="card-header-title mb-0">
                                             <i class="feather icon-truck mr-2"></i> Data Penjualan
                                             <span id="lastRefreshed"
                                                 class="text-muted small ml-1 d-none d-md-inline"></span>
                                         </h6>
                                         @if(hasPermission('tambah', 'penjualan'))
-                                        <a href="{{ route('penjualan.create') }}" class="btn btn-primary btn-sm">
-                                            <i class="feather icon-plus"></i>
-                                            <span class="d-none d-sm-inline">Tambah Penjualan</span>
-                                            <span class="d-inline d-sm-none">Tambah</span>
-                                        </a>
+                                        <div class="d-flex g-5">
+                                            <a href="{{ route('penjualan.create.multiple') }}" class="btn btn-info btn-sm">
+                                                <i class="feather icon-plus"></i>
+                                                <span class="d-none d-sm-inline">Buat Penjualan (Multiple)</span>
+                                                <span class="d-inline d-sm-none">Tambah (Multiple)</span>
+                                            </a>
+                                            <a href="{{ route('penjualan.create') }}" class="btn btn-primary btn-sm">
+                                                <i class="feather icon-plus"></i>
+                                                <span class="d-none d-sm-inline">Buat Penjualan (Single)</span>
+                                                <span class="d-inline d-sm-none">Tambah (Single)</span>
+                                            </a>
+                                        </div>
                                         @endif
                                     </div>
 
