@@ -138,6 +138,14 @@ class BarangController extends Controller
 
             $barang = Barang::findOrFail($id);
 
+            if ($barang->pembelianDetail->count() > 0) {
+                throw new \Exception("Barang tidak bisa dihapus karena masih digunakan di data pembelian !");
+            }
+            
+            if ($barang->penjualanDetail->count() > 0) {
+                throw new \Exception("Barang tidak bisa dihapus karena masih digunakan di data penjualan !");
+            }
+
             // hapus histori stok
             StokMovement::where('barang_id', $barang->id)->delete();
 

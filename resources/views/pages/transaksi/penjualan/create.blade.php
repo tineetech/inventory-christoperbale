@@ -90,7 +90,7 @@
 
                                     <label class="form-label">File resi </label>
 
-                                    <input type="file" name="file_resi" class="form-control" required />
+                                    <input type="file" name="file_resi" class="form-control" />
 
                                 </div>
                                 {{-- DROPSHIPPER --}}

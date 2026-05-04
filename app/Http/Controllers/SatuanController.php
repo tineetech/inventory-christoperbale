@@ -64,6 +64,9 @@ class SatuanController extends Controller
     public function destroy(string $id)
     {
         $satuan = Satuan::findOrFail($id);
+        if ($satuan->barang->count() > 0) {
+            return redirect()->route('satuan.index')->with('error', 'Satuan tidak bisa dihapus karena masih digunakan di data barang !');
+        }
         $satuan->delete();
 
         return redirect()->route('satuan.index')->with('success', 'Satuan berhasil dihapus.');

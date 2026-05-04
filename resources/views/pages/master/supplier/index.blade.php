@@ -19,6 +19,23 @@
                     <div class="row">
                         <div class="col-md-12">
 
+                            @if(session('error'))
+                                <div class="card mb-4 border-danger">
+                                    <div class="card-body d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <h5 class="mb-1 text-danger">
+                                                <i class="feather icon-alert-circle"></i> Gagal
+                                            </h5>
+                                            <p class="mb-0 text-muted">
+                                                {{ session('error') }}
+                                            </p>
+                                        </div>
+                                        <div class="display-4 text-danger">
+                                            <i class="feather icon-x-circle"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endif
                             @if(session('success'))
                             <div class="card mb-4 border-success">
 

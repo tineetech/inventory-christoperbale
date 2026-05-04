@@ -76,6 +76,12 @@ class DropshipperController extends Controller
     public function destroy(string $id)
     {
         $dropshipper = Dropshipper::findOrFail($id);
+
+        if ($dropshipper->penjualan->count() > 0) {
+            return redirect()->route('dropshipper.index')
+                ->with('error', 'Dropshipper tidak bisa dihapus karena masih digunakan pada data penjualan!');
+        }
+        
         $dropshipper->delete();
 
         return redirect()->route('dropshipper.index')->with('success', 'Dropshipper berhasil dihapus.');
