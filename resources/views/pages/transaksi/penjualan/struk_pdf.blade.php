@@ -47,7 +47,7 @@
         .footer {
             margin-top: 16px;
             text-align: center;
-            font-size: 10px;
+            font-size: 20px;
             color: #000;
             border-top: 1px dashed #ddd;
             padding-top: 10px;

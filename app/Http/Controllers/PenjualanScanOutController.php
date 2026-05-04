@@ -68,9 +68,9 @@ class PenjualanScanOutController extends Controller
     public function list()
     {
         $penjualan = Penjualan::with(['dropshipper', 'detail.barang.stok'])
-            // ->orderByDesc('tanggal')
-            ->whereDate('tanggal', today())
-            ->orderByDesc('id')
+            ->orderByDesc('tanggal')
+            // ->whereDate('tanggal', today())
+            // ->orderByDesc('id')
             ->get()
             ->map(function ($pj) {
                 return [

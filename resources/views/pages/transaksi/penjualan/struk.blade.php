@@ -176,7 +176,8 @@
         .struk-footer {
             text-align: center;
             font-size: 11px;
-            color: #9ca3af;
+            font-weight: bold;
+            color: #000;
             padding: 12px 20px 16px;
             border-top: 1px dashed #e5e7eb;
         }

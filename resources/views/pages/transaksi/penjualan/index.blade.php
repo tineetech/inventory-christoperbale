@@ -61,14 +61,14 @@
                                         <div class="d-flex g-5">
                                             <a href="{{ route('penjualan.create.multiple') }}" class="btn btn-info btn-sm">
                                                 <i class="feather icon-plus"></i>
-                                                <span class="d-none d-sm-inline">Buat Penjualan (Multiple)</span>
-                                                <span class="d-inline d-sm-none">Tambah (Multiple)</span>
+                                                <span class="d-none d-sm-inline">Buat Penjualan</span>
+                                                <span class="d-inline d-sm-none">Tambah</span>
                                             </a>
-                                            <a href="{{ route('penjualan.create') }}" class="btn btn-primary btn-sm">
+                                            {{-- <a href="{{ route('penjualan.create') }}" class="btn btn-primary btn-sm">
                                                 <i class="feather icon-plus"></i>
                                                 <span class="d-none d-sm-inline">Buat Penjualan (Single)</span>
                                                 <span class="d-inline d-sm-none">Tambah (Single)</span>
-                                            </a>
+                                            </a> --}}
                                         </div>
                                         @endif
                                     </div>
@@ -426,8 +426,11 @@
         // =====================================================
         function applyFilters() {
             const keyword = (document.getElementById('searchTable').value || '').toLowerCase();
-            const dateFrom = document.getElementById('dateFrom').value; // format: YYYY-MM-DD
+            const dateFrom = document.getElementById('dateFrom').value;
             const dateTo = document.getElementById('dateTo').value;
+
+            // Kalau ada keyword pencarian, abaikan filter tanggal
+            const hasKeyword = keyword.trim().length > 0; // ← TAMBAH INI
 
             filteredData = allData.filter(pj => {
                 const textMatch = [
@@ -435,33 +438,17 @@
                     pj.nomor_transaksi, pj.dropshipper, pj.keterangan, pj.scan_out
                 ].filter(Boolean).some(v => v.toLowerCase().includes(keyword));
 
-                // Normalisasi tanggal dari API → YYYY-MM-DD
-                // Handle format: "2026-04-18", "2026-04-18T00:00:00.000000Z", "18-04-2026", dll
-                let tanggalStr = pj.tanggal ?? '';
-
-                // Kalau ada 'T' (ISO format), ambil bagian tanggalnya saja
-                // Handle ISO (2026-04-28T00:00:00)
-                if (tanggalStr.includes('T')) {
-                    tanggalStr = tanggalStr.split('T')[0];
-                }
-
-                // Handle MySQL (2026-04-28 00:00:00)
-                if (tanggalStr.includes(' ')) {
-                    tanggalStr = tanggalStr.split(' ')[0];
-                }
-
-                // Kalau format DD-MM-YYYY atau DD/MM/YYYY, konversi ke YYYY-MM-DD
-                const dmyMatch = tanggalStr.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
-                if (dmyMatch) {
-                    tanggalStr = `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
-                }
-
+                // Skip date filter kalau ada keyword ← UBAH BAGIAN INI
                 let dateMatch = true;
-                if (dateFrom && dateFrom !== '') {
-                    dateMatch = tanggalStr >= dateFrom;
-                }
-                if (dateTo && dateTo !== '') {
-                    dateMatch = dateMatch && (tanggalStr <= dateTo);
+                if (!hasKeyword) {
+                    let tanggalStr = pj.tanggal ?? '';
+                    if (tanggalStr.includes('T')) tanggalStr = tanggalStr.split('T')[0];
+                    if (tanggalStr.includes(' ')) tanggalStr = tanggalStr.split(' ')[0];
+                    const dmyMatch = tanggalStr.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
+                    if (dmyMatch) tanggalStr = `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
+
+                    if (dateFrom) dateMatch = tanggalStr >= dateFrom;
+                    if (dateTo) dateMatch = dateMatch && (tanggalStr <= dateTo);
                 }
 
                 return textMatch && dateMatch;
@@ -472,6 +459,16 @@
             renderTable();
         }
 
+        // Di event listener searchTable
+        document.getElementById('searchTable').addEventListener('keyup', function() {
+            const hasKeyword = this.value.trim().length > 0;
+            
+            // Tunjukkan/sembunyikan info bahwa filter tanggal dinonaktifkan
+            document.getElementById('dateFrom').style.opacity = hasKeyword ? '0.4' : '1';
+            document.getElementById('dateTo').style.opacity = hasKeyword ? '0.4' : '1';
+            
+            applyFilters();
+        });
         document.addEventListener('DOMContentLoaded', () => {
             focusScan();
 

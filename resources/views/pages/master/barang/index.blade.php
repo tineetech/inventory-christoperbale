@@ -223,15 +223,11 @@
                                                                     {{ $sup->sku }}
                                                                 </td> --}}
                                                                 <td>
-                                                                    <div class="d-flex flex-column  align-items-center"
-                                                                        style="padding-block: 20px">
-                                                                        {{-- Barcode tanpa teks --}}
-                                                                        <div style="transform: scaleY(1.5)">
-                                                                            {!! DNS1D::getBarcodeHTML($sup->sku, 'C128', 2, 25) !!}
-                                                                        </div>
-                                                                        {{-- Teks SKU dari blade --}}
-                                                                        <small class="mt-1"
-                                                                            style="font-size:15px; letter-spacing:1px">
+                                                                    <div class="d-flex flex-column align-items-center" style="padding-block: 20px">
+                                                                        {{-- QR Code --}}
+                                                                        {!! DNS2D::getBarcodeHTML($sup->sku, 'QRCODE', 3, 3) !!}
+                                                                        {{-- Teks SKU --}}
+                                                                        <small class="mt-1" style="font-size:15px; letter-spacing:1px">
                                                                             {{ $sup->sku }}
                                                                         </small>
                                                                     </div>

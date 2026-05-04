@@ -24,7 +24,8 @@ class PenjualanController extends Controller
             'dropshipper',
             'user',
             'detail.barang.stok'
-        ])->whereDate('tanggal', today())->get();
+        ])->get();
+        // dd($penjualan);
 
         return view('pages.transaksi.penjualan.index', compact('penjualan'));
     }

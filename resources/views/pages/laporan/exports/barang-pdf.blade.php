@@ -90,9 +90,7 @@
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td class="text-center">
-                        <img
-                            src="data:image/png;base64,{{ \Milon\Barcode\Facades\DNS1DFacade::getBarcodePNG($item->sku, 'C128', 2, 50) }}"
-                            alt="barcode-{{ $item->sku }}">
+                        {!! DNS2D::getBarcodeHTML($item->sku, 'QRCODE', 3, 3) !!}
                         <div>{{ $item->sku }}</div>
                     </td>
                     <td>{{ $item->created_at?->format('d/m/Y') ?? '-' }}</td>

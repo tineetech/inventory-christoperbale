@@ -93,9 +93,16 @@
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
                     <td class="barcode-box">
-                        <img
+                        {{-- <img
                             src="data:image/png;base64,{{ \Milon\Barcode\Facades\DNS1DFacade::getBarcodePNG($item->sku, 'C128', 2, 50) }}"
-                            alt="barcode-{{ $item->sku }}">
+                            alt="barcode-{{ $item->sku }}"> --}}
+                            @php
+                                $dns2d = new \Milon\Barcode\DNS2D();
+                            @endphp
+
+                            <img
+                                src="data:image/png;base64,{{ $dns2d->getBarcodePNG($item->sku, 'QRCODE', 3, 3) }}"
+                                alt="barcode-{{ $item->sku }}">
                         <div>{{ $item->sku }}</div>
                     </td>
                     <td>{{ $item->created_at?->format('d/m/Y') ?? '-' }}</td>

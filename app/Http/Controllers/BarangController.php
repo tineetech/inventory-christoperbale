@@ -11,6 +11,7 @@ use App\Models\StokMovement;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Milon\Barcode\DNS1D;
+use Milon\Barcode\DNS2D;
 
 class BarangController extends Controller
 {
@@ -193,50 +194,41 @@ class BarangController extends Controller
         $barang = Barang::findOrFail($id);
         $sku    = $barang->sku;
 
-        // 1. Generate barcode PNG (raw binary)
-        $barcode    = new DNS1D();
-        $barcodePng = base64_decode($barcode->getBarcodePNG($sku, 'C128', 2, 60, [0, 0, 0], true));
+        // 1. Generate QR code PNG (raw binary)
+        $barcode    = new DNS2D();
+        $barcodePng = base64_decode($barcode->getBarcodePNG($sku, 'QRCODE', 10, 10));
 
-        // 2. Load barcode ke GD
+        // 2. Load ke GD
         $barcodeImg = imagecreatefromstring($barcodePng);
         $bcWidth    = imagesx($barcodeImg);
         $bcHeight   = imagesy($barcodeImg);
 
-        // 3. Buat canvas baru: tinggi barcode + ruang teks
-        $textHeight = 20;
-        $padding    = 6;
+        // 3. Canvas dengan ruang teks di bawah
+        $textHeight = 24;
+        $padding    = 8;
         $canvas     = imagecreatetruecolor($bcWidth, $bcHeight + $textHeight + $padding);
 
         // 4. Background putih
+        $white = imagecolorallocate($canvas, 255, 255, 255);
+        imagefill($canvas, 0, 0, $white);
 
-        // 4. Aktifkan transparansi (HAPUS background putih)
-        imagealphablending($canvas, false);
-        imagesavealpha($canvas, true);
-        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127); // 127 = fully transparent
-        imagefill($canvas, 0, 0, $transparent);
-
-        // 5. Set blending true sebelum copy barcode
-        imagealphablending($canvas, true);
-
-        $black = imagecolorallocate($canvas, 0, 0, 0);
-
-        // 5. Copy barcode ke canvas
+        // 5. Copy QR ke canvas
         imagecopy($canvas, $barcodeImg, 0, 0, 0, 0, $bcWidth, $bcHeight);
 
-        // // 6. Tulis teks SKU di tengah bawah
-        // $fontSize  = 4; // built-in GD font (1-5)
-        // $textWidth = imagefontwidth($fontSize) * strlen($sku);
-        // $textX     = (int)(($bcWidth - $textWidth) / 2);
-        // $textY     = $bcHeight + $padding;
-        // imagestring($canvas, $fontSize, $textX, $textY, $sku, $black);
+        // 6. Tulis teks SKU di tengah bawah
+        $black     = imagecolorallocate($canvas, 0, 0, 0);
+        $fontSize  = 4;
+        $textWidth = imagefontwidth($fontSize) * strlen($sku);
+        $textX     = (int)(($bcWidth - $textWidth) / 2);
+        $textY     = $bcHeight + $padding;
+        imagestring($canvas, $fontSize, $textX, $textY, $sku, $black);
 
-        // 7. Output sebagai PNG download
+        // 7. Output PNG download
         header('Content-Type: image/png');
-        header('Content-Disposition: attachment; filename="barcode-' . $sku . '.png"');
+        header('Content-Disposition: attachment; filename="qrcode-' . $sku . '.png"');
 
         imagepng($canvas);
 
-        // 8. Cleanup
         imagedestroy($canvas);
         imagedestroy($barcodeImg);
         exit;

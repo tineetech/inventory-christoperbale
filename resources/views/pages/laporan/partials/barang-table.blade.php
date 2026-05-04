@@ -25,10 +25,7 @@
                 @endphp
                 <tr>
                     <td>
-                        <img
-                            src="data:image/png;base64,{{ \Milon\Barcode\Facades\DNS1DFacade::getBarcodePNG($item->sku, 'C128', 1.6, 38) }}"
-                            alt="barcode-{{ $item->sku }}"
-                            style="width: 140px; max-width: 100%;">
+                         {!! DNS2D::getBarcodeHTML($item->sku, 'QRCODE', 3, 3) !!}
                         <div class="small text-muted mt-1">{{ $item->sku }}</div>
                     </td>
                     <td>{{ $index + 1 }}</td>

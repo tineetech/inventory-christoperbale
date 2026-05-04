@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Penjualan;
 use App\Models\ReturPenjualan;
 use App\Models\ReturPenjualanDetail;
+use App\Models\StokBarang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -150,6 +151,19 @@ class ReturPenjualanController extends Controller
                 [$filePath, $fileOriginalName, $fileMime] = $this->uploadFile($request);
             }
 
+
+            if ($request->status === 'selesai' && $retur->getOriginal('status') !== 'selesai') {
+                foreach ($request->items as $item) {
+                    $stok = StokBarang::where('barang_id', $item['barang_id'])->first();
+                    
+                    StokBarang::updateOrCreate(
+                        ['barang_id' => $item['barang_id']],
+                        ['jumlah_stok' => ($stok->jumlah_stok ?? 0) + $item['qty_retur']]
+                    );
+                    // dd($stok->jumlah_stok + $item['qty_retur']);
+                }
+            }
+
             $retur->update([
                 'tanggal_retur'      => $request->tanggal_retur,
                 'alasan_retur'       => $request->alasan_retur,
@@ -158,6 +172,7 @@ class ReturPenjualanController extends Controller
                 'file_original_name' => $fileOriginalName,
                 'file_mime'          => $fileMime,
             ]);
+
 
             // Sync detail: hapus lama, simpan baru
             $retur->detail()->delete();

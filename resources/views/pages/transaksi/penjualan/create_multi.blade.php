@@ -720,7 +720,7 @@ function buildResiCard(id, resiNumber, prefillResi = '', prefillPesanan = '') {
 
             <div class="form-group col-md-12">
                 <label>
-                    File Resi
+                    File Resi (Image Only)
                     <span class="badge badge-secondary ml-1" style="font-size:.7rem;font-weight:400;">Opsional</span>
                 </label>
                 <div class="file-resi-wrap">
