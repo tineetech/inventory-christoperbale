@@ -59,7 +59,7 @@
                     <td>{{ $item->nomor_pesanan ?: '-' }}</td>
                     {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
-                    <td>{{ date('d M Y', strtotime($item->tanggal)) }}</td>
+                    <td>{{ $item->tanggal }}</td>
                     <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
                     <td>{{ $scanOutLabel }}</td>
                     <td>{{ $draftLabel }}</td>

@@ -95,12 +95,15 @@
                                     <div class="d-flex flex-wrap align-items-center" style="gap:6px">
                                         <input type="date" id="dateFrom" class="form-control form-control-sm"
                                             style="min-width:130px;flex:1 1 130px">
+                                        <input type="time" id="timeFrom" class="form-control form-control-sm"
+                                            style="min-width:100px;flex:1 1 100px">
                                         <span class="text-muted small">s/d</span>
                                         <input type="date" id="dateTo" class="form-control form-control-sm"
                                             style="min-width:130px;flex:1 1 130px">
+                                        <input type="time" id="timeTo" class="form-control form-control-sm"
+                                            style="min-width:100px;flex:1 1 100px">
                                         <input type="text" class="form-control form-control-sm" id="searchTable"
                                             placeholder="Search penjualan..." style="min-width:140px;flex:2 1 160px">
-
                                         <input type="text" class="form-control" id="scanOutPenjualan"
                                             placeholder="Arahkan scanner ke nomor resi..." autocomplete="off"
                                             style="min-width:140px;flex:2 1 160px" inputmode="none">
@@ -425,12 +428,17 @@
         // FILTER & SEARCH
         // =====================================================
         function applyFilters() {
-            const keyword = (document.getElementById('searchTable').value || '').toLowerCase();
+            const keyword  = (document.getElementById('searchTable').value || '').toLowerCase();
             const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo = document.getElementById('dateTo').value;
+            const dateTo   = document.getElementById('dateTo').value;
+            const timeFrom = document.getElementById('timeFrom').value; // "HH:MM" atau ""
+            const timeTo   = document.getElementById('timeTo').value;   // "HH:MM" atau ""
 
-            // Kalau ada keyword pencarian, abaikan filter tanggal
-            const hasKeyword = keyword.trim().length > 0; // ← TAMBAH INI
+            const hasKeyword = keyword.trim().length > 0;
+
+            // Gabungkan date + time jadi string "YYYY-MM-DD HH:MM" untuk perbandingan
+            const datetimeFrom = dateFrom ? (dateFrom + ' ' + (timeFrom || '00:00')) : null;
+            const datetimeTo   = dateTo   ? (dateTo   + ' ' + (timeTo   || '23:59')) : null;
 
             filteredData = allData.filter(pj => {
                 const textMatch = [
@@ -438,17 +446,17 @@
                     pj.nomor_transaksi, pj.dropshipper, pj.keterangan, pj.scan_out
                 ].filter(Boolean).some(v => v.toLowerCase().includes(keyword));
 
-                // Skip date filter kalau ada keyword ← UBAH BAGIAN INI
                 let dateMatch = true;
                 if (!hasKeyword) {
-                    let tanggalStr = pj.tanggal ?? '';
-                    if (tanggalStr.includes('T')) tanggalStr = tanggalStr.split('T')[0];
-                    if (tanggalStr.includes(' ')) tanggalStr = tanggalStr.split(' ')[0];
-                    const dmyMatch = tanggalStr.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})$/);
-                    if (dmyMatch) tanggalStr = `${dmyMatch[3]}-${dmyMatch[2]}-${dmyMatch[1]}`;
+                    // Normalisasi tanggal dari API → "YYYY-MM-DD HH:MM"
+                    let raw = pj.tanggal ?? '';
+                    // Handle format ISO "2025-05-05T14:30:00.000000Z"
+                    if (raw.includes('T')) raw = raw.replace('T', ' ').split('.')[0];
+                    // Ambil hanya "YYYY-MM-DD HH:MM" (buang detik)
+                    const dtNormalized = raw.substring(0, 16); // "YYYY-MM-DD HH:MM"
 
-                    if (dateFrom) dateMatch = tanggalStr >= dateFrom;
-                    if (dateTo) dateMatch = dateMatch && (tanggalStr <= dateTo);
+                    if (datetimeFrom) dateMatch = dtNormalized >= datetimeFrom;
+                    if (datetimeTo)   dateMatch = dateMatch && (dtNormalized <= datetimeTo);
                 }
 
                 return textMatch && dateMatch;
@@ -458,7 +466,8 @@
             currentPage = 1;
             renderTable();
         }
-
+        document.getElementById('timeFrom').addEventListener('change', applyFilters);
+        document.getElementById('timeTo').addEventListener('change', applyFilters);
         // Di event listener searchTable
         document.getElementById('searchTable').addEventListener('keyup', function() {
             const hasKeyword = this.value.trim().length > 0;

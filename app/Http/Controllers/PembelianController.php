@@ -15,7 +15,7 @@ class PembelianController extends Controller
 {
     public function index()
     {
-        $pembelian = Pembelian::with('supplier', 'detail.barang.stok', 'user')->whereDate('tanggal', today())->get();
+        $pembelian = Pembelian::with('supplier', 'detail.barang.stok', 'user')->whereDate('tanggal', today())->orderByDesc('created_at')->get();
         return view('pages.transaksi.pembelian.index', compact('pembelian'));
     }
 
@@ -33,7 +33,7 @@ class PembelianController extends Controller
         $request->validate([
             'kode_pembelian' => 'required|string|unique:pembelian,kode_pembelian',
             'supplier_id'    => 'required|exists:supplier,id',
-            'tanggal'        => 'required|date',
+            'tanggal_final' => 'required|date_format:Y-m-d H:i:s',
             'total_harga'    => 'required|numeric|min:0',
             'items'          => 'required'
         ]);
@@ -48,7 +48,7 @@ class PembelianController extends Controller
             $pembelian = Pembelian::create([
                 'kode_pembelian' => $request->kode_pembelian,
                 'supplier_id'    => $request->supplier_id,
-                'tanggal'        => $request->tanggal,
+                'tanggal'        => $request->tanggal_final,
                 'total_harga'    => $request->total_harga,
                 'keterangan'     => $request->keterangan,
                 'created_by'     => Auth::guard('pengguna')->user()->id
@@ -147,7 +147,7 @@ class PembelianController extends Controller
             $pembelian->update([
                 'supplier_id' => $request->supplier_id,
                 'kode_pembelian' => $request->kode_pembelian,
-                'tanggal' => $request->tanggal,
+                'tanggal' => $request->tanggal_final,
                 'keterangan' => $request->keterangan,
                 'total_harga' => $request->total_harga
             ]);

@@ -72,7 +72,7 @@
 
                     <h6 class="card-header">
                         <i class="feather icon-shopping-cart mr-2"></i>
-                        Formulir Transaksi Penjualan
+                        Formulir Perubahan data Transaksi Penjualan
                     </h6>
 
                     <div class="card-body">
@@ -106,13 +106,16 @@
                                 </div>
 
                                 {{-- TANGGAL --}}
-                                <div class="form-group col-md-6">
-
+                                <input type="hidden" name="tanggal_final" id="tanggal_final">
+                                <div class="form-group col-md-4">
                                     <label class="form-label">Tanggal Penjualan</label>
-
                                     <input type="date" name="tanggal" class="form-control"
                                         value="{{ date('Y-m-d', strtotime($penjualan->tanggal)) }}" required>
-
+                                </div>
+                                <div class="form-group col-md-2">
+                                    <label class="form-label">Jam</label>
+                                    <input type="time" name="jam" id="jam_edit" class="form-control"
+                                        value="{{ date('H:i', strtotime($penjualan->tanggal)) }}" required>
                                 </div>
 
                                 {{-- KODE PENJUALAN --}}
@@ -853,7 +856,10 @@ $('form').on('submit', function (e) {
             nomor_transaksi: $(this).find('.nomor_transaksi').val()
         });
     });
-
+    const tgl = $('input[name="tanggal"]').val();
+    const jam = $('#jam_edit').val() || '00:00';
+    $('#tanggal_final').val(tgl + ' ' + jam + ':00');
+    
     $('#items_input').val(JSON.stringify(result));
 
     let total = 0;

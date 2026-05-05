@@ -258,7 +258,7 @@ class PenjualanController extends Controller
             try {
                 $isDraft       = $data['is_draft']      ?? 'no';
                 $kodePenjualan = $data['kode_penjualan'] ?? ('PJL-' . now()->format('YmdHis') . '-' . ($index + 1));
-                $tanggal       = $data['tanggal']        ?? now()->format('Y-m-d');
+                $tanggal = $data['tanggal'] ?? now()->format('Y-m-d H:i:s');
                 $nomorPesanan  = $items[0]['nomor_pesanan']   ?? null;
                 $nomorTransaksi = $items[0]['nomor_transaksi'] ?? null;
 
@@ -380,7 +380,7 @@ class PenjualanController extends Controller
         $request->validate([
             'kode_penjualan' => 'required|string|unique:penjualan,kode_penjualan,' . $id,
             'dropshipper_id' => 'nullable|exists:dropshipper,id',
-            'tanggal'        => 'required|date',
+            'tanggal_final' => 'required|date_format:Y-m-d H:i:s',
             'total_harga'    => 'required|numeric|min:0',
             'scan_out'       => 'required',
             'is_draft'       => 'required',
@@ -414,7 +414,7 @@ class PenjualanController extends Controller
                 'nomor_pesanan'   => $nomorPesanan,
                 'nomor_transaksi' => $nomorTransaksi,
                 'dropshipper_id'  => $request->dropshipper_id,
-                'tanggal'         => $request->tanggal,
+                'tanggal'         => $request->tanggal_final,
                 'total_harga'     => $request->total_harga,
                 'scan_out'        => $request->scan_out,
                 'is_draft'        => $isDraft,

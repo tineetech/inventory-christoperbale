@@ -28,7 +28,7 @@
 
         <!-- MASTER -->
         @if(hasPermission('lihat', 'supplier') || hasPermission('lihat', 'satuan') || hasPermission('lihat', 'barang') || hasPermission('lihat', 'dropshipper'))
-            <li class="sidenav-item {{ request()->routeIs('supplier.*','satuan.*','barang.*','dropshipper.*') ? 'active open' : '' }}">
+            <li class="sidenav-item  open">
                 <a href="javascript:" class="sidenav-link sidenav-toggle">
                     <i class="sidenav-icon feather icon-layers"></i>
                     <div>Master</div>

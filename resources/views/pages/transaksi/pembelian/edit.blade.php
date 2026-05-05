@@ -102,7 +102,8 @@
                                 </div>
 
                                 {{-- Tanggal --}}
-                                <div class="form-group col-md-6">
+                                <input type="hidden" name="tanggal_final" id="tanggal_final">
+                                <div class="form-group col-md-4">
 
                                     <label class="form-label">Tanggal Pembelian</label>
 
@@ -110,6 +111,18 @@
                                     name="tanggal"
                                     class="form-control"
                                     value="{{ date('Y-m-d', strtotime($pembelian->tanggal)) }}"
+                                    required>
+
+                                </div>
+                                <div class="form-group col-md-2">
+
+                                    <label class="form-label">Jam Pembelian</label>
+
+                                    <input type="time"
+                                    name="jam"
+                                    id="jam"
+                                    class="form-control"
+                                    value="{{ date('H:i', strtotime($pembelian->tanggal)) }}"
                                     required>
 
                                 </div>
@@ -740,6 +753,9 @@ function updateRow(id) {
 
         });
         $('form').on('submit', function() {
+            const tgl = $('input[name="tanggal"]').val();
+            const jam = $('#jam').val() || '00:00';
+            $('#tanggal_final').val(tgl + ' ' + jam + ':00');
 
             $('#items_input').val(JSON.stringify(items));
 

@@ -34,15 +34,25 @@
                 <div class="card-body">
                     <form method="GET" action="{{ route('laporan.pembelian') }}" id="pembelianFilterForm">
                         <div class="form-row">
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Dari Tanggal</label>
                                 <input type="date" class="form-control" name="dari_tanggal"
                                     value="{{ $filters['dari_tanggal'] }}">
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-1">
+                                <label class="font-weight-bold">Jam</label>
+                                <input type="time" class="form-control" name="dari_jam"
+                                    value="{{ $filters['dari_jam'] ?? '' }}">
+                            </div>
+                            <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Sampai Tanggal</label>
                                 <input type="date" class="form-control" name="sampai_tanggal"
                                     value="{{ $filters['sampai_tanggal'] }}">
+                            </div>
+                            <div class="form-group col-md-1">
+                                <label class="font-weight-bold">Jam</label>
+                                <input type="time" class="form-control" name="sampai_jam"
+                                    value="{{ $filters['sampai_jam'] ?? '' }}">
                             </div>
                             <div class="form-group col-md-4">
                                 <label class="font-weight-bold">Supplier</label>
@@ -110,7 +120,7 @@
                                     <td>{{ $index + 1 }}</td>
                                     <td class="kode-click"><strong>{{ $item->kode_pembelian }}</strong></td>
                                     <td>{{ $item->supplier->nama_supplier ?? '-' }}</td>
-                                    <td>{{ date('d M Y', strtotime($item->tanggal)) }}</td>
+                                    <td>{{ $item->tanggal }}</td>
                                     <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
                                     <td>{{ $item->user->nama ?? '-' }}</td>
                                     <td>{{ $item->keterangan ?: '-' }}</td>

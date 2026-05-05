@@ -212,7 +212,7 @@
 
                                                                 <td>{{ $pb->supplier->nama_supplier ?? '-' }}</td>
 
-                                                                <td>{{ date('d M Y', strtotime($pb->tanggal)) }}</td>
+                                                                <td>{{ $pb->tanggal }}</td>
 
                                                                 @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                                 <td style="font-weight: bold">Rp {{ number_format($pb->total_harga, 0, ',', '.') }}</td>

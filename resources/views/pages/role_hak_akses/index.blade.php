@@ -17,8 +17,80 @@
 
             <div class="row">
 
+                {{-- FORM TAMBAH ROLE BARU --}}
+                <div class="col-lg-12">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="feather icon-plus-circle mr-2"></i>Tambah Role Baru</h6>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ route('role.store') }}" method="POST">
+                                @csrf
+                                <div class="form-row align-items-end">
+                                    <div class="form-group col-md-8 mb-0">
+                                        <label class="form-label">Nama Role</label>
+                                        <input type="text" name="nama_role" class="form-control"
+                                            placeholder="Contoh: supervisor, gudang, kasir..."
+                                            value="{{ old('nama_role') }}" required>
+                                        @error('nama_role')
+                                            <small class="text-danger">{{ $message }}</small>
+                                        @enderror
+                                    </div>
+                                    <div class="form-group col-md-4 mb-0">
+                                        <button type="submit" class="btn btn-success w-100">
+                                            <i class="feather icon-save mr-1"></i> Simpan Role
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            {{-- Daftar role yang sudah ada + tombol hapus --}}
+                            <hr>
+                            <h6 class="mb-3">Role yang Sudah Ada</h6>
+                            <div class="d-flex flex-wrap" style="gap:8px">
+                                @foreach ($roles as $r)
+                                    <div class="d-flex align-items-center border rounded px-3 py-1" style="gap:8px; background:#f8fafc">
+                                        <span class="font-weight-bold small">{{ $r->nama_role }}</span>
+                                        <form action="{{ route('role.destroy', $r->id) }}" method="POST"
+                                            onsubmit="return confirm('Hapus role {{ $r->nama_role }}? Semua pengguna dengan role ini akan terpengaruh.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger btn-sm p-0 px-1"
+                                                    style="line-height:1.4; font-size:.75rem;">
+                                                <i class="feather icon-x"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <div class="col-lg-12">
 
+                    @if (session('error'))
+                        <div class="card mb-4 border-danger">
+
+                            <div class="card-body d-flex align-items-center justify-content-between">
+
+                                <div>
+                                    <h5 class="mb-1 text-danger">
+                                        <i class="feather icon-x-circle"></i> Error
+                                    </h5>
+
+                                    <p class="mb-0 text-muted">
+                                        {{ session('error') }}
+                                    </p>
+                                </div>
+
+                                <div class="display-4 text-danger">
+                                    <i class="feather icon-x-circle"></i>
+                                </div>
+
+                            </div>
+
+                        </div>
+                    @endif
                     @if (session('success'))
                         <div class="card mb-4 border-success">
 

@@ -68,7 +68,7 @@ class PenjualanScanOutController extends Controller
     public function list()
     {
         $penjualan = Penjualan::with(['dropshipper', 'detail.barang.stok'])
-            ->orderByDesc('tanggal')
+            ->orderByDesc('created_at')
             // ->whereDate('tanggal', today())
             // ->orderByDesc('id')
             ->get()
@@ -81,7 +81,7 @@ class PenjualanScanOutController extends Controller
                     'nomor_transaksi' => $pj->nomor_transaksi,
                     'dropshipper'     => $pj->dropshipper->nama ?? '-',
                     'tanggal'         => $pj->tanggal,
-                    'tanggal_fmt'     => \Carbon\Carbon::parse($pj->tanggal)->format('d M Y'),
+                    'tanggal_fmt'     => $pj->tanggal,
                     'total_harga'     => $pj->total_harga,
                     'total_harga_fmt' => 'Rp ' . number_format($pj->total_harga, 0, ',', '.'),
                     'scan_out'        => $pj->scan_out ?? 'nothing',

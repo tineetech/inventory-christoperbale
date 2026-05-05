@@ -68,7 +68,8 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->middleware('permission:tambah,role');
 
     Route::post('/role/store', [RoleController::class, 'store'])
-        ->middleware('permission:tambah,role');
+        ->middleware('permission:tambah,role')
+        ->name('role.store');
 
     Route::get('/role/edit/{id}', [RoleController::class, 'edit'])
         ->middleware('permission:edit,role');
@@ -76,8 +77,9 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::post('/role/update/{id}', [RoleController::class, 'update'])
         ->middleware('permission:edit,role');
 
-    Route::get('/role/delete/{id}', [RoleController::class, 'destroy'])
-        ->middleware('permission:hapus,role');
+    Route::delete('/role/delete/{id}', [RoleController::class, 'destroy'])
+        ->middleware('permission:hapus,role')
+        ->name('role.destroy');
 
 
     /*

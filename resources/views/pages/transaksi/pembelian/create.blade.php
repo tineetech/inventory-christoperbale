@@ -101,11 +101,20 @@
                                 </div>
 
                                 {{-- Tanggal --}}
-                                <div class="form-group col-md-6">
+                                <input type="hidden" name="tanggal_final" id="tanggal_final">
+                                <div class="form-group col-md-4">
 
                                     <label class="form-label">Tanggal Pembelian</label>
 
-                                    <input type="date" name="tanggal" class="form-control" value="{{ date('Y-m-d') }}"
+                                    <input type="date" id="tanggal" name="tanggal" class="form-control" value="{{ date('Y-m-d') }}"
+                                        required>
+
+                                </div>
+                                <div class="form-group col-md-2">
+
+                                    <label class="form-label">Jam</label>
+
+                                    <input type="time" id="jam" name="jam" class="form-control" value="{{ date('H:i') }}"
                                         required>
 
                                 </div>
@@ -651,7 +660,37 @@ data-id="${id}">X</button>
             $('#barcode_scan').focus();
 
         });
+
+        // ================================================================
+        // REALTIME CLOCK — update semua input jam setiap detik
+        // ================================================================
+        function getNowTime() {
+            const now = new Date();
+            return now.getHours().toString().padStart(2, '0') + ':' +
+                now.getMinutes().toString().padStart(2, '0');
+        }
+
+        const dirtyJamInputs = new Set();
+
+        // Tandai dirty saat user mulai fokus ke input (bukan setelah blur)
+        $(document).on('focus', '[id^="jam"]', function() {
+            dirtyJamInputs.add(this.id);
+        });
+
+        setInterval(() => {
+            const nowTime = getNowTime();
+            $('[id^="jam"]').each(function() {
+                if (!dirtyJamInputs.has(this.id)) {
+                    this.value = nowTime;
+                }
+            });
+        }, 1000);
+        
         $('form').on('submit', function() {
+
+            const tgl = $('#tanggal').val();
+            const jam = $('#jam').val() || '00:00';
+            $('#tanggal_final').val(tgl + ' ' + jam + ':00');
 
             $('#items_input').val(JSON.stringify(items));
 

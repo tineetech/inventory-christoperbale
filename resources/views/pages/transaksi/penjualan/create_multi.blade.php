@@ -689,9 +689,13 @@ function buildResiCard(id, resiNumber, prefillResi = '', prefillPesanan = '') {
                     @endforeach
                 </select>
             </div>
-            <div class="form-group col-md-6">
+            <div class="form-group col-md-4">
                 <label>Tanggal Penjualan</label>
                 <input type="date" id="tanggal_${id}" class="form-control" value="{{ date('Y-m-d') }}" required>
+            </div>
+            <div class="form-group col-md-2">
+                <label>Jam</label>
+                <input type="time" id="jam_${id}" class="form-control" value="{{ date('H:i') }}" required>
             </div>
             <div class="form-group col-md-6">
                 <label>Kode Penjualan</label>
@@ -1336,7 +1340,7 @@ $('#form_multiple_resi').on('submit', function(e) {
         return {
             resi             : $(`#resi_global_${r.uid}`).val(),
             dropshipper_id   : $(`#dropshipper_${r.uid}`).val(),
-            tanggal          : $(`#tanggal_${r.uid}`).val(),
+            tanggal          : $(`#tanggal_${r.uid}`).val() + ' ' + ($(`#jam_${r.uid}`).val() || '00:00') + ':00',
             kode_penjualan   : $(`#kode_${r.uid}`).val(),
             keterangan       : $(`#keterangan_${r.uid}`).val(),
             scan_out         : $(`#scan_out_${r.uid}`).val(),
@@ -1362,6 +1366,30 @@ $('#form_multiple_resi').on('submit', function(e) {
         if (res.isConfirmed) this.submit();
     });
 });
+// ================================================================
+// REALTIME CLOCK — update semua input jam setiap detik
+// ================================================================
+function getNowTime() {
+    const now = new Date();
+    return now.getHours().toString().padStart(2, '0') + ':' +
+           now.getMinutes().toString().padStart(2, '0');
+}
+
+const dirtyJamInputs = new Set();
+
+// Tandai dirty saat user mulai fokus ke input (bukan setelah blur)
+$(document).on('focus', '[id^="jam_"]', function() {
+    dirtyJamInputs.add(this.id);
+});
+
+setInterval(() => {
+    const nowTime = getNowTime();
+    $('[id^="jam_"]').each(function() {
+        if (!dirtyJamInputs.has(this.id)) {
+            this.value = nowTime;
+        }
+    });
+}, 1000);
 
 // ── Progress helpers ─────────────────────────────────────────────
  

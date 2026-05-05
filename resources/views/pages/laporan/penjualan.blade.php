@@ -34,15 +34,26 @@
                 <div class="card-body">
                     <form method="GET" action="{{ route('laporan.penjualan') }}" id="penjualanFilterForm">
                         <div class="form-row">
-                            <div class="form-group col-md-4">
+                            
+                            <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Dari Tanggal</label>
                                 <input type="date" class="form-control" name="dari_tanggal"
                                     value="{{ $filters['dari_tanggal'] }}">
                             </div>
-                            <div class="form-group col-md-4">
+                            <div class="form-group col-md-1">
+                                <label class="font-weight-bold">Jam</label>
+                                <input type="time" class="form-control" name="dari_jam"
+                                    value="{{ $filters['dari_jam'] ?? '' }}">
+                            </div>
+                            <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Sampai Tanggal</label>
                                 <input type="date" class="form-control" name="sampai_tanggal"
                                     value="{{ $filters['sampai_tanggal'] }}">
+                            </div>
+                            <div class="form-group col-md-1">
+                                <label class="font-weight-bold">Jam</label>
+                                <input type="time" class="form-control" name="sampai_jam"
+                                    value="{{ $filters['sampai_jam'] ?? '' }}">
                             </div>
                             <div class="form-group col-md-4">
                                 <label class="font-weight-bold">Dropshipper</label>
@@ -127,7 +138,7 @@
                                     <td>{{ $item->nomor_pesanan ?: '-' }}</td>
                                     {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
-                                    <td style="white-space: nowrap;">{{ date('d M Y', strtotime($item->tanggal)) }}</td>
+                                    <td style="white-space: nowrap;">{{ $item->tanggal }}</td>
                                     <td style="white-space: nowrap;">Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
                                     <td><span class="{{ $scanOutClass }}">{{ $scanOutLabel }}</span></td>
                                     <td>

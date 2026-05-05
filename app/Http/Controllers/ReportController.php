@@ -365,14 +365,16 @@ class ReportController extends Controller
 
     private function getPembelianReportQuery(array $filters)
     {
-        $query = Pembelian::with('supplier', 'user', 'detail.barang.stok')
-            ->when($filters['dari_tanggal'], function ($q) use ($filters) {
-                $q->whereDate('tanggal', '>=', $filters['dari_tanggal']);
-            })
-            ->when($filters['sampai_tanggal'], function ($q) use ($filters) {
-                $q->whereDate('tanggal', '<=', $filters['sampai_tanggal']);
-            });
+        $query = Pembelian::with('supplier', 'user', 'detail.barang.stok');
 
+        if ($filters['dari_tanggal']) {
+            $dari = $filters['dari_tanggal'] . ' ' . ($filters['dari_jam'] ?? '00:00') . ':00';
+            $query->where('tanggal', '>=', $dari);
+        }
+        if ($filters['sampai_tanggal']) {
+            $sampai = $filters['sampai_tanggal'] . ' ' . ($filters['sampai_jam'] ?? '23:59') . ':59';
+            $query->where('tanggal', '<=', $sampai);
+        }
         if ($filters['supplier_id']) {
             $query->where('supplier_id', $filters['supplier_id']);
         }
@@ -382,14 +384,16 @@ class ReportController extends Controller
 
     private function getPenjualanReportQuery(array $filters)
     {
-        $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok')
-            ->when($filters['dari_tanggal'], function ($q) use ($filters) {
-                $q->whereDate('tanggal', '>=', $filters['dari_tanggal']);
-            })
-            ->when($filters['sampai_tanggal'], function ($q) use ($filters) {
-                $q->whereDate('tanggal', '<=', $filters['sampai_tanggal']);
-            });
+        $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok');
 
+        if ($filters['dari_tanggal']) {
+            $dari = $filters['dari_tanggal'] . ' ' . ($filters['dari_jam'] ?? '00:00') . ':00';
+            $query->where('tanggal', '>=', $dari);
+        }
+        if ($filters['sampai_tanggal']) {
+            $sampai = $filters['sampai_tanggal'] . ' ' . ($filters['sampai_jam'] ?? '23:59') . ':59';
+            $query->where('tanggal', '<=', $sampai);
+        }
         if ($filters['dropshipper_id']) {
             $query->where('dropshipper_id', $filters['dropshipper_id']);
         }
@@ -611,10 +615,12 @@ class ReportController extends Controller
     private function resolvePembelianFilters(Request $request): array
     {
         $request->validate([
-            'dari_tanggal' => 'nullable|date',
+            'dari_tanggal'   => 'nullable|date',
             'sampai_tanggal' => 'nullable|date',
-            'supplier_id' => 'nullable|exists:supplier,id',
-            'per_page' => 'nullable|in:10,25,50,100',
+            'dari_jam'       => 'nullable|date_format:H:i',
+            'sampai_jam'     => 'nullable|date_format:H:i',
+            'supplier_id'    => 'nullable|exists:supplier,id',
+            'per_page'       => 'nullable|in:10,25,50,100',
         ]);
 
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
@@ -624,20 +630,24 @@ class ReportController extends Controller
         );
 
         return [
-            'dari_tanggal' => $dariTanggal,
+            'dari_tanggal'   => $dariTanggal,
             'sampai_tanggal' => $sampaiTanggal,
-            'supplier_id' => $request->filled('supplier_id') ? (int) $request->supplier_id : null,
-            'per_page' => $this->resolvePerPage($request),
+            'dari_jam'       => $request->dari_jam ?? null,
+            'sampai_jam'     => $request->sampai_jam ?? null,
+            'supplier_id'    => $request->filled('supplier_id') ? (int) $request->supplier_id : null,
+            'per_page'       => $this->resolvePerPage($request),
         ];
     }
 
     private function resolvePenjualanFilters(Request $request): array
     {
         $request->validate([
-            'dari_tanggal' => 'nullable|date',
+            'dari_tanggal'   => 'nullable|date',
             'sampai_tanggal' => 'nullable|date',
+            'dari_jam'       => 'nullable|date_format:H:i',
+            'sampai_jam'     => 'nullable|date_format:H:i',
             'dropshipper_id' => 'nullable|exists:dropshipper,id',
-            'per_page' => 'nullable|in:10,25,50,100',
+            'per_page'       => 'nullable|in:10,25,50,100',
         ]);
 
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
@@ -647,10 +657,12 @@ class ReportController extends Controller
         );
 
         return [
-            'dari_tanggal' => $dariTanggal,
+            'dari_tanggal'   => $dariTanggal,
             'sampai_tanggal' => $sampaiTanggal,
+            'dari_jam'       => $request->dari_jam ?? null,
+            'sampai_jam'     => $request->sampai_jam ?? null,
             'dropshipper_id' => $request->filled('dropshipper_id') ? (int) $request->dropshipper_id : null,
-            'per_page' => $this->resolvePerPage($request),
+            'per_page'       => $this->resolvePerPage($request),
         ];
     }
 
@@ -698,14 +710,14 @@ class ReportController extends Controller
     private function resolveDateRange(?string $startDate, ?string $endDate, string $defaultRange = 'month'): array
     {
         $today = now();
-        // $defaultStart = $defaultRange === 'today'
-        //     ? $today->copy()->toDateString()
-        //     : $today->copy()->startOfMonth()->toDateString();
-        // $defaultEnd = $defaultRange === 'today'
-        //     ? $today->copy()->toDateString()
-        //     : $today->copy()->endOfMonth()->toDateString();
-        $defaultStart = null;
-        $defaultEnd   = null;
+        $defaultStart = $defaultRange === 'today'
+            ? $today->copy()->toDateString()
+            : $today->copy()->startOfMonth()->toDateString();
+        $defaultEnd = $defaultRange === 'today'
+            ? $today->copy()->toDateString()
+            : $today->copy()->endOfMonth()->toDateString();
+        // $defaultStart = null;
+        // $defaultEnd   = null;
 
         $dariTanggal = $startDate ? Carbon::parse($startDate)->toDateString() : $defaultStart;
         $sampaiTanggal = $endDate ? Carbon::parse($endDate)->toDateString() : $defaultEnd;

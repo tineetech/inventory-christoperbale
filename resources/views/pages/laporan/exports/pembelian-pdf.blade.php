@@ -98,7 +98,7 @@
                     <td>{{ $index + 1 }}</td>
                     <td>{{ $item->kode_pembelian }}</td>
                     <td>{{ $item->supplier->nama_supplier ?? '-' }}</td>
-                    <td>{{ date('d M Y', strtotime($item->tanggal)) }}</td>
+                    <td>{{ $item->tanggal }}</td>
                     <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
                     <td>{{ $item->user->nama ?? '-' }}</td>
                     <td>{{ $item->keterangan ?: '-' }}</td>

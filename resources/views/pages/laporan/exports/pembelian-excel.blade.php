@@ -18,12 +18,18 @@
         </tr>
     </thead>
     <tbody>
+        @php
+            $grandTotal = 0;
+        @endphp
         @forelse ($pembelian as $index => $item)
+            @php
+                $grandTotal += $item->total_harga;
+            @endphp
             <tr>
-                <td>{{ $index + 1 }}</td>
+                <td>#{{ $index + 1 }}</td>
                 <td>{{ $item->kode_pembelian }}</td>
                 <td>{{ $item->supplier->nama_supplier ?? '-' }}</td>
-                <td>{{ date('d/m/Y', strtotime($item->tanggal)) }}</td>
+                <td>{{ $item->tanggal }}</td>
                 <td>{{ $item->total_harga }}</td>
                 <td>{{ $item->user->nama ?? '-' }}</td>
                 <td>{{ $item->keterangan ?: '-' }}</td>
@@ -73,5 +79,15 @@
         @empty
             <tr><td colspan="7">Belum ada data pembelian pada filter ini.</td></tr>
         @endforelse
+        {{-- SPASI 2 BARIS --}}
+        <tr><td colspan="7"></td></tr>
+        <tr><td colspan="7"></td></tr>
+
+        {{-- GRAND TOTAL --}}
+        <tr>
+            <td colspan="6"><strong>Grand Total</strong></td>
+            <td><strong>{{ $grandTotal }}</strong></td>
+            <td></td>
+        </tr>
     </tbody>
 </table>
