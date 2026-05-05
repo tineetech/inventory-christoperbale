@@ -356,6 +356,8 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::delete('/transaksi/pembelian/delete/{id}', [PembelianController::class, 'destroy'])
         ->name('pembelian.destroy')
         ->middleware('permission:hapus,pembelian');
+        
+    Route::post('/transaksi/pembelian/bulk-delete', [PembelianController::class, 'bulkDelete'])->name('pembelian.bulk-delete');
 
 
     /*
@@ -395,9 +397,13 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->name('penjualan.store.multiple')
         ->middleware('permission:buat,penjualan');
 
+    Route::post('/transaksi/penjualan/bulk-delete', [PenjualanController::class, 'bulkDelete'])->name('penjualan.bulk-delete');
+
     Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
     Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
     Route::get('/transaksi/penjualan/{id}/struk/download', [PenjualanController::class, 'strukDownload'])->name('penjualan.struk.download');
+    Route::post('/transaksi/penjualan/bulk-struk-download', [PenjualanController::class, 'bulkStrukDownload'])
+    ->name('penjualan.bulk.struk.download');
 
     Route::get('/transaksi/penjualan/retur/{id}', [ReturPenjualanController::class, 'create'])
         ->name('penjualan.retur.create');

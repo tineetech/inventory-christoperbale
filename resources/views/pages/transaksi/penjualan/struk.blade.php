@@ -266,30 +266,6 @@
             {{-- Spacer 20px --}}
             <div class="spacer-20"></div>
 
-            {{-- Nomor Struk --}}
-            {{-- <div class="nomor-struk-box">
-                <div class="nomor-struk-label">Nomor Struk</div>
-                <div class="nomor-struk-value">{{ $nomorStruk }}</div>
-            </div> --}}
-
-            {{-- Info tambahan --}}
-            {{-- <div class="info-row">
-                <span>Tanggal</span>
-                <span>{{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y') }}</span>
-            </div>
-
-            @if($penjualan->nomor_resi)
-            <div class="info-row">
-                <span>No. Resi</span>
-                <span>{{ $penjualan->nomor_resi }}</span>
-            </div>
-            @endif
-
-            <div class="info-row">
-                <span>Total</span>
-                <span>Rp {{ number_format($penjualan->total_harga, 0, ',', '.') }}</span>
-            </div> --}}
-
         </div>
 
         {{-- Footer --}}

@@ -339,4 +339,67 @@ class PembelianController extends Controller
 
         }
     }
+
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Tidak ada ID yang dipilih.'], 422);
+        }
+
+        $deleted = 0;
+        $errors  = [];
+
+        foreach ($ids as $id) {
+            DB::beginTransaction();
+            try {
+                $pembelian = Pembelian::with('detail')->findOrFail($id);
+
+                // Rollback stok untuk setiap item
+                foreach ($pembelian->detail as $detail) {
+                    $stok = StokBarang::where('barang_id', $detail->barang_id)->first();
+
+                    if ($stok) {
+                        $stokSebelum = $stok->jumlah_stok;
+                        $stokSesudah = $stokSebelum - $detail->qty;
+
+                        $stok->update(['jumlah_stok' => $stokSesudah]);
+
+                        StokMovement::create([
+                            'barang_id'      => $detail->barang_id,
+                            'jenis'          => 'keluar',
+                            'qty'            => $detail->qty,
+                            'stok_sebelum'   => $stokSebelum,
+                            'stok_sesudah'   => $stokSesudah,
+                            'referensi_tipe' => 'pembelian_delete',
+                            'referensi_id'   => $pembelian->id,
+                            'keterangan'     => 'Bulk hapus pembelian ' . $pembelian->kode_pembelian,
+                            'created_by'     => Auth::guard('pengguna')->user()->id,
+                        ]);
+                    }
+                }
+
+                PembelianDetail::where('pembelian_id', $pembelian->id)->delete();
+                $pembelian->delete();
+
+                DB::commit();
+                $deleted++;
+            } catch (\Exception $e) {
+                DB::rollBack();
+                $errors[] = "ID {$id}: " . $e->getMessage();
+            }
+        }
+
+        $message = "{$deleted} pembelian berhasil dihapus dan stok di-rollback.";
+        if (!empty($errors)) {
+            $message .= ' ' . count($errors) . ' gagal.';
+        }
+
+        return response()->json([
+            'success' => $deleted > 0,
+            'message' => $message,
+            'errors'  => $errors,
+        ]);
+    }
 }

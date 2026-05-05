@@ -17,7 +17,12 @@
             <div class="row">
 
                 <!-- LEFT SIDE -->
-                <div class="col-lg-5">
+                
+                @if(hasPermission('lihat', 'dashboard_trx'))
+                    <div class="col-lg-5">
+                @else
+                    <div class="col-lg-12">
+                @endif
                     <div class="row">
 
                         <!-- TOTAL BARANG -->
@@ -55,38 +60,41 @@
                         </div>
 
                         <!-- PENJUALAN HARI INI -->
-                        <div class="col-md-6">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div>
-                                            <h2 class="mb-2">{{ $penjualanHariIni }}</h2>
-                                            <p class="text-muted mb-0">
-                                                <span class="badge badge-danger">Penjualan</span> Hari Ini
-                                            </p>
-                                        </div>
-                                        <div class="lnr lnr-cart display-4 text-danger"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
-                        <!-- PEMBELIAN HARI INI -->
-                        <div class="col-md-6">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div>
-                                            <h2 class="mb-2">{{ $pembelianHariIni }}</h2>
-                                            <p class="text-muted mb-0">
-                                                <span class="badge badge-warning">Pembelian</span> Hari Ini
-                                            </p>
+                        @if (hasPermission('lihat', 'dashboard_trx'))
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <h2 class="mb-2">{{ $penjualanHariIni }}</h2>
+                                                <p class="text-muted mb-0">
+                                                    <span class="badge badge-danger">Penjualan</span> Hari Ini
+                                                </p>
+                                            </div>
+                                            <div class="lnr lnr-cart display-4 text-danger"></div>
                                         </div>
-                                        <div class="lnr lnr-enter display-4 text-warning"></div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+
+                            <!-- PEMBELIAN HARI INI -->
+                            <div class="col-md-6">
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <h2 class="mb-2">{{ $pembelianHariIni }}</h2>
+                                                <p class="text-muted mb-0">
+                                                    <span class="badge badge-warning">Pembelian</span> Hari Ini
+                                                </p>
+                                            </div>
+                                            <div class="lnr lnr-enter display-4 text-warning"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
 
                         <!-- INFO TAMBAHAN -->
                         <div class="col-sm-12">
@@ -137,74 +145,79 @@
                 <!-- RIGHT SIDE -->
 
                 <div class="col-lg-7">
-                    
-<div class="card mb-4">
-    <div class="card-header with-elements">
-        <div>
-            <h6 class="card-header-title mb-0">
-                <i class="feather icon-bar-chart-2 mr-1 text-primary"></i>
-                Statistik Penjualan
-                <span class="badge badge-primary badge-pill ml-1" style="font-size:.7rem;">
-                    Jan – Jun {{ $tahun }}
-                </span>
-            </h6>
-            <small class="text-muted">Jumlah transaksi &amp; omzet per bulan</small>
-        </div>
-        <div class="card-header-elements ml-auto d-flex align-items-center gap-3">
- 
-            {{-- Summary kecil --}}
-            <div class="text-right mr-3 d-none d-md-block">
-                <div class="small text-muted">Total Transaksi</div>
-                <strong class="text-primary">{{ number_format($totalTransaksiH1) }}</strong>
-            </div>
-            <div class="text-right mr-3 d-none d-md-block">
-                <div class="small text-muted">Total Omzet</div>
-                <strong class="text-danger">Rp {{ number_format($totalOmzetH1, 0, ',', '.') }}</strong>
-            </div>
- 
-            {{-- Toggle show/hide --}}
-            <label class="text m-0">
-                <span class="text-light text-tiny font-weight-semibold align-middle">SHOW STATS</span>
-                <span class="switcher switcher-primary switcher-sm d-inline-block align-middle mr-0 ml-2">
-                    <input type="checkbox" class="switcher-input" id="toggleStats" checked>
-                    <span class="switcher-indicator">
-                        <span class="switcher-yes"></span>
-                        <span class="switcher-no"></span>
-                    </span>
-                </span>
-            </label>
-        </div>
-    </div>
- 
-    <div class="card-body" id="statisticsChartWrap">
- 
-        {{-- Mini summary row (mobile) --}}
-        <div class="row mb-3 d-md-none">
-            <div class="col-6 text-center">
-                <div class="small text-muted">Total Transaksi</div>
-                <strong class="text-primary">{{ number_format($totalTransaksiH1) }}</strong>
-            </div>
-            <div class="col-6 text-center">
-                <div class="small text-muted">Total Omzet</div>
-                <strong class="text-danger">Rp {{ number_format($totalOmzetH1, 0, ',', '.') }}</strong>
-            </div>
-        </div>
- 
-        {{-- Legend manual --}}
-        <div class="d-flex align-items-center mb-2" style="gap:16px; font-size:.8rem;">
-            <span>
-                <span style="display:inline-block;width:24px;height:3px;background:#4e73df;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>
-                Transaksi (pcs)
-            </span>
-            <span>
-                <span style="display:inline-block;width:24px;height:3px;background:#ff4a00;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>
-                Omzet (Rp)
-            </span>
-        </div>
- 
-        <div id="statistics-chart-1" style="height:300px; width:100%;"></div>
-    </div>
-</div>
+
+                    @if(hasPermission('lihat', 'dashboard_trx'))
+                        <div class="card mb-4">
+                            <div class="card-header with-elements">
+                                <div>
+                                    <h6 class="card-header-title mb-0">
+                                        <i class="feather icon-bar-chart-2 mr-1 text-primary"></i>
+                                        Statistik Penjualan
+                                        <span class="badge badge-primary badge-pill ml-1" style="font-size:.7rem;">
+                                            Jan – Jun {{ $tahun }}
+                                        </span>
+                                    </h6>
+                                    <small class="text-muted">Jumlah transaksi &amp; omzet per bulan</small>
+                                </div>
+                                <div class="card-header-elements ml-auto d-flex align-items-center gap-3">
+
+                                    {{-- Summary kecil --}}
+                                    <div class="text-right mr-3 d-none d-md-block">
+                                        <div class="small text-muted">Total Transaksi</div>
+                                        <strong class="text-primary">{{ number_format($totalTransaksiH1) }}</strong>
+                                    </div>
+                                    <div class="text-right mr-3 d-none d-md-block">
+                                        <div class="small text-muted">Total Omzet</div>
+                                        <strong class="text-danger">Rp {{ number_format($totalOmzetH1, 0, ',', '.') }}</strong>
+                                    </div>
+
+                                    {{-- Toggle show/hide --}}
+                                    <label class="text m-0">
+                                        <span class="text-light text-tiny font-weight-semibold align-middle">SHOW STATS</span>
+                                        <span
+                                            class="switcher switcher-primary switcher-sm d-inline-block align-middle mr-0 ml-2">
+                                            <input type="checkbox" class="switcher-input" id="toggleStats" checked>
+                                            <span class="switcher-indicator">
+                                                <span class="switcher-yes"></span>
+                                                <span class="switcher-no"></span>
+                                            </span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="card-body" id="statisticsChartWrap">
+
+                                {{-- Mini summary row (mobile) --}}
+                                <div class="row mb-3 d-md-none">
+                                    <div class="col-6 text-center">
+                                        <div class="small text-muted">Total Transaksi</div>
+                                        <strong class="text-primary">{{ number_format($totalTransaksiH1) }}</strong>
+                                    </div>
+                                    <div class="col-6 text-center">
+                                        <div class="small text-muted">Total Omzet</div>
+                                        <strong class="text-danger">Rp {{ number_format($totalOmzetH1, 0, ',', '.') }}</strong>
+                                    </div>
+                                </div>
+
+                                {{-- Legend manual --}}
+                                <div class="d-flex align-items-center mb-2" style="gap:16px; font-size:.8rem;">
+                                    <span>
+                                        <span
+                                            style="display:inline-block;width:24px;height:3px;background:#4e73df;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>
+                                        Transaksi (pcs)
+                                    </span>
+                                    <span>
+                                        <span
+                                            style="display:inline-block;width:24px;height:3px;background:#ff4a00;border-radius:2px;vertical-align:middle;margin-right:4px;"></span>
+                                        Omzet (Rp)
+                                    </span>
+                                </div>
+
+                                <div id="statistics-chart-1" style="height:300px; width:100%;"></div>
+                            </div>
+                        </div>
+                    @endif
                 </div>
 
             </div>
@@ -236,7 +249,8 @@
                                 </thead>
                                 <tbody>
                                     @forelse ($stokKritis as $index => $item)
-                                        <tr onclick="window.open('/master/barang/edit/' + {{ $item->id }})" style="cursor: pointer">
+                                        <tr onclick="window.open('/master/barang/edit/' + {{ $item->id }})"
+                                            style="cursor: pointer">
                                             <td>{{ $index + 1 }}</td>
                                             <td><code>{{ $item->sku }}</code></td>
                                             <td><strong>{{ $item->nama_barang }}</strong></td>
@@ -279,134 +293,134 @@
         @include('components.footer')
 
     </div>
-
-    
 @endsection
 
- 
+
 @section('scripts')
-<script>
-$(function () {
- 
-    // ── Data dari PHP ──────────────────────────────────────────
-    const bulanLabels  = @json($bulanLabels);   // ['Jan','Feb',...]
-    const dataTransaksi = @json($dataTransaksi); // [12, 8, ...]
-    const dataOmzet     = @json($dataOmzet);     // [1500000, ...]
- 
-    // Gabung jadi format amCharts
-    const chartData = bulanLabels.map((label, i) => ({
-        bulan:     label,
-        transaksi: dataTransaksi[i],
-        omzet:     dataOmzet[i],
-    }));
- 
-    // ── amCharts ───────────────────────────────────────────────
-    setTimeout(function () {
-        am4core.useTheme(am4themes_animated);
-        var chart = am4core.create("statistics-chart-1", am4charts.XYChart);
-        chart.data = chartData;
- 
-        // ── X Axis (bulan) ──
-        var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
-        categoryAxis.dataFields.category      = "bulan";
-        categoryAxis.renderer.minGridDistance = 20;
-        categoryAxis.renderer.grid.template.strokeOpacity = 0;
-        categoryAxis.renderer.labels.template.fontSize    = 12;
- 
-        // ── Y Axis kiri — Transaksi ──
-        var valueAxisLeft = chart.yAxes.push(new am4charts.ValueAxis());
-        valueAxisLeft.title.text         = "Transaksi";
-        valueAxisLeft.title.fontSize     = 11;
-        valueAxisLeft.renderer.labels.template.fontSize = 11;
-        valueAxisLeft.min                = 0;
-        valueAxisLeft.strictMinMax       = true;
-        valueAxisLeft.renderer.grid.template.strokeDasharray = "4,4";
-        valueAxisLeft.renderer.grid.template.strokeOpacity   = 0.4;
- 
-        // ── Y Axis kanan — Omzet ──
-        var valueAxisRight = chart.yAxes.push(new am4charts.ValueAxis());
-        valueAxisRight.title.text             = "Omzet (Rp)";
-        valueAxisRight.title.fontSize         = 11;
-        valueAxisRight.renderer.opposite      = true;
-        valueAxisRight.renderer.labels.template.fontSize = 11;
-        valueAxisRight.renderer.grid.template.strokeOpacity = 0;
-        valueAxisRight.min                    = 0;
-        valueAxisRight.strictMinMax           = true;
-        valueAxisRight.numberFormatter.numberFormat = "#,###";
- 
-        // ── Series 1: Transaksi (garis biru putus-putus) ──
-        var seriesTransaksi = chart.series.push(new am4charts.LineSeries());
-        seriesTransaksi.dataFields.valueY    = "transaksi";
-        seriesTransaksi.dataFields.categoryX = "bulan";
-        seriesTransaksi.yAxis                = valueAxisLeft;
-        seriesTransaksi.name                 = "Transaksi";
-        seriesTransaksi.tooltipText          = "Transaksi: [bold]{transaksi} pcs[/]";
-        seriesTransaksi.strokeWidth          = 3;
-        seriesTransaksi.strokeDasharray      = "8,4";
-        seriesTransaksi.tensionX             = 0.8;
-        seriesTransaksi.tensionY             = 1;
-        seriesTransaksi.stroke               = am4core.color("#4e73df");
-        seriesTransaksi.fill                 = am4core.color("#4e73df");
- 
-        // Bullet titik
-        var bulletT = seriesTransaksi.bullets.push(new am4charts.CircleBullet());
-        bulletT.circle.radius      = 5;
-        bulletT.circle.strokeWidth = 2;
-        bulletT.circle.fill        = am4core.color("#fff");
-        bulletT.circle.stroke      = am4core.color("#4e73df");
- 
-        // Label nilai
-        var labelT = seriesTransaksi.bullets.push(new am4charts.LabelBullet());
-        labelT.label.text         = "{transaksi}";
-        labelT.label.dy           = -14;
-        labelT.label.fontSize     = 11;
-        labelT.label.fill         = am4core.color("#4e73df");
-        labelT.label.fontWeight   = "bold";
- 
-        // ── Series 2: Omzet (garis merah solid) ──
-        var seriesOmzet = chart.series.push(new am4charts.LineSeries());
-        seriesOmzet.dataFields.valueY    = "omzet";
-        seriesOmzet.dataFields.categoryX = "bulan";
-        seriesOmzet.yAxis                = valueAxisRight;
-        seriesOmzet.name                 = "Omzet";
-        seriesOmzet.tooltipText          = "Omzet: [bold]Rp {omzet.formatNumber('#,###')}[/]";
-        seriesOmzet.strokeWidth          = 3;
-        seriesOmzet.tensionX             = 0.8;
-        seriesOmzet.tensionY             = 1;
-        seriesOmzet.stroke               = am4core.color("#ff4a00");
-        seriesOmzet.fill                 = am4core.color("#ff4a00");
- 
-        // Drop shadow omzet
-        var shadow = new am4core.DropShadowFilter();
-        shadow.dy      = 10;
-        shadow.dx      = 1;
-        shadow.blur    = 8;
-        shadow.opacity = 0.4;
-        shadow.color   = '#ff4a00';
-        seriesOmzet.filters.push(shadow);
- 
-        // Bullet titik
-        var bulletO = seriesOmzet.bullets.push(new am4charts.CircleBullet());
-        bulletO.circle.radius      = 5;
-        bulletO.circle.strokeWidth = 2;
-        bulletO.circle.fill        = am4core.color("#fff");
-        bulletO.circle.stroke      = am4core.color("#ff4a00");
- 
-        // ── Cursor & Scrollbar ──
-        chart.cursor = new am4charts.XYCursor();
-        chart.cursor.lineY.opacity = 0;
- 
-        // ── Tooltip styling ──
-        chart.tooltip.getFillFromObject = false;
-        chart.tooltip.background.fill   = am4core.color("#333");
- 
-    }, 400);
- 
-    // ── Toggle show/hide chart ──────────────────────────────
-    $('#toggleStats').on('change', function () {
-        $('#statisticsChartWrap').slideToggle(300);
-    });
- 
-});
-</script>
+    <script>
+        $(function() {
+            @if(hasPermission('lihat', 'dashboard_trx'))
+
+            // ── Data dari PHP ──────────────────────────────────────────
+            const bulanLabels = @json($bulanLabels); // ['Jan','Feb',...]
+            const dataTransaksi = @json($dataTransaksi); // [12, 8, ...]
+            const dataOmzet = @json($dataOmzet); // [1500000, ...]
+
+            // Gabung jadi format amCharts
+            const chartData = bulanLabels.map((label, i) => ({
+                bulan: label,
+                transaksi: dataTransaksi[i],
+                omzet: dataOmzet[i],
+            }));
+
+            // ── amCharts ───────────────────────────────────────────────
+            setTimeout(function() {
+                am4core.useTheme(am4themes_animated);
+                var chart = am4core.create("statistics-chart-1", am4charts.XYChart);
+                chart.data = chartData;
+
+                // ── X Axis (bulan) ──
+                var categoryAxis = chart.xAxes.push(new am4charts.CategoryAxis());
+                categoryAxis.dataFields.category = "bulan";
+                categoryAxis.renderer.minGridDistance = 20;
+                categoryAxis.renderer.grid.template.strokeOpacity = 0;
+                categoryAxis.renderer.labels.template.fontSize = 12;
+
+                // ── Y Axis kiri — Transaksi ──
+                var valueAxisLeft = chart.yAxes.push(new am4charts.ValueAxis());
+                valueAxisLeft.title.text = "Transaksi";
+                valueAxisLeft.title.fontSize = 11;
+                valueAxisLeft.renderer.labels.template.fontSize = 11;
+                valueAxisLeft.min = 0;
+                valueAxisLeft.strictMinMax = true;
+                valueAxisLeft.renderer.grid.template.strokeDasharray = "4,4";
+                valueAxisLeft.renderer.grid.template.strokeOpacity = 0.4;
+
+                // ── Y Axis kanan — Omzet ──
+                var valueAxisRight = chart.yAxes.push(new am4charts.ValueAxis());
+                valueAxisRight.title.text = "Omzet (Rp)";
+                valueAxisRight.title.fontSize = 11;
+                valueAxisRight.renderer.opposite = true;
+                valueAxisRight.renderer.labels.template.fontSize = 11;
+                valueAxisRight.renderer.grid.template.strokeOpacity = 0;
+                valueAxisRight.min = 0;
+                valueAxisRight.strictMinMax = true;
+                valueAxisRight.numberFormatter.numberFormat = "#,###";
+
+                // ── Series 1: Transaksi (garis biru putus-putus) ──
+                var seriesTransaksi = chart.series.push(new am4charts.LineSeries());
+                seriesTransaksi.dataFields.valueY = "transaksi";
+                seriesTransaksi.dataFields.categoryX = "bulan";
+                seriesTransaksi.yAxis = valueAxisLeft;
+                seriesTransaksi.name = "Transaksi";
+                seriesTransaksi.tooltipText = "Transaksi: [bold]{transaksi} pcs[/]";
+                seriesTransaksi.strokeWidth = 3;
+                seriesTransaksi.strokeDasharray = "8,4";
+                seriesTransaksi.tensionX = 0.8;
+                seriesTransaksi.tensionY = 1;
+                seriesTransaksi.stroke = am4core.color("#4e73df");
+                seriesTransaksi.fill = am4core.color("#4e73df");
+
+                // Bullet titik
+                var bulletT = seriesTransaksi.bullets.push(new am4charts.CircleBullet());
+                bulletT.circle.radius = 5;
+                bulletT.circle.strokeWidth = 2;
+                bulletT.circle.fill = am4core.color("#fff");
+                bulletT.circle.stroke = am4core.color("#4e73df");
+
+                // Label nilai
+                var labelT = seriesTransaksi.bullets.push(new am4charts.LabelBullet());
+                labelT.label.text = "{transaksi}";
+                labelT.label.dy = -14;
+                labelT.label.fontSize = 11;
+                labelT.label.fill = am4core.color("#4e73df");
+                labelT.label.fontWeight = "bold";
+
+                // ── Series 2: Omzet (garis merah solid) ──
+                var seriesOmzet = chart.series.push(new am4charts.LineSeries());
+                seriesOmzet.dataFields.valueY = "omzet";
+                seriesOmzet.dataFields.categoryX = "bulan";
+                seriesOmzet.yAxis = valueAxisRight;
+                seriesOmzet.name = "Omzet";
+                seriesOmzet.tooltipText = "Omzet: [bold]Rp {omzet.formatNumber('#,###')}[/]";
+                seriesOmzet.strokeWidth = 3;
+                seriesOmzet.tensionX = 0.8;
+                seriesOmzet.tensionY = 1;
+                seriesOmzet.stroke = am4core.color("#ff4a00");
+                seriesOmzet.fill = am4core.color("#ff4a00");
+
+                // Drop shadow omzet
+                var shadow = new am4core.DropShadowFilter();
+                shadow.dy = 10;
+                shadow.dx = 1;
+                shadow.blur = 8;
+                shadow.opacity = 0.4;
+                shadow.color = '#ff4a00';
+                seriesOmzet.filters.push(shadow);
+
+                // Bullet titik
+                var bulletO = seriesOmzet.bullets.push(new am4charts.CircleBullet());
+                bulletO.circle.radius = 5;
+                bulletO.circle.strokeWidth = 2;
+                bulletO.circle.fill = am4core.color("#fff");
+                bulletO.circle.stroke = am4core.color("#ff4a00");
+
+                // ── Cursor & Scrollbar ──
+                chart.cursor = new am4charts.XYCursor();
+                chart.cursor.lineY.opacity = 0;
+
+                // ── Tooltip styling ──
+                chart.tooltip.getFillFromObject = false;
+                chart.tooltip.background.fill = am4core.color("#333");
+
+            }, 400);
+            @endif
+
+            // ── Toggle show/hide chart ──────────────────────────────
+            $('#toggleStats').on('change', function() {
+                $('#statisticsChartWrap').slideToggle(300);
+            });
+
+        });
+    </script>
 @endsection

@@ -676,6 +676,71 @@ class PenjualanController extends Controller
         }
     }
 
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Tidak ada ID yang dipilih.'], 422);
+        }
+
+        $deleted = 0;
+        $errors  = [];
+
+        foreach ($ids as $id) {
+            DB::beginTransaction();
+            try {
+                $penjualan = Penjualan::with('detail')->findOrFail($id);
+
+                // Rollback stok jika bukan draft
+                if ($penjualan->is_draft === 'no') {
+                    foreach ($penjualan->detail as $detail) {
+                        $stok        = StokBarang::where('barang_id', $detail->barang_id)->lockForUpdate()->first();
+                        $stokSebelum = $stok->jumlah_stok ?? 0;
+                        $stokSesudah = $stokSebelum + $detail->qty;
+
+                        StokBarang::updateOrCreate(
+                            ['barang_id' => $detail->barang_id],
+                            ['jumlah_stok' => $stokSesudah]
+                        );
+
+                        StokMovement::create([
+                            'barang_id'      => $detail->barang_id,
+                            'jenis'          => 'masuk',
+                            'qty'            => $detail->qty,
+                            'stok_sebelum'   => $stokSebelum,
+                            'stok_sesudah'   => $stokSesudah,
+                            'referensi_tipe' => 'penjualan_delete',
+                            'referensi_id'   => $penjualan->id,
+                            'keterangan'     => 'Bulk hapus penjualan ' . $penjualan->kode_penjualan,
+                            'created_by'     => Auth::guard('pengguna')->user()->id,
+                        ]);
+                    }
+                }
+
+                PenjualanDetail::where('penjualan_id', $penjualan->id)->delete();
+                $penjualan->delete();
+
+                DB::commit();
+                $deleted++;
+            } catch (\Exception $e) {
+                DB::rollBack();
+                $errors[] = "ID {$id}: " . $e->getMessage();
+            }
+        }
+
+        $message = "{$deleted} penjualan berhasil dihapus.";
+        if (!empty($errors)) {
+            $message .= ' ' . count($errors) . ' gagal.';
+        }
+
+        return response()->json([
+            'success' => $deleted > 0,
+            'message' => $message,
+            'errors'  => $errors,
+        ]);
+    }
+
     public function struk($id)
     {
         $penjualan = Penjualan::findOrFail($id);
@@ -693,14 +758,71 @@ class PenjualanController extends Controller
         return view('pages.transaksi.penjualan.struk', compact('penjualan', 'nomorStruk'));
     }
 
+    public function bulkStrukDownload(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return response()->json(['error' => 'Tidak ada ID yang dipilih.'], 422);
+        }
+
+        $penjualanList = Penjualan::whereIn('id', $ids)->orderBy('id')->get();
+
+        // Siapkan data lengkap untuk setiap penjualan
+        $struks = $penjualanList->map(function ($penjualan) {
+            $nomorUrut   = Penjualan::where('id', '<=', $penjualan->id)->count();
+            $dropshipper = strtoupper($penjualan->dropshipper->nama);
+            $nomorStruk  = sprintf(
+                $dropshipper . "-%04d-%s",
+                $nomorUrut,
+                \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY')
+            );
+
+            $resiBase64 = null;
+            $resiMime   = null;
+            $resiIsPdf  = false;
+
+            if ($penjualan->file_resi) {
+                $resiPath = storage_path('app/public/' . $penjualan->file_resi);
+                $ext      = strtolower(pathinfo($resiPath, PATHINFO_EXTENSION));
+
+                if (file_exists($resiPath)) {
+                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+                        $resiBase64 = base64_encode(file_get_contents($resiPath));
+                        $resiMime   = match ($ext) {
+                            'jpg', 'jpeg' => 'image/jpeg',
+                            'png'         => 'image/png',
+                            'webp'        => 'image/webp',
+                            default       => 'image/jpeg',
+                        };
+                    } elseif ($ext === 'pdf') {
+                        $resiIsPdf = true;
+                    }
+                }
+            }
+
+            return compact('penjualan', 'nomorStruk', 'resiBase64', 'resiMime', 'resiIsPdf');
+        })->toArray();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'pages.transaksi.penjualan.struk_pdf_bulk',
+            compact('struks')
+        )->setPaper([0, 0, 419.53, 595.28]); // A5
+
+        $filename = 'struk-bulk-' . now()->format('dmY-His') . '.pdf';
+
+        return $pdf->download($filename);
+    }
     public function strukDownload($id)
     {
         $penjualan = Penjualan::findOrFail($id);
 
         $nomorUrut = Penjualan::where('id', '<=', $penjualan->id)->count();
+        $dropshipper = strtoupper($penjualan->dropshipper->nama);
+        $noUrutAwal = $dropshipper . "-%04d-%s";
 
         $nomorStruk = sprintf(
-            'CHRISBALE-%04d-%s',
+            $noUrutAwal,
             $nomorUrut,
             \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY')
         );

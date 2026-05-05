@@ -59,6 +59,21 @@
                                         </h6>
                                         @if(hasPermission('tambah', 'penjualan'))
                                         <div class="d-flex g-5">
+
+                                            <button id="btnBulkDownload"
+                                                    class="btn btn-secondary btn-sm d-none"
+                                                    onclick="bulkDownloadStruk()">
+                                                <i class="feather icon-download"></i>
+                                                <span class="d-none d-sm-inline">Download Struk (<span id="selectedCount">0</span>)</span>
+                                                <span class="d-inline d-sm-none">DL (<span class="selectedCountMobile">0</span>)</span>
+                                            </button>
+                                            <button id="btnBulkDelete"
+                                                    class="btn btn-danger btn-sm d-none"
+                                                    onclick="bulkDelete()">
+                                                <i class="feather icon-trash"></i>
+                                                <span class="d-none d-sm-inline">Hapus (<span id="selectedCountDelete">0</span>)</span>
+                                                <span class="d-inline d-sm-none">Del (<span class="selectedCountDeleteMobile">0</span>)</span>
+                                            </button>
                                             <a href="{{ route('penjualan.create.multiple') }}" class="btn btn-info btn-sm">
                                                 <i class="feather icon-plus"></i>
                                                 <span class="d-none d-sm-inline">Buat Penjualan</span>
@@ -693,6 +708,138 @@
         // =====================================================
         document.getElementById('checkAll').addEventListener('click', function() {
             document.querySelectorAll('.row-check').forEach(cb => cb.checked = this.checked);
+        });
+
+        // =====================================================
+        // BULK DOWNLOAD STRUK
+        // =====================================================
+        function getSelectedIds() {
+            const checked = document.querySelectorAll('#tableBody .row-check:checked');
+            return Array.from(checked).map(cb => {
+                return parseInt(cb.closest('tr.main-row').getAttribute('data-id'));
+            });
+        }
+
+        function updateBulkBar() {
+            const ids = getSelectedIds();
+            const btn = document.getElementById('btnBulkDownload');
+            const btnDel = document.getElementById('btnBulkDelete');
+
+            document.querySelectorAll('#selectedCount, .selectedCountMobile')
+                .forEach(el => el.textContent = ids.length);
+            document.querySelectorAll('#selectedCountDelete, .selectedCountDeleteMobile')
+                .forEach(el => el.textContent = ids.length);
+
+            if (ids.length > 0) {
+                btn.classList.remove('d-none');
+                btnDel.classList.remove('d-none');
+            } else {
+                btn.classList.add('d-none');
+                btnDel.classList.add('d-none');
+            }
+        }
+
+        async function bulkDelete() {
+            const ids = getSelectedIds();
+            if (ids.length === 0) return;
+
+            const result = await Swal.fire({
+                title: 'Hapus ' + ids.length + ' penjualan?',
+                text: 'Data yang dihapus tidak dapat dikembalikan!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, hapus semua!',
+                cancelButtonText: 'Batal'
+            });
+
+            if (!result.isConfirmed) return;
+
+            const btn = document.getElementById('btnBulkDelete');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menghapus...';
+
+            try {
+                const res = await fetch('/transaksi/penjualan/bulk-delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                    },
+                    body: JSON.stringify({ ids }),
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    Toast.fire({ icon: 'success', title: 'Berhasil', text: json.message });
+                    await fetchData();
+                } else {
+                    Toast.fire({ icon: 'error', title: 'Gagal', text: json.message ?? 'Terjadi kesalahan.' });
+                }
+            } catch (e) {
+                Toast.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                updateBulkBar();
+            }
+        }
+
+        async function bulkDownloadStruk() {
+            const ids = getSelectedIds();
+            if (ids.length === 0) return;
+
+            const btn = document.getElementById('btnBulkDownload');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Memproses...';
+
+            try {
+                const res = await fetch('/transaksi/penjualan/bulk-struk-download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': CSRF_TOKEN,
+                    },
+                    body: JSON.stringify({ ids }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    Toast.fire({ icon: 'error', title: 'Gagal', text: err.error ?? 'Terjadi kesalahan.' });
+                    return;
+                }
+
+                const blob = await res.blob();
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href     = url;
+                a.download = 'struk-bulk-' + new Date().toISOString().slice(0,10) + '.pdf';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                URL.revokeObjectURL(url);
+
+                Toast.fire({ icon: 'success', title: 'Berhasil', text: ids.length + ' struk berhasil didownload.' });
+            } catch (e) {
+                Toast.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="feather icon-download"></i> Download Struk (<span id="selectedCount">' + getSelectedIds().length + '</span>)';
+            }
+        }
+
+        // Pasang listener di tbody untuk mendeteksi perubahan checkbox (event delegation)
+        document.getElementById('tableBody').addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-check')) updateBulkBar();
+        });
+
+        // Update bulk bar juga saat check-all diklik
+        document.getElementById('checkAll').addEventListener('click', function() {
+            document.querySelectorAll('.row-check').forEach(cb => cb.checked = this.checked);
+            updateBulkBar();
         });
 
         // =====================================================

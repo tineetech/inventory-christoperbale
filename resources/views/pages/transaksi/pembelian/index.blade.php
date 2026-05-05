@@ -147,6 +147,14 @@
 
                                         </div>
 
+                                        @if(hasPermission('hapus', 'pembelian'))
+                                        <button id="btnBulkDelete"
+                                                class="btn btn-danger btn-sm d-none mr-2"
+                                                onclick="bulkDelete()">
+                                            <i class="feather icon-trash"></i>
+                                            Hapus (<span id="selectedCount">0</span>)
+                                        </button>
+                                        @endif
                                         @if(hasPermission('tambah', 'pembelian'))
                                         <a href="{{ route('pembelian.create') }}" class="btn btn-primary btn-sm">
                                             <i class="feather icon-plus"></i> Buat Penambahan Barang
@@ -682,5 +690,86 @@
             });
 
         });
+
+        // =====================================================
+// CHECK ALL + BULK BAR
+// =====================================================
+function getSelectedIds() {
+    const checked = document.querySelectorAll('#table tbody .row-check:checked');
+    return Array.from(checked).map(cb => {
+        return parseInt(cb.closest('tr.main-row').getAttribute('data-id'));
+    });
+}
+
+function updateBulkBar() {
+    const ids = getSelectedIds();
+    const btn = document.getElementById('btnBulkDelete');
+    document.querySelectorAll('#selectedCount').forEach(el => el.textContent = ids.length);
+    if (ids.length > 0) {
+        btn?.classList.remove('d-none');
+    } else {
+        btn?.classList.add('d-none');
+    }
+}
+
+document.getElementById('checkAll').addEventListener('click', function () {
+    document.querySelectorAll('.row-check').forEach(cb => cb.checked = this.checked);
+    updateBulkBar();
+});
+
+document.getElementById('table').addEventListener('change', function (e) {
+    if (e.target.classList.contains('row-check')) updateBulkBar();
+});
+
+// =====================================================
+// BULK DELETE
+// =====================================================
+async function bulkDelete() {
+    const ids = getSelectedIds();
+    if (ids.length === 0) return;
+
+    const result = await Swal.fire({
+        title: 'Hapus ' + ids.length + ' pembelian?',
+        text: 'Stok akan di-rollback dan data tidak dapat dikembalikan!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Ya, hapus semua!',
+        cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+
+    const btn = document.getElementById('btnBulkDelete');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menghapus...';
+
+    try {
+        const res = await fetch('/transaksi/pembelian/bulk-delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ ids })
+        });
+
+        const json = await res.json();
+
+        if (json.success) {
+            Swal.fire({ icon: 'success', title: 'Berhasil', text: json.message, timer: 2000, showConfirmButton: false });
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: json.message ?? 'Terjadi kesalahan.' });
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
+        console.error(e);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="feather icon-trash"></i> Hapus (<span id="selectedCount">' + getSelectedIds().length + '</span>)';
+    }
+}
     </script>
 @endsection
