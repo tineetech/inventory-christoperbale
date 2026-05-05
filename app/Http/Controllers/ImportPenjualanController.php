@@ -15,36 +15,12 @@ class ImportPenjualanController extends Controller
         return env('FASTAPI_URL');
     }
 
-
-    // ============================================================
-    // PATCH 1: Controller — tambah image_base64 di normaliseData()
-    // ============================================================
-    // Cari fungsi normaliseData() di controller yang sama,
-    // pastikan field image_base64 ikut di-map.
-    // Contoh yang SALAH (image_base64 tidak disertakan):
-    //
-    // private function normaliseData(array $data): array
-    // {
-    //     return array_map(fn($r) => [
-    //         'page'     => $r['page']     ?? null,
-    //         'resi'     => $r['resi']     ?? null,
-    //         'order_id' => $r['order_id'] ?? null,
-    //         'items'    => $r['items']    ?? [],
-    //         'skus'     => $r['skus']     ?? [],
-    //         // ← image_base64 HILANG
-    //     ], $data);
-    // }
-    //
-    // Fix — ganti dengan ini:
-
-    // ============================================================
-    // PATCH 2: importMultipleResi() — debug log + pass image_base64
-    // ============================================================
-    // Tambahkan log setelah $payload = $response->json(); untuk
-    // verifikasi FastAPI memang mengirim image_base64:
-
+    
     public function importMultipleResi(Request $request)
     {
+        set_time_limit(300);
+        ini_set('max_execution_time', 300);
+        ini_set('memory_limit', '256M');
         $request->validate([
             'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:20480',
             'mode' => 'nullable|string|in:shopee,tiktok',
@@ -54,7 +30,7 @@ class ImportPenjualanController extends Controller
         $file = $request->file('file');
 
         try {
-            $response = Http::withoutVerifying()->timeout(120)
+            $response = Http::timeout(300)
                 ->attach(
                     'file',
                     file_get_contents($file->getRealPath()),
