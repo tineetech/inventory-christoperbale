@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Role;
+use App\Models\RoleHakAkses;
 use Illuminate\Http\Request;
 
 class RoleController extends Controller
@@ -76,6 +77,10 @@ class RoleController extends Controller
         }
 
         $nama = $role->nama_role;
+
+        // Hapus role_hak_akses dulu sebelum hapus role
+        RoleHakAkses::where('role_id', $id)->delete();
+
         $role->delete();
 
         return redirect()->back()->with('success', "Role '{$nama}' berhasil dihapus.");

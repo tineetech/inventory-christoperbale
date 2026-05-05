@@ -54,7 +54,7 @@ class ImportPenjualanController extends Controller
         $file = $request->file('file');
 
         try {
-            $response = Http::timeout(120)
+            $response = Http::withoutVerifying()->timeout(120)
                 ->attach(
                     'file',
                     file_get_contents($file->getRealPath()),

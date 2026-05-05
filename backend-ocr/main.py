@@ -78,6 +78,8 @@ async def scan_resi(
         result = parse_tiktok(text, items)
     else:
         result = {"error": "mode tidak dikenali"}
+
+    _cleanup(filename)
     return {
         "mode": mode,
         "result": result
