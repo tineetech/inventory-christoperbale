@@ -8,19 +8,147 @@ use Illuminate\Support\Facades\Log;
 
 class ImportPenjualanController extends Controller
 {
-
-
     private function fastApiUrl(): string
     {
         return env('FASTAPI_URL');
     }
 
-    
+    // ================================================================
+    // ENDPOINT BARU (Async): Step 1 — Submit job, dapat job_id
+    // ================================================================
+    public function submitMultipleResiJob(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:20480',
+            'mode' => 'nullable|string|in:shopee,tiktok',
+        ]);
+
+        $mode = $request->input('mode', 'shopee');
+        $file = $request->file('file');
+
+        try {
+            $response = Http::timeout(30)
+                ->attach(
+                    'file',
+                    file_get_contents($file->getRealPath()),
+                    $file->getClientOriginalName()
+                )
+                ->post($this->fastApiUrl() . '/scan-resi-multiple-async', [
+                    'mode' => $mode,
+                ]);
+
+            if ($response->failed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'OCR service error: HTTP ' . $response->status(),
+                ], 502);
+            }
+
+            $payload = $response->json();
+
+            // Kembalikan job_id ke frontend untuk polling
+            return response()->json([
+                'success'     => true,
+                'job_id'      => $payload['job_id'],
+                'total_pages' => $payload['total_pages'],
+                'status'      => 'queued',
+            ]);
+
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'OCR service tidak dapat dijangkau.',
+            ], 503);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ================================================================
+    // ENDPOINT BARU (Async): Step 2 — Polling status job
+    // ================================================================
+    public function pollJobStatus(Request $request, string $jobId)
+    {
+        try {
+            $response = Http::timeout(10)
+                ->get($this->fastApiUrl() . '/job-status/' . $jobId);
+
+            if ($response->failed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Gagal cek status job',
+                ], 502);
+            }
+
+            $payload = $response->json();
+
+            if (isset($payload['error'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $payload['error'],
+                ], 422);
+            }
+
+            // Kalau masih proses, kembalikan progress saja
+            if ($payload['status'] !== 'done') {
+                return response()->json([
+                    'success'      => true,
+                    'status'       => $payload['status'],
+                    'total_pages'  => $payload['total_pages'],
+                    'done_pages'   => $payload['done_pages'],
+                    'failed_pages' => $payload['failed_pages'],
+                    'progress_pct' => $payload['progress_pct'],
+                    // Kirim data parsial yang sudah selesai (opsional)
+                    'data'         => $this->normaliseAndValidate($payload['data'] ?? [])['data'],
+                    'warnings'     => $this->normaliseAndValidate($payload['data'] ?? [])['warnings'],
+                ]);
+            }
+
+            // Status = done → proses lengkap
+            $result = $this->normaliseAndValidate($payload['data'] ?? []);
+
+            Log::debug('[PollJobStatus] Job selesai', [
+                'job_id'        => $jobId,
+                'total_pages'   => $payload['total_pages'],
+                'done_pages'    => $payload['done_pages'],
+                'valid_count'   => count($result['data']),
+                'skipped_count' => count($result['skipped']),
+            ]);
+
+            return response()->json([
+                'success'       => true,
+                'status'        => 'done',
+                'mode'          => $payload['mode'],
+                'total'         => count($result['data']),
+                'total_skipped' => count($result['skipped']),
+                'total_pages'   => $payload['total_pages'],
+                'done_pages'    => $payload['done_pages'],
+                'failed_pages'  => $payload['failed_pages'],
+                'progress_pct'  => 100,
+                'data'          => $result['data'],
+                'warnings'      => $result['warnings'],
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    // ================================================================
+    // ENDPOINT LAMA (Sync) — tetap ada untuk backward compatibility
+    // ================================================================
     public function importMultipleResi(Request $request)
     {
         set_time_limit(300);
         ini_set('max_execution_time', 300);
         ini_set('memory_limit', '256M');
+
         $request->validate([
             'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:20480',
             'mode' => 'nullable|string|in:shopee,tiktok',
@@ -41,92 +169,30 @@ class ImportPenjualanController extends Controller
                 ]);
 
             if ($response->failed()) {
-                Log::error('[ImportMultipleResi] FastAPI error', [
-                    'status' => $response->status(),
-                    'body'   => $response->body(),
-                ]);
                 return response()->json([
                     'success' => false,
                     'message' => 'OCR service error: HTTP ' . $response->status(),
                 ], 502);
             }
 
-            $payload = $response->json();
-
-            // ★ DEBUG LOG — cek apakah FastAPI mengirim image_base64
-            // Hapus setelah masalah resolved
-            $firstPage = $payload['data'][0] ?? null;
-            Log::debug('[ImportMultipleResi] FastAPI response check', [
-                'total_pages'           => count($payload['data'] ?? []),
-                'first_page_has_image'  => isset($firstPage['image_base64']) && !empty($firstPage['image_base64']),
-                'first_page_image_len'  => strlen($firstPage['image_base64'] ?? ''),
-                'first_page_resi'       => $firstPage['resi'] ?? null,
-            ]);
-
-            if (isset($payload['error'])) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $payload['error'],
-                ], 422);
-            }
-
-            $normalised = $this->normaliseData($payload['data'] ?? []);
-
-            $warnings = [];
-
-            foreach ($normalised as $idx => &$resiData) {
-                $label = 'Halaman ' . ($resiData['page'] ?? ($idx + 1));
-
-                if (!empty($resiData['resi'])) {
-                    $isDuplicate = \App\Models\Penjualan::where('nomor_resi', $resiData['resi'])->exists();
-                    if ($isDuplicate) {
-                        $resiData['is_duplicate'] = true;
-                        $warnings[] = [
-                            'type'    => 'duplicate_resi',
-                            'page'    => $resiData['page'] ?? ($idx + 1),
-                            'message' => "{$label}: Nomor resi <strong>{$resiData['resi']}</strong> sudah ada di database — akan dilewati.",
-                        ];
-                    } else {
-                        $resiData['is_duplicate'] = false;
-                    }
-                } else {
-                    $resiData['is_duplicate'] = false;
-                    $warnings[] = [
-                        'type'    => 'no_resi',
-                        'page'    => $resiData['page'] ?? ($idx + 1),
-                        'message' => "{$label}: Nomor resi tidak terbaca — tetap ditambahkan, isi manual.",
-                    ];
-                }
-
-                if (empty($resiData['skus'])) {
-                    $warnings[] = [
-                        'type'    => 'no_sku',
-                        'page'    => $resiData['page'] ?? ($idx + 1),
-                        'message' => "{$label}: Tidak ada SKU yang terbaca — tambahkan barang secara manual.",
-                    ];
-                }
-            }
-            unset($resiData);
-
-            $validData   = array_values(array_filter($normalised, fn($r) => !($r['is_duplicate'] ?? false)));
-            $skippedData = array_values(array_filter($normalised, fn($r) => ($r['is_duplicate'] ?? false)));
+            $payload  = $response->json();
+            $result   = $this->normaliseAndValidate($payload['data'] ?? []);
 
             return response()->json([
                 'success'       => true,
                 'mode'          => $payload['mode'] ?? $mode,
-                'total'         => count($validData),
-                'total_skipped' => count($skippedData),
-                'data'          => $validData,   // ★ image_base64 sudah ikut via normaliseData
-                'warnings'      => $warnings,
+                'total'         => count($result['data']),
+                'total_skipped' => count($result['skipped']),
+                'data'          => $result['data'],
+                'warnings'      => $result['warnings'],
             ]);
+
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
-            Log::error('[ImportMultipleResi] Tidak bisa konek ke FastAPI', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
-                'message' => 'OCR service tidak dapat dijangkau. Pastikan FastAPI berjalan.',
+                'message' => 'OCR service tidak dapat dijangkau.',
             ], 503);
         } catch (\Exception $e) {
-            Log::error('[ImportMultipleResi] Exception', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
@@ -135,37 +201,65 @@ class ImportPenjualanController extends Controller
     }
 
     // ================================================================
-    // HELPER — pastikan tiap item di data punya key yang konsisten
-    // supaya JS tidak perlu defensive check terlalu banyak
+    // HELPER — normalise + cek duplikat + kumpulkan warnings
     // ================================================================
-    // private function normaliseData(array $data): array
-    // {
-    //     return array_map(function ($resi) {
-    //         return [
-    //             'page'     => $resi['page']     ?? null,
-    //             'resi'     => $resi['resi']     ?? null,
-    //             'order_id' => $resi['order_id'] ?? null,
-    //             'skus'     => $resi['skus']     ?? [],
-    //             'items'    => array_map(function ($item) {
-    //                 return [
-    //                     'nama'    => $item['nama']    ?? '',
-    //                     'sku'     => $item['sku']     ?? '',
-    //                     'variasi' => $item['variasi'] ?? '',
-    //                     'qty'     => (int) ($item['qty'] ?? 1),
-    //                 ];
-    //             }, $resi['items'] ?? []),
-    //         ];
-    //     }, $data);
-    // }
+    private function normaliseAndValidate(array $data): array
+    {
+        $normalised = $this->normaliseData($data);
+        $warnings   = [];
+        $valid      = [];
+        $skipped    = [];
+
+        foreach ($normalised as $idx => $resiData) {
+            $label = 'Halaman ' . ($resiData['page'] ?? ($idx + 1));
+
+            // Cek duplikat resi
+            if (!empty($resiData['resi'])) {
+                $isDuplicate = \App\Models\Penjualan::where('nomor_resi', $resiData['resi'])->exists();
+                if ($isDuplicate) {
+                    $resiData['is_duplicate'] = true;
+                    $warnings[] = [
+                        'type'    => 'duplicate_resi',
+                        'page'    => $resiData['page'] ?? ($idx + 1),
+                        'message' => "{$label}: Nomor resi <strong>{$resiData['resi']}</strong> sudah ada — dilewati.",
+                    ];
+                    $skipped[] = $resiData;
+                    continue;
+                }
+            } else {
+                $warnings[] = [
+                    'type'    => 'no_resi',
+                    'page'    => $resiData['page'] ?? ($idx + 1),
+                    'message' => "{$label}: Nomor resi tidak terbaca — isi manual.",
+                ];
+            }
+
+            if (empty($resiData['skus'])) {
+                $warnings[] = [
+                    'type'    => 'no_sku',
+                    'page'    => $resiData['page'] ?? ($idx + 1),
+                    'message' => "{$label}: Tidak ada SKU — tambahkan barang manual.",
+                ];
+            }
+
+            $resiData['is_duplicate'] = false;
+            $valid[] = $resiData;
+        }
+
+        return [
+            'data'     => $valid,
+            'skipped'  => $skipped,
+            'warnings' => $warnings,
+        ];
+    }
 
     private function normaliseData(array $data): array
     {
         return array_map(function ($r) {
-            // Normalkan items: pastikan tiap item punya field sku & qty
             $items = array_map(fn($item) => [
-                'sku'     => $item['sku']     ?? $item['SKU']  ?? null,
-                'qty'     => (int) ($item['qty'] ?? $item['jumlah'] ?? 1),
-                'nama'    => $item['nama']    ?? $item['nama_barang'] ?? null,
+                'sku'     => $item['sku']     ?? $item['SKU']         ?? null,
+                'qty'     => (int) ($item['qty'] ?? $item['jumlah']   ?? 1),
+                'nama'    => $item['nama']    ?? $item['nama_barang']  ?? null,
                 'variasi' => $item['variasi'] ?? null,
             ], $r['items'] ?? []);
 
@@ -175,27 +269,24 @@ class ImportPenjualanController extends Controller
                 'order_id'     => $r['order_id']     ?? null,
                 'items'        => $items,
                 'skus'         => $r['skus']         ?? [],
-                // ★ FIX UTAMA: sertakan image_base64 dari FastAPI
                 'image_base64' => $r['image_base64'] ?? null,
             ];
         }, $data);
     }
 
-
+    // ================================================================
+    // Endpoint lain (Tokped, Shopee single)
+    // ================================================================
     public function importTokped(Request $request)
     {
         $url = env('FASTAPI_URL') . '/scan-resi';
-        $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
-        ]);
+        $request->validate(['file' => 'required|file|mimes:jpg,jpeg,png,pdf']);
 
         $response = Http::attach(
             'file',
             file_get_contents($request->file('file')->getRealPath()),
             $request->file('file')->getClientOriginalName()
-        )->post($url, [
-            'mode' => 'tiktok',
-        ]);
+        )->post($url, ['mode' => 'tiktok']);
 
         return response()->json($response->json());
     }
@@ -203,17 +294,13 @@ class ImportPenjualanController extends Controller
     public function importShopee(Request $request)
     {
         $url = env('FASTAPI_URL') . '/scan-resi';
-        $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf',
-        ]);
+        $request->validate(['file' => 'required|file|mimes:jpg,jpeg,png,pdf']);
 
         $response = Http::attach(
             'file',
             file_get_contents($request->file('file')->getRealPath()),
             $request->file('file')->getClientOriginalName()
-        )->post($url, [
-            'mode' => 'shopee',
-        ]);
+        )->post($url, ['mode' => 'shopee']);
 
         return response()->json($response->json());
     }

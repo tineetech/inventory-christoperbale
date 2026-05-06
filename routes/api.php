@@ -35,6 +35,9 @@ Route::post(
 Route::post('/penjualan/import/tokped-jnt', [ImportPenjualanController::class, 'importTokped']);
 Route::post('/penjualan/import/shopee', [ImportPenjualanController::class, 'importShopee']);
 
+Route::post('/import-multiple-resi-async', [ImportPenjualanController::class, 'submitMultipleResiJob'])->name('api.import.multi-job');
+Route::get('/import-job-status/{jobId}', [ImportPenjualanController::class, 'pollJobStatus'])->name('api.import.multi-job.status');
+
 
 Route::prefix('penjualan')->group(function () {
     Route::get('/list', [PenjualanScanOutController::class, 'list']);

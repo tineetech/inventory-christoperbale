@@ -397,39 +397,79 @@
     </div>
 </div> --}}
 
-<div id="import-loading">
-    <div class="spinner-wrap" style="min-width:360px; max-width:440px;">
+<div class="modal fade" id="modal-import-progress" data-backdrop="static" data-keyboard="false"
+     tabindex="-1" role="dialog" aria-labelledby="modalImportLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+        <div class="modal-content" style="border-radius: 14px; overflow: hidden;">
  
-        {{-- Header --}}
-        <div class="d-flex align-items-center gap-2 mb-3" style="gap:12px;">
-            <div class="spinner-border text-primary flex-shrink-0"
-                 style="width:2rem;height:2rem;" role="status"></div>
-            <div>
-                <h6 class="mb-0 font-weight-bold" id="loading-title">Membaca file resi...</h6>
-                <p class="text-muted small mb-0" id="loading-subtitle">Mohon tunggu sebentar.</p>
+            {{-- Header --}}
+            <div class="modal-header" style="background: #2f3237; color:#fff; border-bottom: none; padding: 16px 20px;">
+                <div class="d-flex align-items-center gap-2" style="gap: 12px;">
+                    <div class="spinner-border text-light flex-shrink-0"
+                         id="modal-spinner"
+                         style="width:1.6rem; height:1.6rem;" role="status"></div>
+                    <div>
+                        <h6 class="mb-0 font-weight-bold" id="modal-import-title">Membaca file resi...</h6>
+                        <small class="text-white-50" id="modal-import-subtitle">Mohon tunggu sebentar.</small>
+                    </div>
+                </div>
+                {{-- Tombol X hanya muncul kalau sudah done / error --}}
+                <button type="button" class="close text-white d-none" id="modal-close-btn"
+                        data-dismiss="modal" aria-label="Close" style="opacity:.8;">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
-        </div>
  
-        {{-- Progress bar --}}
-        <div class="progress mb-2" style="height:10px; border-radius:6px; background:#e9ecef;">
-            <div id="import-progress-bar"
-                 class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
-                 role="progressbar"
-                 style="width:0%; transition: width .3s ease;">
+            {{-- Body --}}
+            <div class="modal-body p-4">
+ 
+                {{-- Progress bar --}}
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small id="modal-step-label" class="text-muted">Mengirim file...</small>
+                    <small id="modal-pct" class="font-weight-bold text-primary">0%</small>
+                </div>
+                <div class="progress mb-3" style="height: 10px; border-radius: 6px; background: #e9ecef;">
+                    <div id="modal-progress-bar"
+                         class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                         role="progressbar" style="width: 0%; transition: width .4s ease;"></div>
+                </div>
+ 
+                {{-- Halaman counter --}}
+                <div class="d-flex justify-content-between mb-3"
+                     style="background: #f8fafc; border: 1px solid #dee2e6;
+                            border-radius: 8px; padding: 10px 14px;">
+                    <div class="text-center" style="flex:1;">
+                        <div class="font-weight-bold text-primary" id="modal-stat-total" style="font-size:1.4rem;">—</div>
+                        <small class="text-muted">Total Halaman</small>
+                    </div>
+                    <div style="width:1px; background:#dee2e6;"></div>
+                    <div class="text-center" style="flex:1;">
+                        <div class="font-weight-bold text-success" id="modal-stat-done" style="font-size:1.4rem;">0</div>
+                        <small class="text-muted">Selesai</small>
+                    </div>
+                    <div style="width:1px; background:#dee2e6;"></div>
+                    <div class="text-center" style="flex:1;">
+                        <div class="font-weight-bold text-danger" id="modal-stat-failed" style="font-size:1.4rem;">0</div>
+                        <small class="text-muted">Gagal</small>
+                    </div>
+                </div>
+ 
+                {{-- Log berjalan --}}
+                <div id="modal-log"
+                     style="background: #1e1e2e; border-radius: 8px; padding: 10px 12px;
+                            max-height: 160px; overflow-y: auto;
+                            font-size: .75rem; font-family: 'Courier New', monospace;
+                            color: #cdd6f4; line-height: 1.6;">
+                    <div class="log-line" style="color:#6c757d;">Menunggu server...</div>
+                </div>
+ 
             </div>
-        </div>
  
-        {{-- Persen + label --}}
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <small id="loading-step-label" class="text-muted">Mengirim file...</small>
-            <small id="loading-pct" class="font-weight-bold text-primary">0%</small>
-        </div>
+            {{-- Footer: hanya tampil saat error atau selesai --}}
+            <div class="modal-footer d-none" id="modal-footer" style="border-top: 1px solid #dee2e6; padding: 12px 20px;">
+                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Tutup</button>
+            </div>
  
-        {{-- Log berjalan (scrollable) --}}
-        <div id="loading-log"
-             style="background:#f8fafc; border:1px solid #dee2e6; border-radius:6px;
-                    max-height:140px; overflow-y:auto; padding:8px 10px;
-                    font-size:.78rem; font-family:monospace; color:#495057;">
         </div>
     </div>
 </div>
@@ -455,6 +495,316 @@ const resiImageMap = {};
 // STOCK TRACKER
 // ================================================================
 const stockUsageMap = {};
+
+
+// ================================================================
+// POLLING CONFIG
+// ================================================================
+const POLL_INTERVAL_MS  = 2000;  // polling tiap 2 detik
+const POLL_MAX_WAIT_MS  = 300000; // timeout 5 menit
+let   _pollTimer        = null;
+let   _pollStartTime    = null;
+let   _currentJobId     = null;
+ 
+// Simpan data yang sudah masuk (untuk deduplikasi saat partial update)
+let   _processedPages   = new Set();
+ 
+// ================================================================
+// MODAL HELPERS
+// ================================================================
+function modalReset() {
+    $('#modal-progress-bar')
+        .css('width', '0%')
+        .removeClass('bg-success bg-danger')
+        .addClass('bg-primary progress-bar-animated progress-bar-striped');
+    $('#modal-pct').text('0%').removeClass('text-success text-danger').addClass('text-primary');
+    $('#modal-step-label').text('Mengirim file ke server...');
+    $('#modal-import-title').text('Membaca file resi...');
+    $('#modal-import-subtitle').text('Mohon tunggu sebentar.');
+    $('#modal-stat-total').text('—');
+    $('#modal-stat-done').text('0');
+    $('#modal-stat-failed').text('0');
+    $('#modal-log').html('<div class="log-line" style="color:#6c757d;">Menunggu server...</div>');
+    $('#modal-close-btn').addClass('d-none');
+    $('#modal-footer').addClass('d-none');
+    $('#modal-spinner').show();
+    _processedPages.clear();
+    _isProcessing = false; // ← tambah ini
+}
+ 
+function modalSet(pct, label) {
+    const p = Math.min(100, Math.max(0, Math.round(pct)));
+    $('#modal-progress-bar').css('width', p + '%');
+    $('#modal-pct').text(p + '%');
+    if (label !== undefined) $('#modal-step-label').text(label);
+}
+ 
+function modalLog(msg, type = 'info') {
+    const colors = {
+        ok    : '#a6e3a1',
+        skip  : '#f9e2af',
+        err   : '#f38ba8',
+        info  : '#89b4fa',
+        active: '#cba6f7',
+    };
+    const icons = { ok: '✓', skip: '⏭', err: '✗', info: '·', active: '▶' };
+    const color = colors[type] ?? '#cdd6f4';
+    const icon  = icons[type] ?? '·';
+ 
+    const logEl = document.getElementById('modal-log');
+    const line  = document.createElement('div');
+    line.style.cssText = `color: ${color}; padding: 1px 0; border-bottom: 1px solid rgba(255,255,255,.04);`;
+    line.innerHTML = `<span style="opacity:.5; margin-right:4px;">${icon}</span>${msg}`;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+ 
+function modalDone(isError = false) {
+    $('#modal-spinner').hide();
+    $('#modal-close-btn').removeClass('d-none');
+    $('#modal-footer').removeClass('d-none');
+    if (isError) {
+        $('#modal-progress-bar')
+            .removeClass('bg-primary progress-bar-animated progress-bar-striped')
+            .addClass('bg-danger');
+        $('#modal-pct').removeClass('text-primary').addClass('text-danger');
+    } else {
+        $('#modal-progress-bar')
+            .removeClass('bg-primary progress-bar-animated progress-bar-striped')
+            .addClass('bg-success');
+        $('#modal-pct').removeClass('text-primary').addClass('text-success');
+        modalSet(100, 'Selesai!');
+    }
+}
+ 
+function modalUpdateStats(total, done, failed) {
+    if (total) $('#modal-stat-total').text(total);
+    $('#modal-stat-done').text(done ?? 0);
+    $('#modal-stat-failed').text(failed ?? 0);
+}
+ 
+// ================================================================
+// STOP POLLING
+// ================================================================
+function stopPolling() {
+    if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+    _currentJobId = null;
+}
+
+
+async function injectResiPage(resiData, pageIndex, totalPages) {
+    const resiVal    = (resiData.resi     ?? '').trim();
+    const pesananVal = (resiData.order_id ?? '').trim();
+    const pageLabel  = resiVal || pesananVal || `Hal. ${resiData.page}`;
+ 
+    modalLog(`[${pageIndex}/${totalPages}] ${pageLabel}`, 'active');
+ 
+    // Cek duplicate
+    const dup = checkDuplicateResi(resiVal, pesananVal);
+    if (dup.isDuplicate) {
+        const label = dup.type === 'resi' ? 'No. Resi' : 'No. Pesanan';
+        modalLog(`↳ DUPLIKAT (${label}: ${dup.value}) — dilewati`, 'skip');
+        return { skipped: true, msg: `Hal. ${resiData.page}: ${label} <strong>${dup.value}</strong> sudah ada di list, dilewati.` };
+    }
+ 
+    // Buat card
+    const cardId = addResiCard(resiVal, pesananVal, true);
+    if (!cardId) {
+        modalLog(`↳ Gagal buat card`, 'err');
+        return { skipped: false, error: true };
+    }
+ 
+    // Inject gambar
+    if (resiData.image_base64) {
+        const filename = `resi_page${resiData.page}_${resiVal || 'unknown'}.jpg`;
+        storeBase64ForCard(cardId, resiData.image_base64, filename);
+        showFilePreview(cardId, resiData.image_base64, filename);
+        modalLog(`↳ Gambar OK`, 'ok');
+    }
+ 
+    // Lookup & inject produk
+    const extraErrors = [];
+    if (resiData.items && resiData.items.length > 0) {
+        for (const ocrItem of resiData.items) {
+            const sku = ocrItem.sku;
+            if (!sku) continue;
+            modalLog(`↳ Cari SKU: ${sku}`, 'info');
+            try {
+                const res      = await fetch(`/api/product/search?q=${encodeURIComponent(sku)}`);
+                const products = await res.json();
+                if (!products || products.length === 0) {
+                    extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan.`);
+                    modalLog(`↳ SKU ${sku} tidak ditemukan`, 'err');
+                    continue;
+                }
+                const product = products.find(p => p.sku === sku) ?? products[0];
+                if (product.sku !== sku) {
+                    extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak exact, pakai <strong>${product.sku}</strong>.`);
+                    modalLog(`↳ SKU ${sku} → pakai ${product.sku}`, 'skip');
+                } else {
+                    modalLog(`↳ SKU ${sku} OK (qty: ${ocrItem.qty ?? 1})`, 'ok');
+                }
+                addItemToCard(cardId, product, ocrItem.qty ?? 1);
+                setTimeout(() => {
+                    if (resiVal)    $(`#row_${cardId}_${product.id} .nomor_resi`).val(resiVal);
+                    if (pesananVal) $(`#row_${cardId}_${product.id} .nomor_pesanan`).val(pesananVal);
+                }, 100);
+            } catch (err) {
+                extraErrors.push(`Hal. ${resiData.page}: Gagal cari SKU <strong>${sku}</strong> — ${err.message}`);
+                modalLog(`↳ Error cari SKU ${sku}: ${err.message}`, 'err');
+            }
+        }
+    } else {
+        modalLog(`↳ Tidak ada SKU (isi manual)`, 'skip');
+    }
+ 
+    return { skipped: false, error: false, extraErrors };
+}
+ 
+ 
+let _isProcessing = false;
+async function startPolling(jobId, totalPagesHint) {
+    _currentJobId  = jobId;
+    _pollStartTime = Date.now();
+ 
+    if (totalPagesHint) modalUpdateStats(totalPagesHint, 0, 0);
+ 
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+ 
+    // Akumulasi untuk info panel
+    let allBackendWarnings  = [];
+    let allExtraErrors      = [];
+    let allSkippedDuplicates = [];
+    let injectedCount       = 0;
+ 
+    // Progress: 5% submit → 15% queued/processing → 95% per page → 100%
+    modalSet(15, 'Menunggu worker memproses...');
+ 
+    _pollTimer = setInterval(async () => {
+
+        if (_isProcessing) return; // ← SKIP jika masih await
+        _isProcessing = true;
+        // Safety timeout
+        try {
+            if (Date.now() - _pollStartTime > POLL_MAX_WAIT_MS) {
+                stopPolling();
+                modalLog('⚠ Timeout — coba lagi.', 'err');
+                modalDone(true);
+                return;
+            }
+    
+            let pollData;
+            try {
+                const res = await fetch("{{ route('api.import.multi-job.status', ':id') }}".replace(':id', jobId), {
+                    headers: { 'X-CSRF-TOKEN': csrfToken }
+                });
+                pollData = await res.json();
+            } catch (err) {
+                modalLog(`Poll error: ${err.message}`, 'err');
+                return; // coba lagi di interval berikutnya
+            }
+    
+            if (!pollData.success) {
+                stopPolling();
+                modalLog(`Error: ${pollData.message}`, 'err');
+                modalDone(true);
+                return;
+            }
+    
+            // Update stats
+            const total  = pollData.total_pages  ?? totalPagesHint ?? 0;
+            const done   = pollData.done_pages   ?? 0;
+            const failed = pollData.failed_pages ?? 0;
+            modalUpdateStats(total, done, failed);
+    
+            // Update progress bar: 15% → 90% seiring halaman selesai
+            const pct = total > 0 ? 15 + Math.round((done + failed) / total * 75) : 20;
+            modalSet(pct, `Memproses halaman ${done + failed} / ${total}...`);
+            $('#modal-import-title').text(`${done + failed} dari ${total} halaman selesai`);
+    
+            // ── Inject halaman baru yang masuk (parsial) ──────────────
+            const newPages = (pollData.data ?? []).filter(p => !_processedPages.has(p.page));
+    
+            for (const page of newPages) {
+                _processedPages.add(page.page);
+                const pageIdx = _processedPages.size;
+                const r = await injectResiPage(page, pageIdx, total);
+                if (r.skipped) {
+                    allSkippedDuplicates.push(r.msg);
+                } else if (!r.error) {
+                    injectedCount++;
+                    (r.extraErrors ?? []).forEach(e => allExtraErrors.push(e));
+                }
+            }
+    
+            // Kumpulkan warnings dari backend (dedup)
+            if (pollData.warnings) {
+                pollData.warnings.forEach(w => {
+                    const key = w.type + '_' + (w.page ?? '');
+                    if (!allBackendWarnings.find(x => (x.type + '_' + (x.page ?? '')) === key)) {
+                        allBackendWarnings.push(w);
+                    }
+                });
+            }
+    
+            // ── Cek apakah sudah selesai ──────────────────────────────
+            if (pollData.status === 'done' || pollData.status === 'error') {
+                stopPolling();
+    
+                if (pollData.status === 'error') {
+                    modalLog(`Job error: ${pollData.error ?? 'unknown'}`, 'err');
+                    modalDone(true);
+                    return;
+                }
+    
+                // Done!
+                modalLog(
+                    `Selesai: ${injectedCount} diimport, ${allSkippedDuplicates.length} duplikat dilewati`,
+                    'ok'
+                );
+                modalSet(100, `Selesai — ${injectedCount} resi diimport`);
+                $('#modal-import-title').text('Import Selesai! 🎉');
+                $('#modal-import-subtitle').text('');
+    
+                // Tunggu sebentar supaya user lihat 100%
+                await new Promise(resolve => setTimeout(resolve, 800));
+    
+                modalDone(false);
+    
+                // Sembunyikan modal otomatis setelah 1.5 detik jika tidak ada warning
+                const hasWarnings = allBackendWarnings.length > 0
+                                || allExtraErrors.length > 0
+                                || allSkippedDuplicates.length > 0;
+    
+                if (!hasWarnings) {
+                    setTimeout(() => $('#modal-import-progress').modal('hide'), 1500);
+                } else {
+                    // Biarkan user tutup sendiri (tombol X & footer sudah muncul)
+                    modalLog(`Ada ${allBackendWarnings.length + allExtraErrors.length + allSkippedDuplicates.length} warning — lihat panel info.`, 'skip');
+                }
+    
+                // Render info panel
+                
+                const finalErrors = [...allExtraErrors, ...allSkippedDuplicates]; // gabung sekali
+                renderInfoPanel(allBackendWarnings, finalErrors, {
+                    total  : injectedCount,
+                    skipped: (pollData.total_skipped ?? 0) + allSkippedDuplicates.length,
+                });
+    
+                // Reset file input
+                document.getElementById('file_multiple_resi').value = '';
+    
+                // Scroll ke info panel
+                $('html, body').animate({
+                    scrollTop: $('#import-info-panel').offset().top - 80
+                }, 400);
+            }
+        } finally {
+                _isProcessing = false;
+        }
+ 
+    }, POLL_INTERVAL_MS);
+}
 
 function getStockEntry(productId, stok) {
     if (!stockUsageMap[productId]) stockUsageMap[productId] = { stok, usedByCard: {} };
@@ -1178,109 +1528,109 @@ $('.mode-card').on('click', function() {
 // ================================================================
 // IMPORT MULTIPLE RESI
 // ================================================================
-$('#btn_import_multiple').on('click', async function() {
-    const file = document.getElementById('file_multiple_resi').files[0];
-    if (!file) { Swal.fire('Oops!', 'Pilih file resi terlebih dahulu.', 'warning'); return; }
+// $('#btn_import_multiple').on('click', async function() {
+//     const file = document.getElementById('file_multiple_resi').files[0];
+//     if (!file) { Swal.fire('Oops!', 'Pilih file resi terlebih dahulu.', 'warning'); return; }
 
-    const mode      = getImportMode();
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
+//     const mode      = getImportMode();
+//     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
-    $('#import-loading').addClass('active');
-    $('#loading-text').text(`Mengirim file ke server OCR (${mode})...`);
-    clearInfoPanel();
+//     $('#import-loading').addClass('active');
+//     $('#loading-text').text(`Mengirim file ke server OCR (${mode})...`);
+//     clearInfoPanel();
 
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('mode', mode);
+//     const formData = new FormData();
+//     formData.append('file', file);
+//     formData.append('mode', mode);
 
-    try {
-        const response = await fetch('/api/penjualan/import/multiple-resi', {
-            method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken }, body: formData,
-        });
-        const result = await response.json();
-        $('#import-loading').removeClass('active');
+//     try {
+//         const response = await fetch('/api/penjualan/import/multiple-resi', {
+//             method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken }, body: formData,
+//         });
+//         const result = await response.json();
+//         $('#import-loading').removeClass('active');
 
-        if (!response.ok || !result.success) {
-            Swal.fire('Gagal', result.message ?? 'Terjadi kesalahan.', 'error'); return;
-        }
+//         if (!response.ok || !result.success) {
+//             Swal.fire('Gagal', result.message ?? 'Terjadi kesalahan.', 'error'); return;
+//         }
 
-        const backendWarnings  = result.warnings ?? [];
-        const extraErrors      = [];
-        const skippedDuplicates = [];
+//         const backendWarnings  = result.warnings ?? [];
+//         const extraErrors      = [];
+//         const skippedDuplicates = [];
 
-        if (!result.data || result.data.length === 0) {
-            renderInfoPanel(backendWarnings, [], { total: 0, skipped: result.total_skipped ?? 0 });
-            Swal.fire('Info', 'Tidak ada resi yang berhasil diimport.', 'info');
-            return;
-        }
+//         if (!result.data || result.data.length === 0) {
+//             renderInfoPanel(backendWarnings, [], { total: 0, skipped: result.total_skipped ?? 0 });
+//             Swal.fire('Info', 'Tidak ada resi yang berhasil diimport.', 'info');
+//             return;
+//         }
 
-        for (const resiData of result.data) {
-            const resiVal    = (resiData.resi     ?? '').trim();
-            const pesananVal = (resiData.order_id ?? '').trim();
+//         for (const resiData of result.data) {
+//             const resiVal    = (resiData.resi     ?? '').trim();
+//             const pesananVal = (resiData.order_id ?? '').trim();
 
-            // ── Cek duplicate sebelum buat card ──────────────────
-            const dup = checkDuplicateResi(resiVal, pesananVal);
-            if (dup.isDuplicate) {
-                const label = dup.type === 'resi' ? 'No. Resi' : 'No. Pesanan';
-                skippedDuplicates.push(
-                    `Hal. ${resiData.page}: ${label} <strong>${dup.value}</strong> sudah ada di list, dilewati.`
-                );
-                continue;
-            }
+//             // ── Cek duplicate sebelum buat card ──────────────────
+//             const dup = checkDuplicateResi(resiVal, pesananVal);
+//             if (dup.isDuplicate) {
+//                 const label = dup.type === 'resi' ? 'No. Resi' : 'No. Pesanan';
+//                 skippedDuplicates.push(
+//                     `Hal. ${resiData.page}: ${label} <strong>${dup.value}</strong> sudah ada di list, dilewati.`
+//                 );
+//                 continue;
+//             }
 
-            // ── Buat card (skipDupCheck=true karena sudah dicek) ──
-            const cardId = addResiCard(resiVal, pesananVal, true);
-            if (!cardId) continue;
+//             // ── Buat card (skipDupCheck=true karena sudah dicek) ──
+//             const cardId = addResiCard(resiVal, pesananVal, true);
+//             if (!cardId) continue;
 
-            // Inject gambar resi
-            if (resiData.image_base64) {
-                const filename = `resi_page${resiData.page}_${resiVal || 'unknown'}.jpg`;
-                storeBase64ForCard(cardId, resiData.image_base64, filename);
-                showFilePreview(cardId, resiData.image_base64, filename);
-            }
+//             // Inject gambar resi
+//             if (resiData.image_base64) {
+//                 const filename = `resi_page${resiData.page}_${resiVal || 'unknown'}.jpg`;
+//                 storeBase64ForCard(cardId, resiData.image_base64, filename);
+//                 showFilePreview(cardId, resiData.image_base64, filename);
+//             }
 
-            // Lookup & inject produk
-            if (resiData.items && resiData.items.length > 0) {
-                for (const ocrItem of resiData.items) {
-                    const sku = ocrItem.sku;
-                    if (!sku) continue;
-                    try {
-                        const res      = await fetch(`/api/product/search?q=${encodeURIComponent(sku)}`);
-                        const products = await res.json();
-                        if (!products || products.length === 0) {
-                            extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan.`);
-                            continue;
-                        }
-                        const product = products.find(p => p.sku === sku) ?? products[0];
-                        if (product.sku !== sku)
-                            extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak exact, pakai <strong>${product.sku}</strong>.`);
-                        addItemToCard(cardId, product, ocrItem.qty ?? 1);
-                        setTimeout(() => {
-                            if (resiVal)    $(`#row_${cardId}_${product.id} .nomor_resi`).val(resiVal);
-                            if (pesananVal) $(`#row_${cardId}_${product.id} .nomor_pesanan`).val(pesananVal);
-                        }, 100);
-                    } catch (err) {
-                        extraErrors.push(`Hal. ${resiData.page}: Gagal cari SKU <strong>${sku}</strong> — ${err.message}`);
-                    }
-                }
-            }
-        }
+//             // Lookup & inject produk
+//             if (resiData.items && resiData.items.length > 0) {
+//                 for (const ocrItem of resiData.items) {
+//                     const sku = ocrItem.sku;
+//                     if (!sku) continue;
+//                     try {
+//                         const res      = await fetch(`/api/product/search?q=${encodeURIComponent(sku)}`);
+//                         const products = await res.json();
+//                         if (!products || products.length === 0) {
+//                             extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan.`);
+//                             continue;
+//                         }
+//                         const product = products.find(p => p.sku === sku) ?? products[0];
+//                         if (product.sku !== sku)
+//                             extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak exact, pakai <strong>${product.sku}</strong>.`);
+//                         addItemToCard(cardId, product, ocrItem.qty ?? 1);
+//                         setTimeout(() => {
+//                             if (resiVal)    $(`#row_${cardId}_${product.id} .nomor_resi`).val(resiVal);
+//                             if (pesananVal) $(`#row_${cardId}_${product.id} .nomor_pesanan`).val(pesananVal);
+//                         }, 100);
+//                     } catch (err) {
+//                         extraErrors.push(`Hal. ${resiData.page}: Gagal cari SKU <strong>${sku}</strong> — ${err.message}`);
+//                     }
+//                 }
+//             }
+//         }
 
-        // Gabungkan duplicate notices ke panel
-        skippedDuplicates.forEach(msg => extraErrors.push(msg));
+//         // Gabungkan duplicate notices ke panel
+//         skippedDuplicates.forEach(msg => extraErrors.push(msg));
 
-        renderInfoPanel(backendWarnings, extraErrors, {
-            total  : result.total - skippedDuplicates.length,
-            skipped: (result.total_skipped ?? 0) + skippedDuplicates.length,
-        });
-        document.getElementById('file_multiple_resi').value = '';
-        $('html, body').animate({ scrollTop: $('#import-info-panel').offset().top - 80 }, 400);
+//         renderInfoPanel(backendWarnings, extraErrors, {
+//             total  : result.total - skippedDuplicates.length,
+//             skipped: (result.total_skipped ?? 0) + skippedDuplicates.length,
+//         });
+//         document.getElementById('file_multiple_resi').value = '';
+//         $('html, body').animate({ scrollTop: $('#import-info-panel').offset().top - 80 }, 400);
 
-    } catch (err) {
-        $('#import-loading').removeClass('active');
-        Swal.fire('Error', 'Koneksi gagal: ' + err.message, 'error');
-    }
-});
+//     } catch (err) {
+//         $('#import-loading').removeClass('active');
+//         Swal.fire('Error', 'Koneksi gagal: ' + err.message, 'error');
+//     }
+// });
 
 // ================================================================
 // FORM SUBMIT
@@ -1442,154 +1792,61 @@ function importProgressLog(msg, type = 'info') {
  
 $('#btn_import_multiple').off('click').on('click', async function() {
     const file = document.getElementById('file_multiple_resi').files[0];
-    if (!file) { Swal.fire('Oops!', 'Pilih file resi terlebih dahulu.', 'warning'); return; }
+    if (!file) {
+        Swal.fire('Oops!', 'Pilih file resi terlebih dahulu.', 'warning');
+        return;
+    }
  
     const mode      = getImportMode();
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
  
-    // ── Reset & tampilkan loading ─────────────────────────────────
-    importProgressReset();
-    $('#import-loading').addClass('active');
-    importProgressLog(`File: ${file.name} (${(file.size/1024).toFixed(0)} KB)`, 'info');
-    importProgressLog(`Mode: ${mode === 'shopee' ? 'Shopee' : 'TikTok J&T'}`, 'info');
-    importProgressSet(5, 'Mengirim file ke server OCR...');
+    // ── Reset modal & tampilkan ───────────────────────────────────
+    modalReset();
+    $('#modal-import-progress').modal('show');
+ 
+    modalLog(`File: ${file.name} (${(file.size / 1024).toFixed(0)} KB)`, 'info');
+    modalLog(`Mode: ${mode === 'shopee' ? 'Shopee' : 'TikTok J&T'}`, 'info');
+    modalSet(5, 'Mengirim file ke server...');
     clearInfoPanel();
  
+    // ── Step 1: Submit job (async, dapat job_id) ──────────────────
     const formData = new FormData();
     formData.append('file', file);
     formData.append('mode', mode);
  
-    let result;
+    let submitResult;
     try {
-        importProgressLog('Mengirim ke server...', 'active');
-        const response = await fetch('/api/penjualan/import/multiple-resi', {
-            method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken }, body: formData,
+        modalLog('Mengirim file ke FastAPI...', 'active');
+        const res = await fetch("{{ route('api.import.multi-job') }}", {
+            method : 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken },
+            body   : formData,
         });
-        result = await response.json();
+        submitResult = await res.json();
  
-        if (!response.ok || !result.success) {
-            $('#import-loading').removeClass('active');
-            Swal.fire('Gagal', result.message ?? 'Terjadi kesalahan.', 'error');
+        if (!res.ok || !submitResult.success) {
+            modalLog(`Gagal: ${submitResult.message ?? 'Server error'}`, 'err');
+            modalDone(true);
             return;
         }
     } catch (err) {
-        $('#import-loading').removeClass('active');
-        Swal.fire('Error', 'Koneksi gagal: ' + err.message, 'error');
+        modalLog(`Koneksi gagal: ${err.message}`, 'err');
+        modalDone(true);
         return;
     }
  
-    // ── Server selesai OCR ────────────────────────────────────────
-    const totalPages = result.data?.length ?? 0;
-    importProgressSet(10, `Server selesai — ${totalPages} resi ditemukan. Memproses...`);
-    importProgressLog(`OCR selesai: ${totalPages} resi`, 'ok');
+    const { job_id, total_pages } = submitResult;
+    modalLog(`Job dibuat: ${job_id.substring(0, 8)}...`, 'ok');
+    modalLog(`Estimasi: ${total_pages ?? '?'} halaman`, 'info');
+    modalSet(10, 'File diterima — menunggu worker...');
  
-    if (!result.data || totalPages === 0) {
-        importProgressSet(100, 'Selesai — tidak ada resi.');
-        $('#import-loading').removeClass('active');
-        renderInfoPanel(result.warnings ?? [], [], { total: 0, skipped: result.total_skipped ?? 0 });
-        Swal.fire('Info', 'Tidak ada resi yang berhasil diimport.', 'info');
-        return;
-    }
+    // ── Step 2: Mulai polling ─────────────────────────────────────
+    await startPolling(job_id, total_pages);
+});
  
-    const backendWarnings   = result.warnings ?? [];
-    const extraErrors       = [];
-    const skippedDuplicates = [];
- 
-    // Progress: 10% server done → 95% semua resi diproses → 100% done
-    // Setiap resi = (85 / totalPages) persen
-    const pctPerResi = 85 / totalPages;
- 
-    for (let i = 0; i < result.data.length; i++) {
-        const resiData   = result.data[i];
-        const resiVal    = (resiData.resi     ?? '').trim();
-        const pesananVal = (resiData.order_id ?? '').trim();
-        const pageLabel  = resiVal || pesananVal || `Hal. ${resiData.page}`;
-        const pctNow     = 10 + (i * pctPerResi);
- 
-        // Update progress & title
-        importProgressSet(pctNow, `Memproses resi ${i + 1} / ${totalPages}`);
-        $('#loading-title').text(`Resi ${i + 1} dari ${totalPages}`);
-        $('#loading-subtitle').text(pageLabel);
-        importProgressLog(`[${i+1}/${totalPages}] ${pageLabel}`, 'active');
- 
-        // ── Cek duplicate ─────────────────────────────────────────
-        const dup = checkDuplicateResi(resiVal, pesananVal);
-        if (dup.isDuplicate) {
-            const label = dup.type === 'resi' ? 'No. Resi' : 'No. Pesanan';
-            const msg   = `Hal. ${resiData.page}: ${label} <strong>${dup.value}</strong> sudah ada di list, dilewati.`;
-            skippedDuplicates.push(msg);
-            importProgressLog(`↳ DUPLIKAT dilewati`, 'skip');
-            continue;
-        }
- 
-        // ── Buat card ─────────────────────────────────────────────
-        const cardId = addResiCard(resiVal, pesananVal, true);
-        if (!cardId) { importProgressLog(`↳ Gagal buat card`, 'err'); continue; }
- 
-        // Inject gambar
-        if (resiData.image_base64) {
-            const filename = `resi_page${resiData.page}_${resiVal || 'unknown'}.jpg`;
-            storeBase64ForCard(cardId, resiData.image_base64, filename);
-            showFilePreview(cardId, resiData.image_base64, filename);
-            importProgressLog(`↳ Gambar OK`, 'ok');
-        }
- 
-        // ── Lookup & inject produk ────────────────────────────────
-        if (resiData.items && resiData.items.length > 0) {
-            for (const ocrItem of resiData.items) {
-                const sku = ocrItem.sku;
-                if (!sku) continue;
-                importProgressLog(`↳ Cari SKU: ${sku}`, 'info');
-                try {
-                    const res      = await fetch(`/api/product/search?q=${encodeURIComponent(sku)}`);
-                    const products = await res.json();
-                    if (!products || products.length === 0) {
-                        extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan.`);
-                        importProgressLog(`↳ SKU ${sku} tidak ditemukan`, 'err');
-                        continue;
-                    }
-                    const product = products.find(p => p.sku === sku) ?? products[0];
-                    if (product.sku !== sku) {
-                        extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak exact, pakai <strong>${product.sku}</strong>.`);
-                        importProgressLog(`↳ SKU ${sku} → pakai ${product.sku}`, 'skip');
-                    } else {
-                        importProgressLog(`↳ SKU ${sku} OK (qty: ${ocrItem.qty ?? 1})`, 'ok');
-                    }
-                    addItemToCard(cardId, product, ocrItem.qty ?? 1);
-                    setTimeout(() => {
-                        if (resiVal)    $(`#row_${cardId}_${product.id} .nomor_resi`).val(resiVal);
-                        if (pesananVal) $(`#row_${cardId}_${product.id} .nomor_pesanan`).val(pesananVal);
-                    }, 100);
-                } catch (err) {
-                    extraErrors.push(`Hal. ${resiData.page}: Gagal cari SKU <strong>${sku}</strong> — ${err.message}`);
-                    importProgressLog(`↳ Error cari SKU ${sku}: ${err.message}`, 'err');
-                }
-            }
-        } else {
-            importProgressLog(`↳ Tidak ada item SKU (isi manual)`, 'skip');
-        }
-    }
- 
-    // ── Selesai ───────────────────────────────────────────────────
-    importProgressSet(100, `Selesai — ${totalPages - skippedDuplicates.length} resi diimport.`);
-    importProgressLog(
-        `Done: ${totalPages - skippedDuplicates.length} imported, ${skippedDuplicates.length} duplikat dilewati`,
-        'ok'
-    );
-    $('#loading-title').text('Import Selesai!');
-    $('#loading-subtitle').text('');
- 
-    // Tunggu sebentar supaya user lihat 100%
-    await new Promise(r => setTimeout(r, 700));
-    $('#import-loading').removeClass('active');
- 
-    skippedDuplicates.forEach(msg => extraErrors.push(msg));
-    renderInfoPanel(backendWarnings, extraErrors, {
-        total  : totalPages - skippedDuplicates.length,
-        skipped: (result.total_skipped ?? 0) + skippedDuplicates.length,
-    });
-    document.getElementById('file_multiple_resi').value = '';
-    $('html, body').animate({ scrollTop: $('#import-info-panel').offset().top - 80 }, 400);
+// ── Tutup modal = stop polling ────────────────────────────────────
+$('#modal-import-progress').on('hide.bs.modal', function() {
+    stopPolling();
 });
 </script>
 @endsection

@@ -203,12 +203,11 @@ def _extract_order_id_from_ocr(img_cv: np.ndarray) -> str | None:
     # Daftar zona yang dicoba, dari yang paling spesifik ke paling luas
     # (y0_pct, y1_pct, x0_pct, x1_pct)
     zones = [
-        (0.72, 0.83, 0.0, 0.55),   # zona spesifik kiri bawah barcode
-        (0.70, 0.85, 0.0, 0.55),   # sedikit lebih luas vertikal, kiri saja
-        (0.68, 0.87, 0.0, 0.60),   # lebih luas lagi
-        (0.72, 0.83, 0.0, 1.00),   # full width zona Order Id
-        (0.65, 0.90, 0.0, 1.00),   # fallback luas
-        (0.60, 1.00, 0.0, 1.00),   # fallback sangat luas
+        (0.65, 0.90, 0.0, 1.00),   # ← pindah ke atas, ini yang selalu berhasil
+        (0.72, 0.83, 0.0, 0.55),
+        (0.70, 0.85, 0.0, 0.55),
+        (0.68, 0.87, 0.0, 0.60),
+        (0.60, 1.00, 0.0, 1.00),   # fallback
     ]
 
     for (y0p, y1p, x0p, x1p) in zones:
@@ -504,20 +503,166 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
 # ──────────────────────────────────────────────────────────────────
 # Proses 1 halaman
 # ──────────────────────────────────────────────────────────────────
+def _parse_items_tiktok_from_pdf_page(page) -> list[dict]:
+    """Parse items dari PDF text layer TikTok menggunakan koordinat X kata."""
+    try:
+        words = page.extract_words(x_tolerance=3, y_tolerance=3,
+                                   keep_blank_chars=False, use_text_flow=False)
+    except Exception as e:
+        print(f"[TikTok PDF Words] extract_words error: {e}")
+        return []
 
-def _process_single_page(img_cv: np.ndarray, page_num: int) -> dict:
+    if not words:
+        return []
+
+    # Cluster per baris
+    words.sort(key=lambda w: (w['top'], w['x0']))
+    rows, cur = [], [words[0]]
+    for w in words[1:]:
+        avg_top = sum(r['top'] for r in cur) / len(cur)
+        if abs(w['top'] - avg_top) <= 5:
+            cur.append(w)
+        else:
+            cur.sort(key=lambda r: r['x0'])
+            rows.append(cur)
+            cur = [w]
+    if cur:
+        cur.sort(key=lambda r: r['x0'])
+        rows.append(cur)
+
+    # Cari header
+    header_row = None
+    header_idx = None
+    for i, row in enumerate(rows):
+        line = " ".join(w['text'] for w in row)
+        if re.search(r'product\s*name', line, re.IGNORECASE):
+            header_row = row
+            header_idx = i
+            break
+
+    if not header_row:
+        return []
+
+    # Posisi kolom dari header
+    page_width   = page.width
+    col_x        = {}
+    saw_seller   = False
+    seller_x_cand = None
+
+    for w in header_row:
+        t = w['text'].lower().strip()
+        if t == 'seller':
+            saw_seller = True
+            seller_x_cand = w['x0']
+        elif t == 'sku':
+            if saw_seller and seller_x_cand is not None:
+                col_x['seller_sku'] = seller_x_cand
+                saw_seller = False
+            else:
+                col_x.setdefault('sku', w['x0'])
+                saw_seller = False
+        elif t in ('qty', 'jumlah'):
+            col_x['qty'] = w['x0']
+            saw_seller = False
+        elif t not in ('name', 'product'):
+            saw_seller = False
+
+    if 'seller_sku' not in col_x:
+        return []
+
+    x_sku        = col_x.get('sku',        page_width * 0.35)
+    x_seller_sku = col_x['seller_sku']
+    x_qty        = col_x.get('qty',        page_width * 0.85)
+    b_seller_end = (x_seller_sku + x_qty) / 2
+
+    items = []
+    current_item = None
+
+    for row in rows[header_idx + 1:]:
+        line = " ".join(w['text'] for w in row)
+        if re.search(r'qty\s*total|order\s*i[dD]', line, re.IGNORECASE):
+            break
+
+        nama_p, sku_p, seller_p, qty_p = [], [], [], []
+        for w in row:
+            x = w['x0']
+            if x < x_sku:
+                nama_p.append(w['text'])
+            elif x < x_seller_sku - 5:
+                sku_p.append(w['text'])
+            elif x < b_seller_end:
+                seller_p.append(w['text'])
+            else:
+                qty_p.append(w['text'])
+
+        seller_raw = " ".join(seller_p).strip()
+        nama_line  = " ".join(nama_p).strip()
+        sku_line   = " ".join(sku_p).strip()
+        qty_line   = " ".join(qty_p).strip()
+
+        seller_valid = bool(seller_raw and re.match(r'^[A-Za-z0-9\-_]{2,}$', seller_raw))
+
+        if seller_valid:
+            if current_item:
+                items.append(current_item)
+            qty_digits = re.sub(r'\D', '', qty_line)
+            current_item = {
+                "nama"    : nama_line,
+                "sku"     : seller_raw,
+                "variasi" : sku_line,
+                "qty"     : int(qty_digits) if qty_digits else 1,
+            }
+        elif current_item:
+            if nama_line:
+                current_item["nama"] = (current_item["nama"] + " " + nama_line).strip()
+            if sku_line:
+                current_item["variasi"] = (current_item["variasi"] + " " + sku_line).strip()
+
+    if current_item:
+        items.append(current_item)
+
+    for item in items:
+        print(f"[TikTok PDF Words] FINAL: sku={item['sku']} variasi={item['variasi']} qty={item['qty']}")
+
+    return items
+    
+def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None) -> dict:
     print(f"\n[TikTok Page {page_num}] Mulai proses...")
 
     image_b64 = _cv_to_base64_jpeg(img_cv)
     print(f"[TikTok Page {page_num}] image_base64 length={len(image_b64)}")
 
-    # 1. Baca No. Resi dari barcode
+    # 1. Resi dari barcode (selalu pakai cv2, cepat)
     resi = _extract_resi_from_barcode(img_cv)
 
-    # 2. Baca Order ID dari OCR zona statis
+    # ── Coba PDF text layer dulu (jauh lebih cepat dari OCR) ──────
+    if pdf_path:
+        try:
+            import pdfplumber
+            with pdfplumber.open(pdf_path) as pdf:
+                page = pdf.pages[page_num - 1]
+                text = page.extract_text() or ""
+                if text.strip():
+                    print(f"[TikTok Page {page_num}] ✅ PDF text layer OK, skip OCR")
+                    m = re.search(r'Order\s*I[dD]\s*[:\s]+(\d{15,})', text)
+                    order_id = m.group(1) if m else None
+                    items    = _parse_items_tiktok_from_pdf_page(page)
+                    if not resi:
+                        m2 = re.search(r'JX\d{10}', text, re.IGNORECASE)
+                        resi = m2.group() if m2 else None
+                    print(f"[TikTok Page {page_num}] resi={resi} order_id={order_id} items={len(items)}")
+                    return {
+                        "page": page_num, "resi": resi,
+                        "order_id": order_id, "items": items,
+                        "skus": [i['sku'] for i in items],
+                        "image_base64": image_b64,
+                    }
+        except Exception as e:
+            print(f"[TikTok Page {page_num}] PDF layer error: {e}, fallback OCR")
+
+    # ── Fallback: OCR Tesseract ───────────────────────────────────
     order_id = _extract_order_id_from_ocr(img_cv)
 
-    # 3. Fallback resi dari OCR teks
     if not resi:
         gray     = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
         thresh   = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
@@ -525,26 +670,16 @@ def _process_single_page(img_cv: np.ndarray, page_num: int) -> dict:
         m = re.search(r'JX\d{10}', ocr_text, re.IGNORECASE)
         if m:
             resi = m.group()
-            print(f"[TikTok Page {page_num}] Resi dari OCR teks: {resi}")
 
-    # 4. Extract items (Seller SKU)
     items = _extract_items_tiktok(img_cv)
 
-    result = {
-        "page"        : page_num,
-        "resi"        : resi,
-        "order_id"    : order_id,
-        "items"       : items,
-        "skus"        : [i['sku'] for i in items],
+    print(f"[TikTok Page {page_num}] resi={resi} order_id={order_id} items={len(items)}")
+    return {
+        "page": page_num, "resi": resi,
+        "order_id": order_id, "items": items,
+        "skus": [i['sku'] for i in items],
         "image_base64": image_b64,
     }
-
-    print(f"[TikTok Page {page_num}] resi={resi} "
-          f"order_id={order_id} items={len(items)} "
-          f"image_b64_len={len(image_b64)}")
-
-    return result
-
 
 # ──────────────────────────────────────────────────────────────────
 # Public API: extract dari PDF

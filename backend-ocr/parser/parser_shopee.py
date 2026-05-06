@@ -34,7 +34,7 @@ def parse_shopee_items(text: str) -> list[dict]:
 
     # --- 4. Parse tiap grup ---
     TAIL_RE = re.compile(
-        r'([A-Za-z][A-Za-z0-9\-_]{2,19})'
+        r'([a-z][a-z0-9\-_]{2,19})'   # SKU: lowercase only (Shopee SKU selalu lowercase)
         r'\s+'
         r'(.+?)'
         r'\s+'
@@ -56,6 +56,25 @@ def parse_shopee_items(text: str) -> list[dict]:
         nama    = full[:tail_match.start()].strip()
         nama    = re.sub(r'[\s\-]+$', '', nama)
 
+        # ── FIX: buang SKU yang nyasar ke nama ──────────────────────
+        # SKU Shopee selalu lowercase alfanumerik, misal: jovcrm40, jespt39
+        # Kalau ada token lowercase+digit di akhir nama, itu SKU yang nyasar
+        nama_tokens = nama.split()
+        cleaned_nama = []
+        extra_sku = ""
+        for token in nama_tokens:
+            # Token pure lowercase+digit panjang 4-20 char → kemungkinan SKU
+            if re.fullmatch(r'[a-z][a-z0-9\-_]{3,19}', token):
+                extra_sku = token  # simpan, override sku jika sku kosong
+            else:
+                cleaned_nama.append(token)
+        
+        if extra_sku and not sku:
+            sku = extra_sku
+        elif extra_sku:
+            # Ada dua kandidat SKU — yang di TAIL_RE lebih reliable
+            pass
+        nama = ' '.join(cleaned_nama).strip()
         if not nama:
             nama_lines = group[:-1] if len(group) > 1 else group
             nama = ' '.join(nama_lines)
