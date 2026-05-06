@@ -43,6 +43,10 @@ class PembelianController extends Controller
         try {
 
             $items = json_decode($request->items, true);
+            if (empty($items) || count($items) === 0) {
+                throw new \Exception('Item tidak boleh kosong');
+            }
+
 
             // 1️⃣ create pembelian
             $pembelian = Pembelian::create([

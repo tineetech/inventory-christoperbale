@@ -38,6 +38,10 @@ class HitungStokController extends Controller
 
             $items = json_decode($request->items, true);
 
+            if (empty($items) || count($items) === 0) {
+                throw new \Exception('Item tidak boleh kosong');
+            }
+
             $adjust = AdjustStok::create([
 
                 'kode_adjust' => $request->kode_adjust,
@@ -69,26 +73,6 @@ class HitungStokController extends Controller
                     'selisih' => $selisih
 
                 ]);
-
-                // $stok->update([
-
-                //     'jumlah_stok' => $stok_sesudah
-
-                // ]);
-
-                // StokMovement::create([
-
-                //     'barang_id' => $item['id'],
-                //     'jenis' => 'adjustment',
-                //     'qty' => $selisih,
-                //     'stok_sebelum' => $stok_sebelum,
-                //     'stok_sesudah' => $stok_sesudah,
-                //     'referensi_tipe' => 'adjust_stok',
-                //     'referensi_id' => $adjust->id,
-                //     'keterangan' => 'Adjustment stok',
-                //     'created_by' => Auth::guard('pengguna')->user()->id
-
-                // ]);
             }
 
             DB::commit();

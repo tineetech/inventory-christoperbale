@@ -32,12 +32,17 @@ class AdjustStokController extends Controller
         try {
 
             $items = json_decode($request->items, true);
+            if (empty($items) || count($items) === 0) {
+                throw new \Exception('Item tidak boleh kosong');
+            }
+
 
             $adjust = AdjustStok::create([
 
                 'kode_adjust' => $request->kode_adjust,
                 'tanggal' => $request->tanggal,
                 'keterangan' => $request->keterangan,
+                'status' => 'approve',
                 'created_by' => Auth::guard('pengguna')->user()->id
 
             ]);
