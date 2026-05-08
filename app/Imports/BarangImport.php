@@ -5,6 +5,7 @@ namespace App\Imports;
 use App\Models\Barang;
 use App\Models\Satuan;
 use App\Models\StokBarang;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\SkipsOnError;
@@ -17,13 +18,22 @@ class BarangImport implements ToModel, WithHeadingRow, SkipsOnError
 
     public int   $imported = 0;
     public int   $skipped  = 0;
-    public array $skipLog  = []; // detail baris yang diskip
-    public array $errorLog = []; // detail error teknis
+    public array $skipLog  = [];
+    public array $errorLog = [];
+
+    public string $userRole;
+
+    public function __construct(string $userRole)
+    {
+        $this->userRole = $userRole;
+    }
 
     public function model(array $row)
     {
         $sku  = $row['sku']        ?? null;
         $nama = $row['nama_barang'] ?? null;
+
+        
 
         // Skip baris kosong
         if (empty($sku) || empty($nama)) {
@@ -65,7 +75,7 @@ class BarangImport implements ToModel, WithHeadingRow, SkipsOnError
                 'sku'          => $sku,
                 'nama_barang'  => $nama,
                 'satuan_id'    => $satuan->id,
-                'harga_1'      => $row['harga_beli']   ?? 0,
+                'harga_1' => in_array($this->userRole, ['super_admin']) ? ($row['harga_beli'] ?? 0) : 0,
                 'harga_2'      => $row['harga_jual']   ?? 0,
                 'stok_minimum' => $row['stok_minimum'] ?? 1,
                 'keterangan'   => $row['keterangan']   ?? null,

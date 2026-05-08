@@ -108,7 +108,9 @@
                                 <th>Kode Pembelian</th>
                                 <th>Supplier</th>
                                 <th>Tanggal</th>
+                                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                 <th>Total Harga</th>
+                                @endif
                                 <th>Dibuat Oleh</th>
                                 <th>Keterangan</th>
                             </tr>
@@ -121,7 +123,9 @@
                                     <td class="kode-click"><strong>{{ $item->kode_pembelian }}</strong></td>
                                     <td>{{ $item->supplier->nama_supplier ?? '-' }}</td>
                                     <td>{{ $item->tanggal }}</td>
+                                    @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                     <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
+                                    @endif
                                     <td>{{ $item->user->nama ?? '-' }}</td>
                                     <td>{{ $item->keterangan ?: '-' }}</td>
                                 </tr>
@@ -136,8 +140,10 @@
                                                         <th>Nama Barang</th>
                                                         <th>Stok Sekarang</th>
                                                         <th>Qty Dibeli</th>
+                                                        @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                         <th>Harga</th>
                                                         <th>Subtotal</th>
+                                                        @endif
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -154,8 +160,10 @@
                                                             <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                                                             <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
                                                             <td>{{ $detail->qty }}</td>
+                                                            @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                             <td>Rp {{ number_format($detail->harga, 0, ',', '.') }}</td>
                                                             <td>Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
+                                                            @endif
                                                         </tr>
                                                     @empty
                                                         <tr>
@@ -166,10 +174,12 @@
                                                     @endforelse
 
                                                     @if ($item->detail->isNotEmpty())
+                                                        @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                         <tr style="background:#f1f1f1;font-weight:bold">
                                                             <td colspan="5" class="text-right">Total Pembelian</td>
                                                             <td>Rp {{ number_format($totalDetail, 0, ',', '.') }}</td>
                                                         </tr>
+                                                        @endif
                                                     @endif
                                                 </tbody>
                                             </table>

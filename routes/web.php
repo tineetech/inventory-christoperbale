@@ -274,6 +274,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::delete('/master/barang/delete/{id}', [BarangController::class, 'destroy'])
         ->name('barang.destroy')
         ->middleware('permission:hapus,barang');
+    Route::post('/master/barang/bulk-delete', [BarangController::class, 'bulkDelete'])->name('barang.bulk-delete');
 
     Route::get('/barang/{id}/barcode/download', [BarangController::class, 'downloadBarcode'])
         ->name('barang.barcode.download')
@@ -518,4 +519,8 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::post('/backup-database', [BackupController::class, 'backup'])
         ->name('backup.run')
         ->middleware('permission:buat,backup_database');
+
+    Route::post('/reset-database', [BackupController::class, 'resetDb'])
+        ->name('reset.run')
+        ->middleware('permission:buat,reset_db');
 });

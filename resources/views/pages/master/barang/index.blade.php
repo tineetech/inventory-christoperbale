@@ -146,6 +146,9 @@
                                                 placeholder="Search barang..." style="width:150px">
 
                                         </div>
+                                        <button id="btnBulkDelete" class="btn btn-sm btn-danger d-none mr-3" onclick="bulkDelete()">
+                                            <i class="feather icon-trash"></i> Hapus (<span id="selectedCount">0</span>)
+                                        </button>
                                         @if(hasPermission('tambah', 'barang'))
                                         <a href="#" onclick="showImportModal()" class="btn btn-sm mr-3 text-white"
                                             style="background: linear-gradient(135deg, #667eea, #764ba2); border: none; box-shadow: 0 6px 14px rgba(102, 126, 234, 0.25);">
@@ -188,10 +191,12 @@
                                                                 Satuan <i class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
 
+                                                            @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                             <th class="sortable" data-column="5">
                                                                 Harga Beli <i
                                                                     class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
+                                                            @endif
 
                                                             <th class="sortable" data-column="6">
                                                                 Harga Jual <i
@@ -211,7 +216,7 @@
 
                                                     <tbody>
                                                         @foreach ($barang as $index => $sup)
-                                                            <tr>
+                                                            <tr  data-id="{{ $sup->id }}">
 
                                                                 <td class="checkbox-col">
                                                                     <input type="checkbox" class="row-check">
@@ -241,9 +246,11 @@
                                                                     {{ $sup->satuan->nama_satuan }}
                                                                 </td>
 
+                                                                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                                                                 <td>
                                                                     Rp {{ number_format($sup->harga_1, 0, ',', '.') }}
                                                                 </td>
+                                                                @endif
 
                                                                 <td>
                                                                     Rp {{ number_format($sup->harga_2, 0, ',', '.') }}
@@ -655,6 +662,7 @@
 
             const formData = new FormData();
             formData.append('file', file);
+            formData.append('role', "{{ Auth::guard('pengguna')->user()->role->nama_role }}");
             formData.append('_token', '{{ csrf_token() }}');
 
             Swal.showLoading();
@@ -724,5 +732,89 @@
         }
     });
 }
+
+// =====================================================
+// BULK DELETE
+// =====================================================
+function getSelectedIds() {
+    const checked = document.querySelectorAll('#table tbody .row-check:checked');
+    return Array.from(checked).map(cb => {
+        return parseInt(cb.closest('tr').querySelector('[data-id]')?.getAttribute('data-id') 
+               ?? cb.closest('tr').getAttribute('data-id'));
+    });
+}
+
+function updateBulkBar() {
+    const checked = document.querySelectorAll('#table tbody .row-check:checked');
+    const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-id'));
+    const btn = document.getElementById('btnBulkDelete');
+    document.getElementById('selectedCount').textContent = ids.length;
+
+    if (ids.length > 0) {
+        btn.classList.remove('d-none');
+    } else {
+        btn.classList.add('d-none');
+    }
+}
+
+async function bulkDelete() {
+    const checked = document.querySelectorAll('#table tbody .row-check:checked');
+    const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-id'));
+
+    if (ids.length === 0) return;
+
+    const result = await Swal.fire({
+        title: 'Hapus ' + ids.length + ' barang?',
+        text: 'Data yang dihapus tidak dapat dikembalikan!',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, hapus semua!',
+        cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+
+    const btn = document.getElementById('btnBulkDelete');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menghapus...';
+
+    try {
+        const res = await fetch('{{ route("barang.bulk-delete") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ ids })
+        });
+
+        const json = await res.json();
+
+        if (json.success) {
+            Toast.fire({ icon: 'success', title: 'Berhasil', text: json.message });
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            Swal.fire({ icon: 'error', title: 'Gagal', text: json.message ?? 'Terjadi kesalahan.' });
+        }
+    } catch (e) {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
+        console.error(e);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="feather icon-trash"></i> Hapus (<span id="selectedCount">' + ids.length + '</span>)';
+    }
+}
+
+// Listener perubahan checkbox
+document.getElementById('table').addEventListener('change', function(e) {
+    if (e.target.classList.contains('row-check')) updateBulkBar();
+});
+
+document.getElementById('checkAll').addEventListener('click', function() {
+    document.querySelectorAll('#table tbody .row-check').forEach(cb => cb.checked = this.checked);
+    updateBulkBar();
+});
     </script>
 @endsection

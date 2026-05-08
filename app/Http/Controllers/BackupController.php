@@ -58,4 +58,45 @@ class BackupController extends Controller
 
         return response()->download($path)->deleteFileAfterSend(true);
     }
+    
+    public function resetDb() {
+        try {
+            \DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+            $tables = \DB::select('SHOW TABLES');
+            $dbName = env('DB_DATABASE');
+            $key = 'Tables_in_' . $dbName;
+            $skipTables = [
+                'barang',
+                'stok_barang',
+                'pengguna',
+                'role',
+                'role_hak_akses',
+                'hak_akses',
+                'satuan',
+                'dropsipper',
+                'supplier',
+            ];
+
+            foreach ($tables as $table) {
+                $tableName = $table->$key;
+
+                if (in_array($tableName, $skipTables)) {
+                    continue;
+                }
+                
+
+                \DB::table($tableName)->truncate();
+            }
+
+            \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+            return redirect()->back()->with('success', 'Database berhasil direset (kecuali data barang).');
+
+        } catch (\Exception $e) {
+            \DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+            return redirect()->back()->with('error', 'Gagal mereset database: ' . $e->getMessage());
+        }
+    }
 }

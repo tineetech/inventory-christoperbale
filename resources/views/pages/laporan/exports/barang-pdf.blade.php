@@ -73,8 +73,10 @@
                 <th width="10%">SKU</th>
                 <th width="16%">Nama Barang</th>
                 <th width="8%">Satuan</th>
-                <th width="9%">Harga 1</th>
-                <th width="9%">Harga 2</th>
+                @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
+                <th width="9%">Harga Beli</th>
+                @endif
+                <th width="9%">Harga Jual</th>
                 <th width="6%">Stok</th>
                 <th width="8%">Status</th>
                 <th width="12%">Keterangan</th>
@@ -97,7 +99,9 @@
                     <td>{{ $item->sku }}</td>
                     <td>{{ $item->nama_barang }}</td>
                     <td>{{ $item->satuan->nama_satuan ?? '-' }}</td>
+                    @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
                     <td>Rp {{ number_format($item->harga_1 ?? 0, 0, ',', '.') }}</td>
+                    @endif
                     <td>Rp {{ number_format($item->harga_2 ?? 0, 0, ',', '.') }}</td>
                     <td class="text-center">{{ $stokSaatIni }}</td>
                     <td>{{ $status }}</td>

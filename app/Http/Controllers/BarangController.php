@@ -171,6 +171,58 @@ class BarangController extends Controller
         }
     }
 
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('ids', []);
+
+        if (empty($ids)) {
+            return response()->json(['success' => false, 'message' => 'Tidak ada data yang dipilih.']);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $errors = [];
+
+            foreach ($ids as $id) {
+                $barang = Barang::find($id);
+                if (!$barang) continue;
+
+                if ($barang->pembelianDetail->count() > 0) {
+                    $errors[] = "SKU {$barang->sku} digunakan di data pembelian.";
+                    continue;
+                }
+
+                if ($barang->penjualanDetail->count() > 0) {
+                    $errors[] = "SKU {$barang->sku} digunakan di data penjualan.";
+                    continue;
+                }
+
+                StokMovement::where('barang_id', $barang->id)->delete();
+                StokBarang::where('barang_id', $barang->id)->delete();
+                $barang->delete();
+            }
+
+            DB::commit();
+
+            if (!empty($errors)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Sebagian barang tidak bisa dihapus: ' . implode(', ', $errors)
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => count($ids) . ' barang berhasil dihapus.'
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+    
     public function search(Request $req)
     {
 

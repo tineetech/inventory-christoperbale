@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Imports\BarangImport;
 use App\Exports\BarangTemplateExport;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Maatwebsite\Excel\Facades\Excel;
 
 class BarangImportController extends Controller
@@ -15,8 +16,9 @@ class BarangImportController extends Controller
             'file' => 'required|file|mimes:xlsx,xls,csv|max:5120',
         ]);
 
+        $userRole = $request->role;
         try {
-            $import = new BarangImport();
+            $import = new BarangImport($userRole);
             Excel::import($import, $request->file('file'));
 
             // Gabung skipLog + errorLog untuk detail lengkap
