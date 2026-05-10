@@ -633,8 +633,8 @@ async function injectResiPage(resiData, pageIndex, totalPages) {
                 const res      = await fetch(`/api/product/search?q=${encodeURIComponent(sku)}`);
                 const products = await res.json();
                 if (!products || products.length === 0) {
-                    extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan.`);
-                    modalLog(`↳ SKU ${sku} tidak ditemukan`, 'err');
+                    extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan / stok habis.`);
+                    modalLog(`↳ SKU ${sku} tidak ditemukan / stok habis`, 'err');
                     continue;
                 }
                 const product = products.find(p => p.sku === sku) ?? products[0];

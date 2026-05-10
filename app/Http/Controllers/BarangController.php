@@ -15,9 +15,40 @@ use Milon\Barcode\DNS2D;
 
 class BarangController extends Controller
 {
-    public function index()
+    // public function index()
+    // {
+    //     $barang = Barang::with('satuan', 'stok')->get();
+    //     return view('pages.master.barang.index', compact('barang'));
+    // }
+    public function index(Request $request)
     {
-        $barang = Barang::with('satuan', 'stok')->get();
+        $query = Barang::with('satuan', 'stok');
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('nama_barang', 'like', "%{$search}%")
+                ->orWhere('sku', 'like', "%{$search}%")
+                ->orWhere('keterangan', 'like', "%{$search}%");
+            });
+        }
+
+        // Sort
+        $sortColumn = $request->get('sort', 'nama_barang');
+        $sortDir    = $request->get('direction', 'asc');
+        $allowed    = ['sku', 'nama_barang', 'harga_1', 'harga_2', 'keterangan'];
+
+        if (in_array($sortColumn, $allowed)) {
+            $query->orderBy($sortColumn, $sortDir);
+        }
+
+        $perPage = in_array($request->get('per_page'), [10, 25, 50, 100])
+            ? $request->get('per_page')
+            : 10;
+
+        $barang = $query->paginate($perPage)->withQueryString();
+
         return view('pages.master.barang.index', compact('barang'));
     }
 

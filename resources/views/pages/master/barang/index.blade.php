@@ -72,63 +72,6 @@
                             @endif
 
                         </div>
-                        {{-- <div class="col-md-3">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="">
-                                            <h2 class="mb-2"> 256 </h2>
-                                            <p class="text-muted mb-0"><span class="badge badge-primary">Supplier</span>
-                                                Today</p>
-                                        </div>
-                                        <div class="lnr lnr-leaf display-4 text-primary"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="">
-                                            <h2 class="mb-2">8451</h2>
-                                            <p class="text-muted mb-0"><span class="badge badge-success">20%</span> Stock
-                                            </p>
-                                        </div>
-                                        <div class="lnr lnr-chart-bars display-4 text-success"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="">
-                                            <h2 class="mb-2"> 31% <small></small></h2>
-                                            <p class="text-muted mb-0">New <span class="badge badge-danger">20%</span>
-                                                Customer</p>
-                                        </div>
-                                        <div class="lnr lnr-rocket display-4 text-danger"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="card mb-4">
-                                <div class="card-body">
-                                    <div class="d-flex align-items-center justify-content-between">
-                                        <div class="">
-                                            <h2 class="mb-2">158</h2>
-                                            <p class="text-muted mb-0"><span class="badge badge-warning">$143.45</span>
-                                                Profit</p>
-                                        </div>
-                                        <div class="lnr lnr-cart display-4 text-warning"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div> --}}
-
                         <div class="col-sm-12">
                             <div class="card mb-4">
                                 <div style="border: none !important"
@@ -142,22 +85,29 @@
                                         <!-- Search -->
                                         <div class="d-flex mr-5 align-items-center">
 
-                                            <input type="text" class="form-control form-control-sm mr-2" id="searchTable"
-                                                placeholder="Search barang..." style="width:150px">
+                                            {{-- <input type="text" class="form-control form-control-sm mr-2" id="searchTable"
+                                                placeholder="Search barang..." style="width:150px"> --}}
+                                            <form method="GET" action="{{ route('barang.index') }}" id="filterForm">
+                                                <input type="text" name="search" class="form-control form-control-sm"
+                                                    placeholder="Search barang..." value="{{ request('search') }}"
+                                                    onchange="this.form.submit()">
+
+                                            </form>
 
                                         </div>
-                                        <button id="btnBulkDelete" class="btn btn-sm btn-danger d-none mr-3" onclick="bulkDelete()">
+                                        <button id="btnBulkDelete" class="btn btn-sm btn-danger d-none mr-3"
+                                            onclick="bulkDelete()">
                                             <i class="feather icon-trash"></i> Hapus (<span id="selectedCount">0</span>)
                                         </button>
-                                        @if(hasPermission('tambah', 'barang'))
-                                        <a href="#" onclick="showImportModal()" class="btn btn-sm mr-3 text-white"
-                                            style="background: linear-gradient(135deg, #667eea, #764ba2); border: none; box-shadow: 0 6px 14px rgba(102, 126, 234, 0.25);">
-                                            <i class="feather icon-download"></i> Import Barang
-                                        </a>
-                                        <a href="{{ route('barang.create') }}" class="btn btn-sm text-white"
-                                            style="background: linear-gradient(135deg, #ff8a00, #ff5b00); border: none; box-shadow: 0 6px 14px rgba(255, 107, 0, 0.25);">
-                                            <i class="feather icon-plus"></i> Tambah Barang
-                                        </a>
+                                        @if (hasPermission('tambah', 'barang'))
+                                            <a href="#" onclick="showImportModal()" class="btn btn-sm mr-3 text-white"
+                                                style="background: linear-gradient(135deg, #667eea, #764ba2); border: none; box-shadow: 0 6px 14px rgba(102, 126, 234, 0.25);">
+                                                <i class="feather icon-download"></i> Import Barang
+                                            </a>
+                                            <a href="{{ route('barang.create') }}" class="btn btn-sm text-white"
+                                                style="background: linear-gradient(135deg, #ff8a00, #ff5b00); border: none; box-shadow: 0 6px 14px rgba(255, 107, 0, 0.25);">
+                                                <i class="feather icon-plus"></i> Tambah Barang
+                                            </a>
                                         @endif
 
                                     </div>
@@ -192,10 +142,10 @@
                                                             </th>
 
                                                             @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
-                                                            <th class="sortable" data-column="5">
-                                                                Harga Beli <i
-                                                                    class="feather icon-chevrons-up sort-icon"></i>
-                                                            </th>
+                                                                <th class="sortable" data-column="5">
+                                                                    Harga Beli <i
+                                                                        class="feather icon-chevrons-up sort-icon"></i>
+                                                                </th>
                                                             @endif
 
                                                             <th class="sortable" data-column="6">
@@ -216,23 +166,27 @@
 
                                                     <tbody>
                                                         @foreach ($barang as $index => $sup)
-                                                            <tr  data-id="{{ $sup->id }}">
+                                                            <tr data-id="{{ $sup->id }}">
 
                                                                 <td class="checkbox-col">
                                                                     <input type="checkbox" class="row-check">
                                                                 </td>
 
-                                                                <td>{{ $index + 1 }}</td>
+                                                                {{-- <td>{{ $index + 1 }}</td> --}}
+
+                                                                <td>{{ $barang->firstItem() + $index }}</td>
 
                                                                 {{-- <td>
                                                                     {{ $sup->sku }}
                                                                 </td> --}}
                                                                 <td>
-                                                                    <div class="d-flex flex-column align-items-center" style="padding-block: 20px">
+                                                                    <div class="d-flex flex-column align-items-center"
+                                                                        style="padding-block: 20px">
                                                                         {{-- QR Code --}}
                                                                         {!! DNS2D::getBarcodeHTML($sup->sku, 'QRCODE', 3, 3) !!}
                                                                         {{-- Teks SKU --}}
-                                                                        <small class="mt-1" style="font-size:15px; letter-spacing:1px">
+                                                                        <small class="mt-1"
+                                                                            style="font-size:15px; letter-spacing:1px">
                                                                             {{ $sup->sku }}
                                                                         </small>
                                                                     </div>
@@ -247,9 +201,9 @@
                                                                 </td>
 
                                                                 @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
-                                                                <td>
-                                                                    Rp {{ number_format($sup->harga_1, 0, ',', '.') }}
-                                                                </td>
+                                                                    <td>
+                                                                        Rp {{ number_format($sup->harga_1, 0, ',', '.') }}
+                                                                    </td>
                                                                 @endif
 
                                                                 <td>
@@ -275,31 +229,31 @@
                                                                         <span>Barcode</span>
                                                                     </a>
 
-                                                                    
-                                                                    @if(hasPermission('edit', 'barang'))
-                                                                    <a href="{{ route('barang.edit', $sup->id) }}"
-                                                                        class="btn btn-sm btn-info action-btn">
-                                                                        <i class="feather icon-edit"></i>
-                                                                    </a>
+
+                                                                    @if (hasPermission('edit', 'barang'))
+                                                                        <a href="{{ route('barang.edit', $sup->id) }}"
+                                                                            class="btn btn-sm btn-info action-btn">
+                                                                            <i class="feather icon-edit"></i>
+                                                                        </a>
                                                                     @endif
-                                                                    
-                                                                    @if(hasPermission('hapus', 'barang'))
-                                                                    <form id="delete-form-{{ $sup->id }}"
-                                                                        action="{{ route('barang.destroy', $sup->id) }}"
-                                                                        method="POST" style="display:inline">
 
-                                                                        @csrf
-                                                                        @method('DELETE')
+                                                                    @if (hasPermission('hapus', 'barang'))
+                                                                        <form id="delete-form-{{ $sup->id }}"
+                                                                            action="{{ route('barang.destroy', $sup->id) }}"
+                                                                            method="POST" style="display:inline">
 
-                                                                        <button type="button"
-                                                                            onclick="confirmDelete({{ $sup->id }})"
-                                                                            class="btn btn-sm btn-danger action-btn">
+                                                                            @csrf
+                                                                            @method('DELETE')
 
-                                                                            <i class="feather icon-trash"></i>
+                                                                            <button type="button"
+                                                                                onclick="confirmDelete({{ $sup->id }})"
+                                                                                class="btn btn-sm btn-danger action-btn">
 
-                                                                        </button>
+                                                                                <i class="feather icon-trash"></i>
 
-                                                                    </form>
+                                                                            </button>
+
+                                                                        </form>
                                                                     @endif
                                                                 </td>
 
@@ -318,54 +272,75 @@
 
                                                     <span class="mr-2 text-muted small">Show</span>
 
-                                                    <select class="form-control form-control-sm" id="entriesSelect"
-                                                        style="width:80px">
 
-                                                        <option value="10" selected>10</option>
-                                                        <option value="25">25</option>
-                                                        <option value="50">50</option>
-                                                        <option value="100">100</option>
-
-                                                    </select>
+                                                    <form method="GET" action="{{ route('barang.index') }}"
+                                                        id="filterForm">
+                                                        <select name="per_page" class="form-control form-control-sm"
+                                                            onchange="this.form.submit()">
+                                                            @foreach ([10, 25, 50, 100] as $n)
+                                                                <option value="{{ $n }}"
+                                                                    {{ request('per_page', 10) == $n ? 'selected' : '' }}>
+                                                                    {{ $n }}
+                                                                </option>
+                                                            @endforeach
+                                                        </select>
+                                                    </form>
 
                                                     <span class="ml-2 text-muted small">entries</span>
 
                                                 </div>
                                                 <!-- Info Entries -->
-                                                <div class="text-muted small" id="tableInfo">
+                                                {{-- <div class="text-muted small" id="tableInfo">
                                                     Showing <strong>1</strong> to <strong>10</strong> of
                                                     <strong>100</strong> entries
+                                                </div> --}}
+                                                <div class="text-muted small">
+                                                    Showing {{ $barang->firstItem() }} to {{ $barang->lastItem() }}
+                                                    of {{ $barang->total() }} entries
                                                 </div>
 
                                                 <!-- Pagination -->
                                                 <nav>
-                                                    <ul class="pagination pagination-sm mb-0" id="pagination">
 
-                                                        <li class="page-item disabled">
-                                                            <a class="page-link" href="#">
-                                                                <i class="feather icon-chevrons-left"></i>
-                                                            </a>
-                                                        </li>
+                                                    @if ($barang->hasPages())
+                                                        <ul class="pagination pagination-sm mb-0">
 
-                                                        <li class="page-item active">
-                                                            <a class="page-link" href="#">1</a>
-                                                        </li>
+                                                            {{-- Prev --}}
+                                                            <li
+                                                                class="page-item {{ $barang->onFirstPage() ? 'disabled' : '' }}">
+                                                                <a class="page-link"
+                                                                    href="{{ $barang->previousPageUrl() ?? '#' }}">
+                                                                    <i class="feather icon-chevron-left"></i>
+                                                                </a>
+                                                            </li>
 
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="#">2</a>
-                                                        </li>
+                                                            @foreach ($barang->onEachSide(1)->links()->offsetGet('elements') as $element)
+                                                                @if (is_string($element))
+                                                                    <li class="page-item disabled"><a
+                                                                            class="page-link">...</a></li>
+                                                                @endif
+                                                                @if (is_array($element))
+                                                                    @foreach ($element as $page => $url)
+                                                                        <li
+                                                                            class="page-item {{ $page == $barang->currentPage() ? 'active' : '' }}">
+                                                                            <a class="page-link"
+                                                                                href="{{ $url }}">{{ $page }}</a>
+                                                                        </li>
+                                                                    @endforeach
+                                                                @endif
+                                                            @endforeach
 
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="#">3</a>
-                                                        </li>
+                                                            {{-- Next --}}
+                                                            <li
+                                                                class="page-item {{ !$barang->hasMorePages() ? 'disabled' : '' }}">
+                                                                <a class="page-link"
+                                                                    href="{{ $barang->nextPageUrl() ?? '#' }}">
+                                                                    <i class="feather icon-chevron-right"></i>
+                                                                </a>
+                                                            </li>
 
-                                                        <li class="page-item">
-                                                            <a class="page-link" href="#">
-                                                                <i class="feather icon-chevrons-right"></i>
-                                                            </a>
-                                                        </li>
-
-                                                    </ul>
+                                                        </ul>
+                                                    @endif
                                                 </nav>
 
                                             </div>
@@ -424,39 +399,87 @@
         }
 
         function setupPagination() {
-
             pagination.innerHTML = "";
 
             let pageCount = Math.ceil(filteredRows.length / rowsPerPage);
+            if (pageCount <= 1) return;
 
-            for (let i = 1; i <= pageCount; i++) {
-
+            const createBtn = (label, page, disabled = false, active = false, isIcon = false) => {
                 let li = document.createElement("li");
                 li.classList.add("page-item");
-
-                if (i === currentPage) {
-                    li.classList.add("active");
-                }
+                if (disabled) li.classList.add("disabled");
+                if (active) li.classList.add("active");
 
                 let a = document.createElement("a");
                 a.classList.add("page-link");
                 a.href = "#";
-                a.innerText = i;
+                a.innerHTML = label;
 
-                a.addEventListener("click", function(e) {
-
-                    e.preventDefault();
-
-                    currentPage = i;
-
-                    displayTable();
-                    setupPagination();
-
-                });
+                if (!disabled && !active) {
+                    a.addEventListener("click", e => {
+                        e.preventDefault();
+                        currentPage = page;
+                        displayTable();
+                        setupPagination();
+                        window.scrollTo({
+                            top: 0,
+                            behavior: 'smooth'
+                        });
+                    });
+                }
 
                 li.appendChild(a);
-                pagination.appendChild(li);
+                return li;
+            };
+
+            const createEllipsis = () => {
+                let li = document.createElement("li");
+                li.classList.add("page-item", "disabled");
+                let a = document.createElement("a");
+                a.classList.add("page-link");
+                a.innerHTML = "...";
+                li.appendChild(a);
+                return li;
+            };
+
+            // Prev
+            pagination.appendChild(
+                createBtn('<i class="feather icon-chevron-left"></i>', currentPage - 1, currentPage === 1)
+            );
+
+            if (pageCount <= 7) {
+                // Tampilkan semua jika halaman sedikit
+                for (let i = 1; i <= pageCount; i++) {
+                    pagination.appendChild(createBtn(i, i, false, i === currentPage));
+                }
+            } else {
+                // Selalu tampilkan halaman 1
+                pagination.appendChild(createBtn(1, 1, false, currentPage === 1));
+
+                if (currentPage > 3) pagination.appendChild(createEllipsis());
+
+                // Halaman di sekitar currentPage
+                let start = Math.max(2, currentPage - 1);
+                let end = Math.min(pageCount - 1, currentPage + 1);
+
+                // Pastikan minimal 3 tombol tengah
+                if (currentPage <= 3) end = Math.min(pageCount - 1, 4);
+                if (currentPage >= pageCount - 2) start = Math.max(2, pageCount - 3);
+
+                for (let i = start; i <= end; i++) {
+                    pagination.appendChild(createBtn(i, i, false, i === currentPage));
+                }
+
+                if (currentPage < pageCount - 2) pagination.appendChild(createEllipsis());
+
+                // Selalu tampilkan halaman terakhir
+                pagination.appendChild(createBtn(pageCount, pageCount, false, currentPage === pageCount));
             }
+
+            // Next
+            pagination.appendChild(
+                createBtn('<i class="feather icon-chevron-right"></i>', currentPage + 1, currentPage === pageCount)
+            );
         }
 
         function updateInfo() {
@@ -622,11 +645,12 @@
             });
 
         });
+
         function showImportModal() {
-    Swal.fire({
-        title: '<strong>Import Barang</strong>',
-        icon: 'info',
-        html: `
+            Swal.fire({
+                title: '<strong>Import Barang</strong>',
+                icon: 'info',
+                html: `
             <div class="text-left">
 
                 <a href="/api/barang/import/template" class="btn btn-outline-secondary btn-block mb-4">
@@ -640,68 +664,74 @@
                 </div>
             </div>
         `,
-        showCloseButton: true,
-        showCancelButton: true,
-        confirmButtonText: '<i class="feather icon-upload"></i> Import',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#667eea',
-        focusConfirm: false,
-        preConfirm: async () => {
-            const file = document.getElementById('import_file').files[0];
+                showCloseButton: true,
+                showCancelButton: true,
+                confirmButtonText: '<i class="feather icon-upload"></i> Import',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#667eea',
+                focusConfirm: false,
+                preConfirm: async () => {
+                    const file = document.getElementById('import_file').files[0];
 
-            if (!file) {
-                Swal.showValidationMessage('Pilih file terlebih dahulu!');
-                return false;
-            }
+                    if (!file) {
+                        Swal.showValidationMessage('Pilih file terlebih dahulu!');
+                        return false;
+                    }
 
-            const ext = file.name.split('.').pop().toLowerCase();
-            if (!['xlsx', 'xls', 'csv'].includes(ext)) {
-                Swal.showValidationMessage('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv');
-                return false;
-            }
+                    const ext = file.name.split('.').pop().toLowerCase();
+                    if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+                        Swal.showValidationMessage(
+                        'Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv');
+                        return false;
+                    }
 
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('role', "{{ Auth::guard('pengguna')->user()->role->nama_role }}");
-            formData.append('_token', '{{ csrf_token() }}');
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('role', "{{ Auth::guard('pengguna')->user()->role->nama_role }}");
+                    formData.append('_token', '{{ csrf_token() }}');
 
-            Swal.showLoading();
+                    Swal.showLoading();
 
-            try {
-                const response = await fetch('/api/barang/import', {
-                    method: 'POST',
-                    body: formData,
-                });
+                    try {
+                        const response = await fetch('/api/barang/import', {
+                            method: 'POST',
+                            body: formData,
+                        });
 
-                const result = await response.json();
+                        const result = await response.json();
 
-                if (!response.ok) {
-                    Swal.showValidationMessage(result.message ?? 'Import gagal.');
-                    return false;
+                        if (!response.ok) {
+                            Swal.showValidationMessage(result.message ?? 'Import gagal.');
+                            return false;
+                        }
+
+                        return result;
+
+                    } catch (err) {
+                        Swal.showValidationMessage('Terjadi kesalahan: ' + err.message);
+                        return false;
+                    }
                 }
+            }).then((result) => {
+                if (result.isConfirmed && result.value) {
+                    const {
+                        message,
+                        imported,
+                        skipped,
+                        details
+                    } = result.value;
 
-                return result;
-
-            } catch (err) {
-                Swal.showValidationMessage('Terjadi kesalahan: ' + err.message);
-                return false;
-            }
-        }
-    }).then((result) => {
-        if (result.isConfirmed && result.value) {
-            const { message, imported, skipped, details } = result.value;
-
-            // Bangun tabel detail skip kalau ada
-            let detailHtml = '';
-            if (details && details.length > 0) {
-                const rows = details.map(d => `
+                    // Bangun tabel detail skip kalau ada
+                    let detailHtml = '';
+                    if (details && details.length > 0) {
+                        const rows = details.map(d => `
                     <tr>
                         <td class="text-left px-2"><code>${d.sku}</code></td>
                         <td class="text-left px-2 text-danger">${d.alasan}</td>
                     </tr>
                 `).join('');
 
-                detailHtml = `
+                        detailHtml = `
                     <div class="mt-3 text-left">
                         <p class="font-weight-bold mb-1">Detail baris dilewati:</p>
                         <div style="max-height:200px; overflow-y:auto; border:1px solid #dee2e6; border-radius:4px">
@@ -717,104 +747,119 @@
                         </div>
                     </div>
                 `;
-            }
+                    }
 
-            Swal.fire({
-                icon: skipped > 0 ? 'warning' : 'success',
-                title: 'Import Selesai!',
-                html: `
+                    Swal.fire({
+                        icon: skipped > 0 ? 'warning' : 'success',
+                        title: 'Import Selesai!',
+                        html: `
                     <p class="mb-2">✅ Berhasil diimport: <strong>${imported}</strong> barang</p>
                     ${skipped > 0 ? `<p class="mb-2 text-warning">⚠️ Dilewati: <strong>${skipped}</strong> baris</p>` : ''}
                     ${detailHtml}
                 `,
-                width: details?.length > 0 ? '600px' : '400px',
-            }).then(() => location.reload());
+                        width: details?.length > 0 ? '600px' : '400px',
+                    }).then(() => location.reload());
+                }
+            });
         }
-    });
-}
 
-// =====================================================
-// BULK DELETE
-// =====================================================
-function getSelectedIds() {
-    const checked = document.querySelectorAll('#table tbody .row-check:checked');
-    return Array.from(checked).map(cb => {
-        return parseInt(cb.closest('tr').querySelector('[data-id]')?.getAttribute('data-id') 
-               ?? cb.closest('tr').getAttribute('data-id'));
-    });
-}
+        // =====================================================
+        // BULK DELETE
+        // =====================================================
+        function getSelectedIds() {
+            const checked = document.querySelectorAll('#table tbody .row-check:checked');
+            return Array.from(checked).map(cb => {
+                return parseInt(cb.closest('tr').querySelector('[data-id]')?.getAttribute('data-id') ??
+                    cb.closest('tr').getAttribute('data-id'));
+            });
+        }
 
-function updateBulkBar() {
-    const checked = document.querySelectorAll('#table tbody .row-check:checked');
-    const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-id'));
-    const btn = document.getElementById('btnBulkDelete');
-    document.getElementById('selectedCount').textContent = ids.length;
+        function updateBulkBar() {
+            const checked = document.querySelectorAll('#table tbody .row-check:checked');
+            const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-id'));
+            const btn = document.getElementById('btnBulkDelete');
+            document.getElementById('selectedCount').textContent = ids.length;
 
-    if (ids.length > 0) {
-        btn.classList.remove('d-none');
-    } else {
-        btn.classList.add('d-none');
-    }
-}
+            if (ids.length > 0) {
+                btn.classList.remove('d-none');
+            } else {
+                btn.classList.add('d-none');
+            }
+        }
 
-async function bulkDelete() {
-    const checked = document.querySelectorAll('#table tbody .row-check:checked');
-    const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-id'));
+        async function bulkDelete() {
+            const checked = document.querySelectorAll('#table tbody .row-check:checked');
+            const ids = Array.from(checked).map(cb => cb.closest('tr').getAttribute('data-id'));
 
-    if (ids.length === 0) return;
+            if (ids.length === 0) return;
 
-    const result = await Swal.fire({
-        title: 'Hapus ' + ids.length + ' barang?',
-        text: 'Data yang dihapus tidak dapat dikembalikan!',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Ya, hapus semua!',
-        cancelButtonText: 'Batal'
-    });
+            const result = await Swal.fire({
+                title: 'Hapus ' + ids.length + ' barang?',
+                text: 'Data yang dihapus tidak dapat dikembalikan!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, hapus semua!',
+                cancelButtonText: 'Batal'
+            });
 
-    if (!result.isConfirmed) return;
+            if (!result.isConfirmed) return;
 
-    const btn = document.getElementById('btnBulkDelete');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menghapus...';
+            const btn = document.getElementById('btnBulkDelete');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menghapus...';
 
-    try {
-        const res = await fetch('{{ route("barang.bulk-delete") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': '{{ csrf_token() }}'
-            },
-            body: JSON.stringify({ ids })
+            try {
+                const res = await fetch('{{ route('barang.bulk-delete') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        ids
+                    })
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    Toast.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: json.message
+                    });
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: json.message ?? 'Terjadi kesalahan.'
+                    });
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Gagal menghubungi server.'
+                });
+                console.error(e);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="feather icon-trash"></i> Hapus (<span id="selectedCount">' + ids.length +
+                    '</span>)';
+            }
+        }
+
+        // Listener perubahan checkbox
+        document.getElementById('table').addEventListener('change', function(e) {
+            if (e.target.classList.contains('row-check')) updateBulkBar();
         });
 
-        const json = await res.json();
-
-        if (json.success) {
-            Toast.fire({ icon: 'success', title: 'Berhasil', text: json.message });
-            setTimeout(() => location.reload(), 1000);
-        } else {
-            Swal.fire({ icon: 'error', title: 'Gagal', text: json.message ?? 'Terjadi kesalahan.' });
-        }
-    } catch (e) {
-        Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
-        console.error(e);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="feather icon-trash"></i> Hapus (<span id="selectedCount">' + ids.length + '</span>)';
-    }
-}
-
-// Listener perubahan checkbox
-document.getElementById('table').addEventListener('change', function(e) {
-    if (e.target.classList.contains('row-check')) updateBulkBar();
-});
-
-document.getElementById('checkAll').addEventListener('click', function() {
-    document.querySelectorAll('#table tbody .row-check').forEach(cb => cb.checked = this.checked);
-    updateBulkBar();
-});
+        document.getElementById('checkAll').addEventListener('click', function() {
+            document.querySelectorAll('#table tbody .row-check').forEach(cb => cb.checked = this.checked);
+            updateBulkBar();
+        });
     </script>
 @endsection
