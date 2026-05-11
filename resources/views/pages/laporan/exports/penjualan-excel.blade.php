@@ -59,8 +59,8 @@
                 <td>No Resi</td>
                 <td>SKU</td>
                 <td>Nama Barang</td>
-                {{-- <td>Stok Sekarang</td>
-                <td>Qty Terjual</td> --}}
+                {{-- <td>Stok Sekarang</td>--}}
+                <td>Qty Terjual</td>
                 <td>Harga</td>
                 <td>Subtotal</td>
                 <td colspan="3"></td>
@@ -77,8 +77,8 @@
                     <td>{{ $detail->nomor_resi ?: '-' }}</td>
                     <td>{{ $detail->barang->sku ?? '-' }}</td>
                     <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
-                    {{-- <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
-                    <td>{{ $detail->qty }}</td> --}}
+                    {{-- <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td> --}}
+                    <td>{{ $detail->qty }}</td>
                     <td>{{ $detail->harga }}</td>
                     <td>{{ $detail->subtotal }}</td>
                     <td colspan="3"></td>

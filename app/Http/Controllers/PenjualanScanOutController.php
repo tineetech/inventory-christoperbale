@@ -87,6 +87,7 @@ class PenjualanScanOutController extends Controller
                     'scan_out'        => $pj->scan_out ?? 'nothing',
                     'is_draft'        => $pj->is_draft,
                     'is_retur'        => $pj->is_retur,
+                    'strukprint_status'        => $pj->strukprint_status,
                     'keterangan'      => $pj->keterangan,
                     'detail'          => $pj->detail->map(fn($d) => [
                         'nomor_resi'   => $d->nomor_resi,

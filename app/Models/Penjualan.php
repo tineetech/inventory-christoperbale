@@ -21,6 +21,7 @@ class Penjualan extends Model
         'scan_out',
         'is_draft',
         'is_retur',
+        'strukprint_status',
         'created_by'
     ];
 

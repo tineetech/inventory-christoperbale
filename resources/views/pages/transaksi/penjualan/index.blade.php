@@ -119,6 +119,20 @@
                                             style="min-width:100px;flex:1 1 100px">
                                         <input type="text" class="form-control form-control-sm" id="searchTable"
                                             placeholder="Search penjualan..." style="min-width:140px;flex:2 1 160px">
+
+                                        <select id="filterDropshipper" class="form-control form-control-sm"
+                                            style="min-width:140px;flex:2 1 160px">
+                                            <option value="">-- Semua Dropshipper --</option>
+                                            @foreach($dropshippers as $ds)
+                                                <option value="{{ $ds->nama }}">{{ $ds->nama }}</option>
+                                            @endforeach
+                                        </select>
+                                        <select id="filterPrintStatus" class="form-control form-control-sm"
+                                            style="min-width:130px;flex:1 1 130px">
+                                            <option value="">-- Semua Status Print --</option>
+                                            <option value="belum">Belum Print</option>
+                                            <option value="sudah">Sudah Print</option>
+                                        </select>
                                         <input type="text" class="form-control" id="scanOutPenjualan"
                                             placeholder="Arahkan scanner ke nomor resi..." autocomplete="off"
                                             style="min-width:140px;flex:2 1 160px" inputmode="none">
@@ -161,6 +175,9 @@
                                                             </th>
                                                             <th class="sortable d-none d-sm-table-cell" data-column="10">
                                                                 Retur? <i class="feather icon-chevrons-up sort-icon"></i>
+                                                            </th>
+                                                            <th class="sortable d-none d-sm-table-cell" data-column="11">
+                                                                Print? <i class="feather icon-chevrons-up sort-icon"></i>
                                                             </th>
                                                             {{-- <th class="sortable d-none d-xl-table-cell" data-column="11">
                                                                 Keterangan <i
@@ -222,6 +239,7 @@
         const API_BASE = '/api/penjualan';
         const REFRESH_MS = 10000;
         const CSRF_TOKEN = '{{ csrf_token() }}';
+        let isBulkLocked = false; 
 
         // =====================================================
         // STATE
@@ -250,10 +268,12 @@
             return Number(num).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
         }
 
+
         // =====================================================
         // FETCH DATA
         // =====================================================
         async function fetchData(silent = false) {
+             if (isBulkLocked) return;
             try {
                 if (!silent) {
                     document.getElementById('loadingRow').style.display = '';
@@ -331,6 +351,12 @@
                     `<span class="badge text-white" style="background:#00499b">Ya</span>`;
                 else if (pj.is_retur === 'no') returBadge = `<span class="badge badge-danger">Tidak</span>`;
                 else returBadge = `<span class="badge badge-secondary">-</span>`;
+
+                let printBadge = '';
+                if (pj.strukprint_status === 'sudah') 
+                    printBadge = `<span class="badge badge-success">Sudah</span>`;
+                else 
+                    printBadge = `<span class="badge badge-secondary">Belum</span>`;
                 
                 const rowBg = pj._justScanned ? 'background:#e8f5e9;' : '';
                 // Restore state: buka kembali detail yang sebelumnya terbuka
@@ -351,6 +377,7 @@
             <td>${scanBadge}</td>
             <td class="d-none d-sm-table-cell">${draftBadge}</td>
             <td class="d-none d-sm-table-cell">${returBadge}</td>
+            <td class="d-none d-sm-table-cell">${printBadge}</td>
             <td style="white-space:nowrap">
 
                 ${
@@ -443,15 +470,16 @@
         // FILTER & SEARCH
         // =====================================================
         function applyFilters() {
-            const keyword  = (document.getElementById('searchTable').value || '').toLowerCase();
-            const dateFrom = document.getElementById('dateFrom').value;
-            const dateTo   = document.getElementById('dateTo').value;
-            const timeFrom = document.getElementById('timeFrom').value; // "HH:MM" atau ""
-            const timeTo   = document.getElementById('timeTo').value;   // "HH:MM" atau ""
+            const keyword      = (document.getElementById('searchTable').value || '').toLowerCase();
+            const dateFrom     = document.getElementById('dateFrom').value;
+            const dateTo       = document.getElementById('dateTo').value;
+            const timeFrom     = document.getElementById('timeFrom').value;
+            const timeTo       = document.getElementById('timeTo').value;
+            const dropshipper  = document.getElementById('filterDropshipper').value;
+            const printStatus  = document.getElementById('filterPrintStatus').value; // ✅ tambah
 
             const hasKeyword = keyword.trim().length > 0;
 
-            // Gabungkan date + time jadi string "YYYY-MM-DD HH:MM" untuk perbandingan
             const datetimeFrom = dateFrom ? (dateFrom + ' ' + (timeFrom || '00:00')) : null;
             const datetimeTo   = dateTo   ? (dateTo   + ' ' + (timeTo   || '23:59')) : null;
 
@@ -463,24 +491,25 @@
 
                 let dateMatch = true;
                 if (!hasKeyword) {
-                    // Normalisasi tanggal dari API → "YYYY-MM-DD HH:MM"
                     let raw = pj.tanggal ?? '';
-                    // Handle format ISO "2025-05-05T14:30:00.000000Z"
                     if (raw.includes('T')) raw = raw.replace('T', ' ').split('.')[0];
-                    // Ambil hanya "YYYY-MM-DD HH:MM" (buang detik)
-                    const dtNormalized = raw.substring(0, 16); // "YYYY-MM-DD HH:MM"
-
+                    const dtNormalized = raw.substring(0, 16);
                     if (datetimeFrom) dateMatch = dtNormalized >= datetimeFrom;
                     if (datetimeTo)   dateMatch = dateMatch && (dtNormalized <= datetimeTo);
                 }
 
-                return textMatch && dateMatch;
+                const dropshipperMatch = !dropshipper || (pj.dropshipper === dropshipper);
+                const printMatch       = !printStatus || (pj.strukprint_status === printStatus); // ✅ tambah
+
+                return textMatch && dateMatch && dropshipperMatch && printMatch;
             });
 
             if (currentSortCol !== null) applySortOnFiltered();
             currentPage = 1;
             renderTable();
         }
+        document.getElementById('filterPrintStatus').addEventListener('change', applyFilters);
+        document.getElementById('filterDropshipper').addEventListener('change', applyFilters);
         document.getElementById('timeFrom').addEventListener('change', applyFilters);
         document.getElementById('timeTo').addEventListener('change', applyFilters);
         // Di event listener searchTable
@@ -733,9 +762,11 @@
             if (ids.length > 0) {
                 btn.classList.remove('d-none');
                 btnDel.classList.remove('d-none');
+                isBulkLocked = true;  // ✅ LOCK refresh
             } else {
                 btn.classList.add('d-none');
                 btnDel.classList.add('d-none');
+                isBulkLocked = false; // ✅ UNLOCK refresh
             }
         }
 
@@ -783,6 +814,7 @@
                 console.error(e);
             } finally {
                 btn.disabled = false;
+                isBulkLocked = false; 
                 updateBulkBar();
             }
         }
@@ -821,12 +853,14 @@
                 a.remove();
                 URL.revokeObjectURL(url);
 
+                await fetchData(true)
                 Toast.fire({ icon: 'success', title: 'Berhasil', text: ids.length + ' struk berhasil didownload.' });
             } catch (e) {
                 Toast.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
                 console.error(e);
             } finally {
                 btn.disabled = false;
+                isBulkLocked = false; 
                 btn.innerHTML = '<i class="feather icon-download"></i> Download Struk (<span id="selectedCount">' + getSelectedIds().length + '</span>)';
             }
         }

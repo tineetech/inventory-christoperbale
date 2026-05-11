@@ -27,7 +27,9 @@ class PenjualanController extends Controller
         ])->get();
         // dd($penjualan);
 
-        return view('pages.transaksi.penjualan.index', compact('penjualan'));
+        $dropshippers = Dropshipper::orderBy('nama')->get(); 
+
+        return view('pages.transaksi.penjualan.index', compact('penjualan', 'dropshippers'));
     }
 
     public function create()
@@ -808,11 +810,13 @@ class PenjualanController extends Controller
             'pages.transaksi.penjualan.struk_pdf_bulk',
             compact('struks')
         )->setPaper([0, 0, 419.53, 595.28]); // A5
+        Penjualan::whereIn('id', $ids)->update(['strukprint_status' => 'sudah']);
 
         $filename = 'struk-bulk-' . now()->format('dmY-His') . '.pdf';
 
         return $pdf->download($filename);
     }
+
     public function strukDownload($id)
     {
         $penjualan = Penjualan::findOrFail($id);
@@ -858,6 +862,7 @@ class PenjualanController extends Controller
             'resiMime',
             'resiIsPdf'
         ))->setPaper([0, 0, 419.53, 595.28]); // A5
+        $penjualan->update(['strukprint_status' => 'sudah']);
 
         $filename = 'struk-' . $nomorStruk . '.pdf';
 

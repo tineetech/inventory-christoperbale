@@ -400,7 +400,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
 
     Route::post('/transaksi/penjualan/bulk-delete', [PenjualanController::class, 'bulkDelete'])->name('penjualan.bulk-delete');
 
-    Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
+    // Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
     Route::get('/transaksi/penjualan/{id}/struk', [PenjualanController::class, 'struk'])->name('penjualan.struk');
     Route::get('/transaksi/penjualan/{id}/struk/download', [PenjualanController::class, 'strukDownload'])->name('penjualan.struk.download');
     Route::post('/transaksi/penjualan/bulk-struk-download', [PenjualanController::class, 'bulkStrukDownload'])
