@@ -2106,15 +2106,19 @@
             let valid = true;
             let errors = [];
 
-            Object.entries(stockUsageMap).forEach(([productId, entry]) => {
-                const totalUsed = getTotalUsed(productId);
-                if (totalUsed > entry.stok) {
-                    valid = false;
-                    errors.push(
-                        `Konflik stok lintas resi: total qty <b>${totalUsed}</b> melebihi stok <b>${entry.stok}</b>`
-                        );
-                }
-            });
+           Object.entries(stockUsageMap).forEach(([productId, entry]) => {
+    const totalUsed = getTotalUsed(productId);
+    if (totalUsed > entry.stok) {
+        // Cek apakah semua card yang memakai produk ini sudah draft
+        const allDraft = Object.keys(entry.usedByCard).every(cid => isDraftModeFor(cid));
+        if (!allDraft) {
+            valid = false;
+            errors.push(
+                `Konflik stok lintas resi: total qty <b>${totalUsed}</b> melebihi stok <b>${entry.stok}</b>. Set semua resi terkait ke <b>Draft</b> untuk tetap menyimpan.`
+            );
+        }
+    }
+});
 
             resiList.forEach((r, idx) => {
                 const draft = isDraftModeFor(r.uid);

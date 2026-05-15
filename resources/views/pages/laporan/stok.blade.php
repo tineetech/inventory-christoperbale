@@ -14,6 +14,7 @@
 @endphp
 
 @section('content')
+div
     <div class="layout-content">
         <div class="container-fluid flex-grow-1 container-p-y">
             <h4 class="font-weight-bold py-3 mb-0">Laporan Stok</h4>
