@@ -868,4 +868,22 @@ class PenjualanController extends Controller
 
         return $pdf->download($filename);
     }
+    
+    public function updateHargaCair(Request $request, $id)
+    {
+        $request->validate([
+            'harga_cair' => 'required|numeric|min:0',
+        ]);
+
+        $penjualan = Penjualan::findOrFail($id);
+        $penjualan->update([
+            'harga_cair' => $request->harga_cair,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Harga cair berhasil disimpan.',
+            'harga_cair' => $penjualan->harga_cair,
+        ]);
+    }
 }

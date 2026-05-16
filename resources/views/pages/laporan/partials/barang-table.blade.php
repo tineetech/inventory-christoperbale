@@ -9,9 +9,9 @@
                 <th>Nama Barang</th>
                 <th>Satuan</th>
                 @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
-                <th>Harga Beli</th>
+                <th>Harga HPP</th>
                 @endif
-                <th>Harga Jual</th>
+                <th>Harga Reseller</th>
                 <th>Stok</th>
                 <th>Status</th>
                 <th>Keterangan</th>

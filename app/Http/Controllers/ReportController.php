@@ -296,6 +296,8 @@ class ReportController extends Controller
 
     public function barangPdf(Request $request)
     {
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 300);
         $filters = $this->resolveBarangFilters($request);
         $barang = $this->getBarangReportQuery($filters)->get();
 

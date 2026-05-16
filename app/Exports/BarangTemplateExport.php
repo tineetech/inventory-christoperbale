@@ -15,14 +15,14 @@ class BarangTemplateExport implements FromArray, WithHeadings, WithStyles
     public function array(): array
     {
         return [
-            ['SKU001', 'Contoh Barang 1', 'PCS', 15000, 25000, 1, 10, 'Keterangan opsional'],
-            ['SKU002', 'Contoh Barang 2', 'PCS', 20000, 35000, 1, 5,  ''],
+            ['SKU001', 'Contoh Barang 1', 'kategori 1', 'PCS', 15000, 25000, 1, 10, 'Keterangan opsional'],
+            ['SKU002', 'Contoh Barang 2', 'kategori 2', 'PCS', 20000, 35000, 1, 5,  ''],
         ];
     }
 
     public function headings(): array
     {
-        return ['sku', 'nama_barang', 'satuan', 'harga_beli', 'harga_jual', 'stok_minimum', 'stok_awal', 'keterangan'];
+        return ['sku', 'nama_barang', 'kategori', 'satuan', 'harga_hpp', 'harga_reseller', 'stok_minimum', 'stok_awal', 'keterangan'];
     }
 
     public function styles(Worksheet $sheet)

@@ -27,10 +27,10 @@ class BarangController extends Controller
         // Search
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('nama_barang', 'like', "%{$search}%")
-                ->orWhere('sku', 'like', "%{$search}%")
-                ->orWhere('keterangan', 'like', "%{$search}%");
+                    ->orWhere('sku', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%");
             });
         }
 
@@ -63,6 +63,7 @@ class BarangController extends Controller
         $request->validate([
             'sku'           => 'required|string|unique:barang,sku',
             'nama_barang'   => 'required|string',
+            'kategori'   => 'nullable|string',
             'satuan_id'     => 'required|exists:satuan,id',
             'harga_1'       => 'required|numeric|min:0',
             'harga_2'       => 'nullable|numeric|min:0',
@@ -79,6 +80,7 @@ class BarangController extends Controller
             $barang = Barang::create([
                 'sku'          => $request->sku,
                 'nama_barang'  => $request->nama_barang,
+                'kategori'  => $request->kategori,
                 'satuan_id'    => $request->satuan_id,
                 'harga_1'      => $request->harga_1,
                 'harga_2'      => $request->harga_2,
@@ -141,6 +143,7 @@ class BarangController extends Controller
             'harga_1'      => 'required|numeric|min:0',
             'harga_2'      => 'nullable|numeric|min:0',
             'stok_minimum' => 'nullable|integer|min:0',
+            'kategori'   => 'nullable|string',
             'keterangan'   => 'nullable|string',
         ]);
 
@@ -150,6 +153,7 @@ class BarangController extends Controller
         $barang->update([
             'sku'          => $data['sku'],
             'nama_barang'  => $data['nama_barang'],
+            'kategori'  => $data['kategori'],
             'satuan_id'    => $data['satuan_id'],
             'harga_1'      => $data['harga_1'],
             'harga_2'      => $data['harga_2'] ?? null,
@@ -173,7 +177,7 @@ class BarangController extends Controller
             if ($barang->pembelianDetail->count() > 0) {
                 throw new \Exception("Barang tidak bisa dihapus karena masih digunakan di data pembelian !");
             }
-            
+
             if ($barang->penjualanDetail->count() > 0) {
                 throw new \Exception("Barang tidak bisa dihapus karena masih digunakan di data penjualan !");
             }
@@ -247,13 +251,12 @@ class BarangController extends Controller
                 'success' => true,
                 'message' => count($ids) . ' barang berhasil dihapus.'
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
-    
+
     public function search(Request $req)
     {
 
@@ -315,5 +318,30 @@ class BarangController extends Controller
         imagedestroy($canvas);
         imagedestroy($barcodeImg);
         exit;
+    }
+
+    public function bulkUpdateHpp(Request $request)
+    {
+        $request->validate([
+            'ids'       => 'required|array|min:1',
+            'ids.*'     => 'exists:barang,id',
+            'harga_hpp' => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            Barang::whereIn('id', $request->ids)
+                ->update(['harga_1' => $request->harga_hpp]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($request->ids) . ' barang berhasil diupdate harga HPP-nya.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
     }
 }

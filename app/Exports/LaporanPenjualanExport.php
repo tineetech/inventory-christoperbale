@@ -29,9 +29,9 @@ class LaporanPenjualanExport implements FromView, ShouldAutoSize, WithStyles, Wi
     
     public function styles(Worksheet $sheet)
     {
-
+    
         // Center text + bold
-        $sheet->getStyle('A1:H2')->applyFromArray([
+        $sheet->getStyle('A1:I2')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'size' => 14,
@@ -43,7 +43,7 @@ class LaporanPenjualanExport implements FromView, ShouldAutoSize, WithStyles, Wi
         ]);
 
         // Style header row ke-3 (border + warna hijau)
-        $sheet->getStyle('A3:H3')->applyFromArray([
+        $sheet->getStyle('A3:I3')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => 'FFFFFF'], // putih
@@ -84,7 +84,7 @@ class LaporanPenjualanExport implements FromView, ShouldAutoSize, WithStyles, Wi
                     // Deteksi baris header transaksi (yang ada tanda #1 | kode)
                     if (is_string($cellValue) && str_contains($cellValue, '#')) {
 
-                        $sheet->getStyle("A{$row}:H{$row}")->applyFromArray([
+                        $sheet->getStyle("A{$row}:I{$row}")->applyFromArray([
                             'font' => [
                                 'bold' => true,
                             ],
@@ -106,7 +106,7 @@ class LaporanPenjualanExport implements FromView, ShouldAutoSize, WithStyles, Wi
                 }
 
 
-                $sheet->getStyle("A{$highestRow}:H{$highestRow}")->applyFromArray([
+                $sheet->getStyle("A{$highestRow}:I{$highestRow}")->applyFromArray([
                     'font' => [
                         'bold' => true,
                         'size' => 12,

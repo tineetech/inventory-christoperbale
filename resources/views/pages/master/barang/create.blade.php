@@ -60,20 +60,30 @@
                                         <div class="text-danger small">{{ $message }}</div>
                                     @enderror
                                 </div>
+                                
+                                <div class="form-group col-md-6">
+                                    <label class="form-label">Kategori Barang</label>
+                                    <input type="text" name="kategori" class="form-control"
+                                        placeholder="Masukkan kategori barang (optional)" required>
+                                    @error('kategori')
+                                        <div class="text-danger small">{{ $message }}</div>
+                                    @enderror
+                                </div>
+
 
                                 <div class="form-group col-md-6">
-                                    <label class="form-label">Harga Beli</label>
+                                    <label class="form-label">Harga HPP</label>
                                     <input type="number" name="harga_1" class="form-control"
-                                        placeholder="Masukkan harga pertama" required>
+                                        placeholder="Masukkan harga hpp" required>
                                     @error('harga_1')
                                         <div class="text-danger small">{{ $message }}</div>
                                     @enderror
                                 </div>
 
-                                <div class="form-group col-md-12">
-                                    <label class="form-label">Harga Jual</label>
+                                <div class="form-group col-md-6">
+                                    <label class="form-label">Harga Reseller</label>
                                     <input type="number" name="harga_2" class="form-control"
-                                        placeholder="Masukkan harga kedua">
+                                        placeholder="Masukkan harga reseller">
                                     @error('harga_2')
                                         <div class="text-danger small">{{ $message }}</div>
                                     @enderror

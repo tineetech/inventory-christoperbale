@@ -17,6 +17,7 @@ class Penjualan extends Model
         'dropshipper_id',
         'tanggal',
         'total_harga',
+        'harga_cair',
         'keterangan',
         'scan_out',
         'is_draft',

@@ -279,6 +279,10 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/barang/{id}/barcode/download', [BarangController::class, 'downloadBarcode'])
         ->name('barang.barcode.download')
         ->middleware('permission:lihat,barang');
+    
+    Route::post('/master/barang/bulk-update-hpp', [BarangController::class, 'bulkUpdateHpp'])
+        ->name('barang.bulk-update-hpp')
+        ->middleware('permission:edit,barang');
 
 
     /*
@@ -504,6 +508,10 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/laporan/barang/pdf', [ReportController::class, 'barangPdf'])->name('laporan.barang.pdf');
     Route::get('/laporan/barang/excel', [ReportController::class, 'barangExcel'])->name('laporan.barang.excel');
     Route::get('/laporan/barang/print', [ReportController::class, 'barangPrint'])->name('laporan.barang.print');
+
+    Route::patch('/transaksi/penjualan/{id}/harga-cair', [PenjualanController::class, 'updateHargaCair'])
+    ->name('penjualan.update-harga-cair')
+    ->middleware('permission:edit,penjualan');
 
 
 

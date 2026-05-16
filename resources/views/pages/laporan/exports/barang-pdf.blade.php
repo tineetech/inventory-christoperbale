@@ -68,15 +68,15 @@
         <thead>
             <tr>
                 <th width="4%">No</th>
-                <th width="18%">Barcode</th>
+                {{-- <th width="18%">Barcode</th> --}}
                 <th width="10%">Tanggal</th>
                 <th width="10%">SKU</th>
                 <th width="16%">Nama Barang</th>
                 <th width="8%">Satuan</th>
                 @if (Auth::guard('pengguna')->user()->role->nama_role === 'super_admin')
-                <th width="9%">Harga Beli</th>
+                <th width="9%">Harga HPP</th>
                 @endif
-                <th width="9%">Harga Jual</th>
+                <th width="9%">Harga Reseller</th>
                 <th width="6%">Stok</th>
                 <th width="8%">Status</th>
                 <th width="12%">Keterangan</th>
@@ -91,10 +91,9 @@
                 @endphp
                 <tr>
                     <td class="text-center">{{ $index + 1 }}</td>
-                    <td class="text-center">
-                        {!! DNS2D::getBarcodeHTML($item->sku, 'QRCODE', 3, 3) !!}
+                    {{-- <td class="text-center">
                         <div>{{ $item->sku }}</div>
-                    </td>
+                    </td> --}}
                     <td>{{ $item->created_at?->format('d/m/Y') ?? '-' }}</td>
                     <td>{{ $item->sku }}</td>
                     <td>{{ $item->nama_barang }}</td>

@@ -542,6 +542,37 @@
                 </h6>
                 <div class="card-body">
 
+                    {{-- MODE HARGA --}}
+                    {{-- MODE HARGA --}}
+                    <div id="mode-harga-bar"
+                        style="display:none; background:#f8fafc; border:1px solid #dee2e6; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
+                        <label class="font-weight-bold small text-uppercase mb-2 d-block"
+                            style="letter-spacing:.06em; color:#495057;">
+                            <i class="feather icon-tag mr-1"></i> Mode Harga Penjualan
+                        </label>
+                        <div class="d-flex" style="gap:10px;">
+                            <label class="mode-option">
+                                <input type="radio" name="mode_harga" id="mode_harga_2" value="harga_2" checked
+                                    hidden>
+                                <div class="mode-card mode-card--shopee active" id="mode_card_harga_2">
+                                    <i class="feather icon-tag mr-1"></i>
+                                    <span>Harga Reseller</span>
+                                    <i class="feather icon-check-circle ml-2 mode-check"></i>
+                                </div>
+                            </label>
+                            <label class="mode-option">
+                                <input type="radio" name="mode_harga" id="mode_harga_1" value="harga_1" hidden>
+                                <div class="mode-card mode-card--tiktok" id="mode_card_harga_1">
+                                    <i class="feather icon-percent mr-1"></i>
+                                    <span>Harga HPP</span>
+                                    <i class="feather icon-check-circle ml-2 mode-check"></i>
+                                </div>
+                            </label>
+                        </div>
+                        <small class="text-muted mt-1 d-block">
+                            Mengubah mode akan langsung mengupdate harga semua produk di semua resi.
+                        </small>
+                    </div>
                     {{-- SET ALL DROPSHIPPER --}}
                     <div id="set-all-ds-bar"
                         style="display:none; background:#f8fafc;
@@ -827,29 +858,35 @@
         }
 
 
-        
+
         async function injectResiPage(resiData, pageIndex, totalPages) {
-            const resiVal    = (resiData.resi     ?? '').trim();
+            const resiVal = (resiData.resi ?? '').trim();
             const pesananVal = (resiData.order_id ?? '').trim();
-            const pageLabel  = resiVal || pesananVal || `Hal. ${resiData.page}`;
-        
+            const pageLabel = resiVal || pesananVal || `Hal. ${resiData.page}`;
+
             modalLog(`[${pageIndex}/${totalPages}] ${pageLabel}`, 'active');
-        
+
             // Cek duplicate
             const dup = checkDuplicateResi(resiVal, pesananVal);
             if (dup.isDuplicate) {
                 const label = dup.type === 'resi' ? 'No. Resi' : 'No. Pesanan';
                 modalLog(`↳ DUPLIKAT (${label}: ${dup.value}) — dilewati`, 'skip');
-                return { skipped: true, msg: `Hal. ${resiData.page}: ${label} <strong>${dup.value}</strong> sudah ada di list, dilewati.` };
+                return {
+                    skipped: true,
+                    msg: `Hal. ${resiData.page}: ${label} <strong>${dup.value}</strong> sudah ada di list, dilewati.`
+                };
             }
-        
+
             // Buat card
             const cardId = addResiCard(resiVal, pesananVal, true);
             if (!cardId) {
                 modalLog(`↳ Gagal buat card`, 'err');
-                return { skipped: false, error: true };
+                return {
+                    skipped: false,
+                    error: true
+                };
             }
-        
+
             // Inject gambar
             if (resiData.image_base64) {
                 const filename = `resi_page${resiData.page}_${resiVal || 'unknown'}.jpg`;
@@ -857,7 +894,7 @@
                 showFilePreview(cardId, resiData.image_base64, filename);
                 modalLog(`↳ Gambar OK`, 'ok');
             }
-        
+
             // Lookup & inject produk
             const extraErrors = [];
             if (resiData.items && resiData.items.length > 0) {
@@ -866,49 +903,58 @@
                     if (!sku) continue;
                     modalLog(`↳ Cari SKU: ${sku}`, 'info');
                     try {
-                        const res      = await fetch(`/api/product/search?q=${encodeURIComponent(sku)}`);
+                        const res = await fetch(`/api/product/search?q=${encodeURIComponent(sku)}`);
                         const products = await res.json();
                         if (!products || products.length === 0) {
-                            extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan / stok habis.`);
+                            extraErrors.push(
+                                `Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan / stok habis.`);
                             modalLog(`↳ SKU ${sku} tidak ditemukan`, 'err');
                             continue;
                         }
                         const product = products.find(p => p.sku === sku) ?? products[0];
                         if (product.sku !== sku) {
-                            extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak exact, pakai <strong>${product.sku}</strong>.`);
+                            extraErrors.push(
+                                `Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak exact, pakai <strong>${product.sku}</strong>.`
+                                );
                             modalLog(`↳ SKU ${sku} → pakai ${product.sku}`, 'skip');
                         } else {
                             modalLog(`↳ SKU ${sku} OK (qty: ${ocrItem.qty ?? 1})`, 'ok');
                         }
-        
+
                         addItemToCard(cardId, product, ocrItem.qty ?? 1);
-        
+
                         // ── [BARU] Log stok rendah ke modal ────────────────
                         const stok = product.stok.jumlah_stok;
-                        const min  = product.stok_minimum ?? 1;
+                        const min = product.stok_minimum ?? 1;
                         if (stok <= 0) {
                             modalLog(`↳ ⚠ SKU ${product.sku} STOK HABIS (${stok}) — draft`, 'err');
                         } else if (stok < min) {
-                            modalLog(`↳ ⚠ SKU ${product.sku} di bawah minimum (stok: ${stok}, min: ${min}) — draft`, 'skip');
+                            modalLog(`↳ ⚠ SKU ${product.sku} di bawah minimum (stok: ${stok}, min: ${min}) — draft`,
+                                'skip');
                         }
-        
+
                         setTimeout(() => {
-                            if (resiVal)    $(`#row_${cardId}_${product.id} .nomor_resi`).val(resiVal);
+                            if (resiVal) $(`#row_${cardId}_${product.id} .nomor_resi`).val(resiVal);
                             if (pesananVal) $(`#row_${cardId}_${product.id} .nomor_pesanan`).val(pesananVal);
                         }, 100);
-        
+
                     } catch (err) {
-                        extraErrors.push(`Hal. ${resiData.page}: Gagal cari SKU <strong>${sku}</strong> — ${err.message}`);
+                        extraErrors.push(
+                            `Hal. ${resiData.page}: Gagal cari SKU <strong>${sku}</strong> — ${err.message}`);
                         modalLog(`↳ Error cari SKU ${sku}: ${err.message}`, 'err');
                     }
                 }
             } else {
                 modalLog(`↳ Tidak ada SKU (isi manual)`, 'skip');
             }
-        
-            return { skipped: false, error: false, extraErrors };
+
+            return {
+                skipped: false,
+                error: false,
+                extraErrors
+            };
         }
-        
+
         let stockWarnings = [];
         let _isProcessing = false;
         async function startPolling(jobId, totalPagesHint) {
@@ -1022,6 +1068,8 @@
                         await new Promise(resolve => setTimeout(resolve, 800));
 
                         modalDone(false);
+document.getElementById('mode_harga_2').checked = true;
+$('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
 
                         // Sembunyikan modal otomatis setelah 1.5 detik jika tidak ada warning
                         const hasWarnings = allBackendWarnings.length > 0 ||
@@ -1137,9 +1185,13 @@
         }
 
         function toggleSetAllDsBar() {
-            resiList.length > 0 ?
-                $('#set-all-ds-bar').css('display', 'flex') :
+            if (resiList.length > 0) {
+                $('#set-all-ds-bar').css('display', 'flex');
+                $('#mode-harga-bar').css('display', 'block');
+            } else {
                 $('#set-all-ds-bar').hide();
+                $('#mode-harga-bar').hide();
+            }
         }
 
         function updateBadge() {
@@ -1157,7 +1209,7 @@
 
         function recalcGrandTotal() {
             let total = 0;
-            resiList.forEach(r => Object.values(r.items).forEach(i => total += i.qty * i.harga_2));
+            resiList.forEach(r => Object.values(r.items).forEach(i => total += i.qty * (i.harga_aktif ?? i.harga_2)));
             $('#grand_total_all').val(formatRupiah(total));
         }
 
@@ -1274,14 +1326,14 @@
             $('#import-info-list').html('');
             $('#import-info-panel').removeClass('has-content');
         }
-        
+
         function renderInfoPanel(warnings, extras, stats) {
             const list = $('#import-info-list');
             list.html('');
-        
+
             // ── Ringkasan import ────────────────────────────────────────
             const summaryClass = stats.skipped > 0 ? 'info-warn' : 'info-ok';
-            const summaryIcon  = stats.skipped > 0 ? 'icon-alert-circle text-warning' : 'icon-check-circle text-success';
+            const summaryIcon = stats.skipped > 0 ? 'icon-alert-circle text-warning' : 'icon-check-circle text-success';
             list.append(`
                 <div class="info-item ${summaryClass}">
                     <i class="feather ${summaryIcon}"></i>
@@ -1291,22 +1343,25 @@
                     </div>
                 </div>
             `);
-        
+
             // ── Warning dari backend ────────────────────────────────────
             warnings.forEach(w => {
-                const cls  = w.type === 'duplicate_resi' ? 'info-warn' : 'info-error';
-                const icon = w.type === 'duplicate_resi' ? 'icon-skip-forward text-warning' : 'icon-alert-triangle text-danger';
-                list.append(`<div class="info-item ${cls}"><i class="feather ${icon}"></i><div>${w.message}</div></div>`);
+                const cls = w.type === 'duplicate_resi' ? 'info-warn' : 'info-error';
+                const icon = w.type === 'duplicate_resi' ? 'icon-skip-forward text-warning' :
+                    'icon-alert-triangle text-danger';
+                list.append(
+                    `<div class="info-item ${cls}"><i class="feather ${icon}"></i><div>${w.message}</div></div>`
+                    );
             });
-        
+
             // ── Extra errors (SKU tidak ditemukan, duplikat, dll.) ──────
             extras.forEach(msg => {
                 const isDup = msg.includes('sudah ada di list');
-                const cls   = isDup ? 'info-warn'  : 'info-error';
-                const icon  = isDup ? 'icon-skip-forward text-warning' : 'icon-x-circle text-danger';
+                const cls = isDup ? 'info-warn' : 'info-error';
+                const icon = isDup ? 'icon-skip-forward text-warning' : 'icon-x-circle text-danger';
                 list.append(`<div class="info-item ${cls}"><i class="feather ${icon}"></i><div>${msg}</div></div>`);
             });
-        
+
             // ── [BARU] Warning stok rendah / habis ──────────────────────
             if (stockWarnings.length > 0) {
                 // Judul pemisah
@@ -1319,7 +1374,7 @@
                         Peringatan Stok (${stockWarnings.length} item)
                     </div>
                 `);
-        
+
                 stockWarnings.forEach(w => {
                     list.append(`
                         <div class="info-item info-error">
@@ -1334,10 +1389,10 @@
                     `);
                 });
             }
-        
+
             $('#import-info-panel').addClass('has-content');
         }
-        
+
 
         // ================================================================
         // TEMPLATE CARD
@@ -1350,7 +1405,7 @@
         <div>
             <span class="badge-number">#${resiNumber}</span>
             Form Penjualan Resi
-            ${prefillResi ? `<span class="ml-2 badge badge-light text-dark" style="font-weight:400;font-size:.78rem">${prefillResi}</span>` : ''}
+            ${prefillResi ? `<span class="ml-2 badge badge-light text-white" style="font-weight:400;font-size:.78rem">${prefillResi}</span>` : ''}
         </div>
         <button type="button" class="btn-remove-resi" onclick="removeResiCard('${id}')">
             <i class="feather icon-trash-2 mr-1"></i> Hapus
@@ -1711,47 +1766,72 @@
         function addItemToCard(cardId, product, qty) {
             const state = getResiState(cardId);
             if (!state) return;
-        
+
             const stok = product.stok.jumlah_stok;
-            const min  = product.stok_minimum ?? 1;
-        
+            const min = product.stok_minimum ?? 1;
+
             // ── Auto-set draft jika stok habis atau di bawah minimum ──
             if (stok <= 0 || stok < min) {
                 $(`#draft_${cardId}`).val('yes').trigger('change');
             }
-        
+
             const draft = isDraftModeFor(cardId);
-        
+
             if (!validateStockFor(product, draft)) return;
-        
+
             if (state.items[product.id]) {
                 let newQty = state.items[product.id].qty + qty;
                 if (!draft && newQty > stok) {
-                    Toast.fire({ icon: 'error', title: 'Qty melebihi stok tersedia' }); return;
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'Qty melebihi stok tersedia'
+                    });
+                    return;
                 }
                 if (draft && newQty > stok)
-                    Toast.fire({ icon: 'warning', title: `Qty ${newQty} melebihi stok, dicatat draft.` });
+                    Toast.fire({
+                        icon: 'warning',
+                        title: `Qty ${newQty} melebihi stok, dicatat draft.`
+                    });
                 state.items[product.id].qty = newQty;
                 $(`#row_${cardId}_${product.id} .qty`).val(newQty);
                 updateRowCard(cardId, product.id);
                 flashRowCard(cardId, product.id);
                 const ok = updateStockUsage(cardId, product.id, newQty, stok);
-                if (!ok) Toast.fire({ icon: 'warning', title: `Stok konflik lintas resi!`,
-                    html: `SKU <b>#${product.sku}</b> — total: <b>${getTotalUsed(product.id)}</b>, stok: <b>${stok}</b>` });
+                if (!ok) Toast.fire({
+                    icon: 'warning',
+                    title: `Stok konflik lintas resi!`,
+                    html: `SKU <b>#${product.sku}</b> — total: <b>${getTotalUsed(product.id)}</b>, stok: <b>${stok}</b>`
+                });
                 return;
             }
-        
+
             const nomor_urut = Object.keys(state.items).length + 1;
+
+            const hargaAktif = getModeHarga() === 'harga_1' ?
+                (product.harga_1 ?? product.harga_2) :
+                product.harga_2;
+
             state.items[product.id] = {
-                id: product.id, sku: product.sku, nama_barang: product.nama_barang,
-                stok, harga_2: product.harga_2, qty, nomor_urut
+                id: product.id,
+                sku: product.sku,
+                nama_barang: product.nama_barang,
+                stok,
+                harga_1: product.harga_1 ?? 0,
+                harga_2: product.harga_2,
+                harga_aktif: hargaAktif,
+                qty,
+                nomor_urut
             };
             const ok = updateStockUsage(cardId, product.id, qty, stok);
-            if (!ok) Toast.fire({ icon: 'warning', title: `Stok konflik lintas resi!`,
-                html: `SKU <b>#${product.sku}</b> — total: <b>${getTotalUsed(product.id)}</b>, stok: <b>${stok}</b>` });
-        
+            if (!ok) Toast.fire({
+                icon: 'warning',
+                title: `Stok konflik lintas resi!`,
+                html: `SKU <b>#${product.sku}</b> — total: <b>${getTotalUsed(product.id)}</b>, stok: <b>${stok}</b>`
+            });
+
             renderRowCard(cardId, product.id);
-        
+
             // ── [BARU] Tandai row merah jika stok <= 0 atau < min ─────
             markLowStockRow(cardId, product.id, stok, min);
 
@@ -1762,21 +1842,21 @@
 
         function markLowStockRow(cardId, productId, stok, min) {
             if (stok > 0 && stok >= min) return; // stok normal, tidak perlu ditandai
-        
+
             const row = $(`#row_${cardId}_${productId}`);
             if (!row.length) return;
-        
+
             // Tambah background merah ke seluruh row
             row.addClass('table-danger');
-        
+
             // Buat label keterangan yang jelas
-            const reasonLabel = stok <= 0
-                ? `Stok habis (${stok})`
-                : `Di bawah minimum (stok: ${stok}, min: ${min})`;
-        
+            const reasonLabel = stok <= 0 ?
+                `Stok habis (${stok})` :
+                `Di bawah minimum (stok: ${stok}, min: ${min})`;
+
             // Hapus badge lama supaya tidak dobel
             row.find('.stock-low-badge').remove();
-        
+
             // Sisipkan badge merah di kolom Stok (kolom ke-6)
             row.find('td:nth-child(6)').append(
                 `<span class="stock-low-badge badge badge-danger d-block mt-1"
@@ -1784,26 +1864,26 @@
                     ⚠ ${reasonLabel}
                 </span>`
             );
-        
+
             // Simpan warning ke array global (cek duplikat)
             const warnKey = `${cardId}_${productId}`;
-            const item    = getResiState(cardId)?.items[productId];
+            const item = getResiState(cardId)?.items[productId];
             if (item && !stockWarnings.find(w => w.key === warnKey)) {
                 stockWarnings.push({
-                    key   : warnKey,
+                    key: warnKey,
                     cardId,
                     productId,
-                    sku   : item.sku,
-                    nama  : item.nama_barang,
+                    sku: item.sku,
+                    nama: item.nama_barang,
                     stok,
                     min,
                     reason: reasonLabel,
                 });
             }
         }
-        
-        
-        
+
+
+
         function flashRowCard(cardId, productId) {
             const row = $(`#row_${cardId}_${productId}`);
             row.addClass('flash-row');
@@ -1820,19 +1900,20 @@
     <td><input type="text" class="form-control form-control-sm nomor_pesanan" data-card="${cardId}" value="${pesananVal}"></td>
     <td><input type="text" class="form-control form-control-sm nomor_transaksi" value="${item.nomor_urut}"></td>
     <td>${item.sku}</td><td>${item.nama_barang}</td><td>${item.stok}</td>
-    <td>${formatRupiah(item.harga_2)}</td>
+    <td>${formatRupiah(item.harga_aktif)}</td>
     <td><input type="number" class="form-control form-control-sm qty"
                data-card="${cardId}" data-id="${productId}" value="${item.qty}" min="1"></td>
-    <td class="row-total">${formatRupiah(item.harga_2 * item.qty)}</td>
+    <td class="row-total">${formatRupiah(item.harga_aktif * item.qty)}</td>
     <td><button class="btn btn-danger btn-sm remove-item" data-card="${cardId}" data-id="${productId}">X</button></td>
 </tr>`;
             $(`#tbody_${cardId}`).append(row);
             calcSubtotal(cardId);
         }
 
+
         function updateRowCard(cardId, productId) {
             const item = getResiState(cardId).items[productId];
-            $(`#row_${cardId}_${productId} .row-total`).text(formatRupiah(item.qty * item.harga_2));
+            $(`#row_${cardId}_${productId} .row-total`).text(formatRupiah(item.qty * (item.harga_aktif ?? item.harga_2)));
             calcSubtotal(cardId);
         }
 
@@ -1840,7 +1921,7 @@
             const state = getResiState(cardId);
             if (!state) return;
             let sub = 0;
-            Object.values(state.items).forEach(i => sub += i.qty * i.harga_2);
+            Object.values(state.items).forEach(i => sub += i.qty * (i.harga_aktif ?? i.harga_2));
             $(`#subtotal_${cardId}`).val(formatRupiah(sub));
             recalcGrandTotal();
         }
@@ -1978,7 +2059,7 @@
             $(`#mode_card_${mode}`).addClass('active');
             $('#import_mode_badge').text(mode === 'shopee' ? 'Shopee' : 'TikTok J&T');
         });
-        $('.mode-card').on('click', function() {
+        $('.mode-card[id^="mode_card_shopee"], .mode-card[id^="mode_card_tiktok"]').on('click', function() {
             const mode = $(this).attr('id').replace('mode_card_', '');
             $(`#import_mode_${mode}`).prop('checked', true).trigger('change');
         });
@@ -2106,19 +2187,19 @@
             let valid = true;
             let errors = [];
 
-           Object.entries(stockUsageMap).forEach(([productId, entry]) => {
-    const totalUsed = getTotalUsed(productId);
-    if (totalUsed > entry.stok) {
-        // Cek apakah semua card yang memakai produk ini sudah draft
-        const allDraft = Object.keys(entry.usedByCard).every(cid => isDraftModeFor(cid));
-        if (!allDraft) {
-            valid = false;
-            errors.push(
-                `Konflik stok lintas resi: total qty <b>${totalUsed}</b> melebihi stok <b>${entry.stok}</b>. Set semua resi terkait ke <b>Draft</b> untuk tetap menyimpan.`
-            );
-        }
-    }
-});
+            Object.entries(stockUsageMap).forEach(([productId, entry]) => {
+                const totalUsed = getTotalUsed(productId);
+                if (totalUsed > entry.stok) {
+                    // Cek apakah semua card yang memakai produk ini sudah draft
+                    const allDraft = Object.keys(entry.usedByCard).every(cid => isDraftModeFor(cid));
+                    if (!allDraft) {
+                        valid = false;
+                        errors.push(
+                            `Konflik stok lintas resi: total qty <b>${totalUsed}</b> melebihi stok <b>${entry.stok}</b>. Set semua resi terkait ke <b>Draft</b> untuk tetap menyimpan.`
+                        );
+                    }
+                }
+            });
 
             resiList.forEach((r, idx) => {
                 const draft = isDraftModeFor(r.uid);
@@ -2132,7 +2213,7 @@
                         valid = false;
                         errors.push(
                             `Resi #${idx + 1} SKU #${item.sku}: qty ${item.qty} melebihi stok ${item.stok}`
-                            );
+                        );
                     }
                 });
             });
@@ -2154,7 +2235,7 @@
                     items_arr.push({
                         id: productId,
                         qty: $(this).find('.qty').val(),
-                        harga_2: item.harga_2,
+                        harga_2: item.harga_aktif ?? item.harga_2,
                         nomor_resi: $(this).find('.nomor_resi').val(),
                         nomor_pesanan: $(this).find('.nomor_pesanan').val(),
                         nomor_transaksi: $(this).find('.nomor_transaksi').val()
@@ -2171,7 +2252,8 @@
                     scan_out: $(`#scan_out_${r.uid}`).val(),
                     is_draft: $(`#draft_${r.uid}`).val(),
                     items: items_arr,
-                    total_harga: Object.values(r.items).reduce((s, i) => s + i.qty * i.harga_2, 0),
+                    total_harga: Object.values(r.items).reduce((s, i) => s + i.qty * i.harga_aktif ?? i
+                        .harga_2, 0),
                     file_resi_base64: imgData ? imgData.raw : null,
                     file_resi_name: imgData ? imgData.filename : null,
                 };
@@ -2331,14 +2413,14 @@
             await startPolling(job_id, total_pages);
         });
 
-        
-function renderStockWarningsOnly() {
-    if (stockWarnings.length === 0) return;
- 
-    // Hapus blok warning stok lama (jika ada) lalu sisipkan ulang
-    $('#import-info-panel .stock-warn-section').remove();
- 
-    const section = $(`
+
+        function renderStockWarningsOnly() {
+            if (stockWarnings.length === 0) return;
+
+            // Hapus blok warning stok lama (jika ada) lalu sisipkan ulang
+            $('#import-info-panel .stock-warn-section').remove();
+
+            const section = $(`
         <div class="stock-warn-section">
             <div style="margin: 10px 0 6px; font-size:.72rem; font-weight:700;
                         text-transform:uppercase; letter-spacing:.08em;
@@ -2349,9 +2431,9 @@ function renderStockWarningsOnly() {
             </div>
         </div>
     `);
- 
-    stockWarnings.forEach(w => {
-        section.append(`
+
+            stockWarnings.forEach(w => {
+                section.append(`
             <div class="info-item info-error">
                 <i class="feather icon-alert-octagon text-danger"></i>
                 <div>
@@ -2362,12 +2444,61 @@ function renderStockWarningsOnly() {
                 </div>
             </div>
         `);
-    });
- 
-    $('#import-info-list').append(section);
-    $('#import-info-panel').addClass('has-content');
-}
- 
+            });
+
+            $('#import-info-list').append(section);
+            $('#import-info-panel').addClass('has-content');
+        }
+
+        // ================================================================
+        // MODE HARGA
+        // ================================================================
+        function getModeHarga() {
+            return document.querySelector('input[name="mode_harga"]:checked')?.value ?? 'harga_2';
+        }
+
+        function getHargaByMode(product) {
+            return getModeHarga() === 'harga_1' ?
+                (product.harga_1 ?? product.harga_2) :
+                product.harga_2;
+        }
+
+        // Listener: saat mode harga berubah, update semua item di semua card
+        $('input[name="mode_harga"]').on('change', function() {
+            const mode = this.value;
+
+            // Update tampilan card selector
+            $('.mode-card[id^="mode_card_harga_"]').removeClass('active');
+            $(`#mode_card_${mode}`).addClass('active');
+
+            // Update semua item di semua resi
+            resiList.forEach(r => {
+                Object.values(r.items).forEach(item => {
+                    const newHarga = mode === 'harga_1' ?
+                        (item.harga_1 ?? item.harga_2) :
+                        item.harga_2;
+
+                    item.harga_aktif = newHarga;
+
+                    // Update tampilan harga di row
+                    const row = $(`#row_${r.uid}_${item.id}`);
+                    row.find('td:nth-child(7)').text(formatRupiah(newHarga)); // kolom Harga
+                    row.find('td.row-total').text(formatRupiah(newHarga * item.qty));
+                });
+                calcSubtotal(r.uid);
+            });
+
+            Toast.fire({
+                icon: 'info',
+                title: `Mode harga diubah ke ${mode === 'harga_1' ? 'Harga HPP' : 'Harga Reseller'}`
+            });
+        });
+
+        $('.mode-card[id^="mode_card_harga_"]').on('click', function() {
+            const mode = $(this).attr('id').replace('mode_card_', '');
+            $(`#mode_harga_${mode.replace('harga_', '')}`).prop('checked', true).trigger('change');
+        });
+
 
         // ── Tutup modal = stop polling ────────────────────────────────────
         $('#modal-import-progress').on('hide.bs.modal', function() {

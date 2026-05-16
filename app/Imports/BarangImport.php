@@ -32,6 +32,7 @@ class BarangImport implements ToModel, WithHeadingRow, SkipsOnError
     {
         $sku  = $row['sku']        ?? null;
         $nama = $row['nama_barang'] ?? null;
+        $kategori = $row['kategori'] ?? null;
 
         
 
@@ -74,9 +75,10 @@ class BarangImport implements ToModel, WithHeadingRow, SkipsOnError
             $barang = Barang::create([
                 'sku'          => $sku,
                 'nama_barang'  => $nama,
+                'kategori'  => $kategori,
                 'satuan_id'    => $satuan->id,
-                'harga_1' => in_array($this->userRole, ['super_admin']) ? ($row['harga_beli'] ?? 0) : 0,
-                'harga_2'      => $row['harga_jual']   ?? 0,
+                'harga_1' => in_array($this->userRole, ['super_admin']) ? ($row['harga_hpp'] ?? 0) : 0,
+                'harga_2'      => $row['harga_reseller']   ?? 0,
                 'stok_minimum' => $row['stok_minimum'] ?? 1,
                 'keterangan'   => $row['keterangan']   ?? null,
             ]);

@@ -806,6 +806,9 @@
                 if (json.success) {
                     Toast.fire({ icon: 'success', title: 'Berhasil', text: json.message });
                     await fetchData();
+                    setTimeout(() => {
+                        location.reload()
+                    }, 1500);
                 } else {
                     Toast.fire({ icon: 'error', title: 'Gagal', text: json.message ?? 'Terjadi kesalahan.' });
                 }

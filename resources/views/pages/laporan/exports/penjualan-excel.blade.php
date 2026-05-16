@@ -16,6 +16,7 @@
             <th>Dropshipper</th>
             <th>Tanggal</th>
             <th>Total Harga</th>
+            <th>Harga Cair</th>
             {{-- <th>Scan Out</th> --}}
             {{-- <th>Draft</th> --}}
             <th>Keterangan</th>
@@ -46,6 +47,7 @@
                 <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                 <td>{{ $item->tanggal }}</td>
                 <td>{{ $item->total_harga }}</td>
+                <td>{{ $item->harga_cair }}</td>
                 {{-- <td>{{ $scanOutLabel }}</td>
                 <td>{{ $draftLabel }}</td> --}}
                 <td>{{ $item->keterangan ?: '-' }}</td>

@@ -16,7 +16,7 @@ use App\Models\AdjustStok;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         if (!Auth::guard('pengguna')->check()) {
             return redirect('/login');
@@ -32,14 +32,25 @@ class DashboardController extends Controller
         $adjustHariIni       = AdjustStok::whereDate('created_at', today())->count();
         $stokMovementHariIni = StokMovement::whereDate('created_at', today())->count();
 
+        $perPageKritis = in_array($request->get('kritis_per_page'), [10, 25, 50, 100])
+            ? $request->get('kritis_per_page')
+            : 10;
+
         $stokKritis = Barang::with(['stok', 'satuan'])
             ->whereHas('stok', function ($q) {
                 $q->where(function ($inner) {
                     $inner->whereColumn('jumlah_stok', '<=', 'barang.stok_minimum')
-                          ->orWhere('jumlah_stok', '<', 10);
+                        ->orWhere('jumlah_stok', '<', 10);
                 });
             })
-            ->get();
+            ->paginate($perPageKritis, ['*'], 'kritis_page')
+            ->withQueryString();
+
+        $penjualanDraft = Penjualan::with(['dropshipper', 'user'])
+        ->where('is_draft', 'yes')
+        ->orderBy('updated_at', 'desc')
+        ->paginate(10, ['*'], 'draft_page')
+        ->withQueryString();
 
         // ── STATISTIK PENJUALAN: Januari s/d Juni tahun berjalan ──
         $tahun        = now()->year;
@@ -87,6 +98,7 @@ class DashboardController extends Controller
             // statistik chart
             'bulanLabels',
             'dataTransaksi',
+            'penjualanDraft',
             'dataOmzet',
             'totalTransaksiH1',
             'totalOmzetH1',

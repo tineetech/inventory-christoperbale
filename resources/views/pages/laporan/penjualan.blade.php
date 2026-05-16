@@ -34,7 +34,7 @@
                 <div class="card-body">
                     <form method="GET" action="{{ route('laporan.penjualan') }}" id="penjualanFilterForm">
                         <div class="form-row">
-                            
+
                             <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Dari Tanggal</label>
                                 <input type="date" class="form-control" name="dari_tanggal"
@@ -70,7 +70,8 @@
                         </div>
 
                         <div class="d-flex flex-wrap justify-content-end" style="gap: 10px;">
-                            <a href="{{ route('laporan.penjualan.print', $filters) }}" target="_blank" class="btn btn-success">
+                            <a href="{{ route('laporan.penjualan.print', $filters) }}" target="_blank"
+                                class="btn btn-success">
                                 <i class="feather icon-printer"></i> Print
                             </a>
                             <a href="{{ route('laporan.penjualan.pdf', $filters) }}" class="btn btn-danger">
@@ -113,6 +114,7 @@
                                 <th>Dropshipper</th>
                                 <th>Tanggal</th>
                                 <th>Total Harga</th>
+                                <th>Harga Cair</th>
                                 <th>Scan Out</th>
                                 <th>Draft</th>
                                 <th>Keterangan</th>
@@ -133,13 +135,17 @@
                                 <tr class="main-row" data-report-main="true" data-id="{{ $item->id }}"
                                     data-expanded="false">
                                     <td>{{ $index + 1 }}</td>
-                                    <td class="kode-click" style="white-space: nowrap;"><strong>{{ $item->kode_penjualan }}</strong></td>
+                                    <td class="kode-click" style="white-space: nowrap;">
+                                        <strong>{{ $item->kode_penjualan }}</strong></td>
                                     <td style="white-space: nowrap;">{{ $item->nomor_resi ?: '-' }}</td>
                                     <td>{{ $item->nomor_pesanan ?: '-' }}</td>
                                     {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                                     <td style="white-space: nowrap;">{{ $item->tanggal }}</td>
-                                    <td style="white-space: nowrap;">Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
+                                    <td style="white-space: nowrap;">Rp
+                                        {{ number_format($item->total_harga, 0, ',', '.') }}</td>
+                                    <td style="white-space: nowrap;">Rp {{ number_format($item->harga_cair, 0, ',', '.') }}
+                                    </td>
                                     <td><span class="{{ $scanOutClass }}">{{ $scanOutLabel }}</span></td>
                                     <td>
                                         @if ($item->is_draft === 'yes')
@@ -150,7 +156,18 @@
                                             <span class="badge badge-secondary">-</span>
                                         @endif
                                     </td>
-                                    <td>{{ $item->keterangan ?: '-' }}</td>
+                                    <td>
+                                        {{ $item->keterangan ?: '-' }}
+                                        @if (is_null($item->harga_cair))
+                                            <button class="btn btn-xs btn-primary mx-1 btn-input-harga-cair"
+                                                data-id="{{ $item->id }}" data-kode="{{ $item->kode_penjualan }}"
+                                                data-total="{{ $item->total_harga }}"
+                                                data-dropshipper="{{ $item->dropshipper->nama ?? '-' }}"
+                                                data-tanggal="{{ $item->tanggal }}" onclick="openHargaCairModal(this)">
+                                                <i class="feather icon-edit"></i> Input Harga Cair
+                                            </button>
+                                        @endif
+                                    </td>
                                 </tr>
                                 <tr class="detail-row" data-report-detail="true" id="detail-{{ $item->id }}"
                                     style="display:none; background:#f9f9f9;">
@@ -207,7 +224,8 @@
                                 </tr>
                             @empty
                                 <tr data-empty-row="true">
-                                    <td colspan="11" class="text-center text-muted py-4">Belum ada data penjualan pada filter ini.</td>
+                                    <td colspan="11" class="text-center text-muted py-4">Belum ada data penjualan pada
+                                        filter ini.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -220,6 +238,71 @@
                     'totalRows' => $penjualan->count(),
                     'formId' => 'penjualanFilterForm',
                 ])
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Input Harga Cair --}}
+    <div class="modal fade" id="modalHargaCair" tabindex="-1" role="dialog" aria-labelledby="modalHargaCairLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalHargaCairLabel">
+                        <i class="feather icon-dollar-sign mr-2 text-warning"></i> Input Harga Cair
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+
+                    {{-- Info transaksi --}}
+                    <div class="card bg-light mb-3">
+                        <div class="card-body py-2 px-3">
+                            <div class="row text-sm" style="font-size: 13px">
+                                <div class="col-6 mb-1">
+                                    <span class="text-muted">Kode:</span>
+                                    <strong id="info-kode">-</strong>
+                                </div>
+                                <div class="col-6 mb-1">
+                                    <span class="text-muted">Tanggal:</span>
+                                    <span id="info-tanggal">-</span>
+                                </div>
+                                <div class="col-6 mb-1">
+                                    <span class="text-muted">Dropshipper:</span>
+                                    <span id="info-dropshipper">-</span>
+                                </div>
+                                <div class="col-6 mb-1">
+                                    <span class="text-muted">Total Harga:</span>
+                                    <strong id="info-total" class="text-primary">-</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Form --}}
+                    <div class="form-group mb-0">
+                        <label class="font-weight-bold">
+                            Harga Cair <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text">Rp</span>
+                            </div>
+                            <input type="number" id="inputHargaCair" class="form-control"
+                                placeholder="Masukkan harga cair..." min="0" step="1">
+                        </div>
+                        <small class="text-muted">Masukkan nominal harga yang sudah cair.</small>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-warning text-white" id="btnSimpanHargaCair">
+                        <i class="feather icon-save mr-1"></i> Simpan
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -236,6 +319,79 @@
             formId: 'penjualanFilterForm',
             mainRowSelector: 'tbody tr[data-report-main]',
             detailRowSelector: 'tbody tr[data-report-detail]'
+        });
+
+        // ── Harga Cair Modal ──────────────────────────────────
+        let activePenjualanId = null;
+
+        function openHargaCairModal(btn) {
+            activePenjualanId = btn.dataset.id;
+
+            document.getElementById('info-kode').textContent = btn.dataset.kode;
+            document.getElementById('info-tanggal').textContent = btn.dataset.tanggal;
+            document.getElementById('info-dropshipper').textContent = btn.dataset.dropshipper;
+            document.getElementById('info-total').textContent = 'Rp ' + Number(btn.dataset.total).toLocaleString('id-ID');
+            document.getElementById('inputHargaCair').value = '';
+
+            $('#modalHargaCair').modal('show');
+        }
+
+        document.getElementById('btnSimpanHargaCair').addEventListener('click', async function() {
+            const hargaCair = document.getElementById('inputHargaCair').value;
+
+            if (!hargaCair || isNaN(hargaCair) || Number(hargaCair) < 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Masukkan harga cair yang valid.'
+                });
+                return;
+            }
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menyimpan...';
+
+            try {
+                const res = await fetch(`/transaksi/penjualan/${activePenjualanId}/harga-cair`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        harga_cair: hargaCair
+                    })
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    $('#modalHargaCair').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: json.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: json.message ?? 'Terjadi kesalahan.'
+                    });
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Gagal menghubungi server.'
+                });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="feather icon-save mr-1"></i> Simpan';
+            }
         });
     </script>
 @endsection
