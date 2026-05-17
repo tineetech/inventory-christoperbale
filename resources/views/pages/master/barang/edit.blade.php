@@ -68,6 +68,17 @@
                             </div>
 
                             <div class="form-group col-md-6">
+                                <label class="form-label">Kategori Barang</label>
+                                <input type="text" name="kategori" class="form-control"
+                                    value="{{ old('kategori', $barang->kategori) }}"
+                                    placeholder="Masukkan kategori barang" required>
+
+                                @error('kategori')
+                                <div class="text-danger small">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="form-group col-md-6">
                                 <label class="form-label">Harga HPP</label>
                                 <input type="number" name="harga_1" class="form-control"
                                 value="{{ old('harga_1', number_format($barang->harga_1, 0, '.', '')) }}"
@@ -78,7 +89,7 @@
                                 @enderror
                             </div>
 
-                            <div class="form-group col-md-12">
+                            <div class="form-group col-md-6">
                                 <label class="form-label">Harga Reseller</label>
                                 <input type="number" name="harga_2" class="form-control"
                                 value="{{ old('harga_2', number_format($barang->harga_2, 0, '.', '')) }}"
