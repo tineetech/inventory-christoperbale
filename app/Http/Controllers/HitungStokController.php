@@ -19,6 +19,8 @@ class HitungStokController extends Controller
             $adjustments = AdjustStok::where('created_by', Auth::guard('pengguna')->user()->id)->with('user', 'detail.barang.stok')->latest()->get();
         } else if (Auth::guard('pengguna')->user()->role->nama_role === 'admin' || Auth::guard('pengguna')->user()->role->nama_role === 'super_admin') {
             $adjustments = AdjustStok::with('user', 'detail.barang.stok')->latest()->get();
+        } else {
+            $adjustments = AdjustStok::where('created_by', Auth::guard('pengguna')->user()->id)->with('user', 'detail.barang.stok')->latest()->get();
         }
         return view('pages.transaksi.hitung_stok.index', compact('adjustments'));
     }
