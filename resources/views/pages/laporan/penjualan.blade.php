@@ -158,13 +158,29 @@
                                     </td>
                                     <td>
                                         {{ $item->keterangan ?: '-' }}
-                                        @if (is_null($item->harga_cair))
+                                        @php
+                                            $role = Auth::guard('pengguna')->user()->role->nama_role;
+
+                                            $canEditHargaCair = in_array($role, [
+                                                'super_admin',
+                                                'admin',
+                                                'Admin Toko'
+                                            ]);
+
+                                            $showButton = $canEditHargaCair || is_null($item->harga_cair);
+                                        @endphp
+
+                                        @if ($showButton)
                                             <button class="btn btn-xs btn-primary mx-1 btn-input-harga-cair"
-                                                data-id="{{ $item->id }}" data-kode="{{ $item->kode_penjualan }}"
+                                                data-id="{{ $item->id }}"
+                                                data-kode="{{ $item->kode_penjualan }}"
                                                 data-total="{{ $item->total_harga }}"
                                                 data-dropshipper="{{ $item->dropshipper->nama ?? '-' }}"
-                                                data-tanggal="{{ $item->tanggal }}" onclick="openHargaCairModal(this)">
-                                                <i class="feather icon-edit"></i> Input Harga Cair
+                                                data-tanggal="{{ $item->tanggal }}"
+                                                onclick="openHargaCairModal(this)">
+
+                                                <i class="feather icon-edit"></i>
+                                                {{ $canEditHargaCair ? 'Edit' : 'Input' }} Harga Cair
                                             </button>
                                         @endif
                                     </td>
