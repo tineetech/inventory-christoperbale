@@ -22,22 +22,40 @@
 
         /* IMPORT ZONE */
         .import-zone {
-            border: 2px dashed #c0c9d5;
-            border-radius: 10px;
-            padding: 28px 24px;
-            background: #f8fafc;
-            transition: border-color .2s, background .2s;
-        }
+    border: 2px dashed #c0c9d5;
+    border-radius: 10px;
+    padding: 28px 24px;
+    background: #f8fafc;
+    transition: border-color .2s, background .2s;
+    cursor: pointer;
+    position: relative;
+}
 
-        .import-zone:hover {
-            border-color: #4e73df;
-            background: #eef2ff;
-        }
+.import-zone:hover,
+.import-zone.dragover {
+    border-color: #4e73df;
+    background: #eef2ff;
+}
 
-        .import-zone .import-icon {
-            font-size: 2.5rem;
-            color: #4e73df;
-        }
+.import-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.import-zone .import-icon {
+    font-size: 2.5rem;
+    color: #4e73df;
+    pointer-events: none;
+}
+
+.import-zone .import-zone-content {
+    pointer-events: none;
+}
 
         /* INFO PANEL */
         #import-info-panel {
@@ -466,14 +484,15 @@
                     Step 1 — Import File Multiple Resi
                 </h6>
                 <div class="card-body">
-                    <div class="import-zone text-center">
-                        <div class="import-icon mb-2"><i class="feather icon-file-text"></i></div>
-                        <h5 class="mb-1">Upload File Resi (Multiple)</h5>
-                        <p class="text-muted small mb-3">Pilih file PDF yang berisi banyak resi Shopee atau TikTok J&T.</p>
-                        <div class="col-12 px-0">
-                            <input type="file" id="file_multiple_resi" class="form-control" accept=".pdf">
-                        </div>
-                    </div>
+                    <div class="import-zone text-center" id="import_drop_zone">
+    <input type="file" id="file_multiple_resi" accept=".pdf">
+    <div class="import-zone-content">
+        <div class="import-icon mb-2"><i class="feather icon-file-text"></i></div>
+        <h5 class="mb-1">Upload File Resi (Multiple)</h5>
+        <p class="text-muted small mb-1">Klik area ini atau <strong>drag & drop</strong> file PDF ke sini.</p>
+        <p class="text-muted small mb-0" id="import_drop_filename" style="min-height:1.2em;"></p>
+    </div>
+</div>
 
                     {{-- ★ SELECT MODE (TAMBAHAN BARU) --}}
                     <div class="mt-3 w-full">
@@ -498,6 +517,10 @@
                                 </div>
                             </label>
                         </div>
+                        <p class="text-muted small mb-0">
+                            <i class="feather icon-info mr-1"></i>
+                            Mode Shopee saat ini hanya support expedisi SPX, SI CEPAT, ANTER AJA, Dan JNE. Dan untuk mode Tiktok saat ini hanya support untuk J&T.
+                        </p>
                     </div>
                     {{-- END SELECT MODE --}}
 
@@ -765,6 +788,53 @@
 
         // Simpan data yang sudah masuk (untuk deduplikasi saat partial update)
         let _processedPages = new Set();
+
+        // ── Drag & Drop untuk import zone ────────────────────────────────
+(function () {
+    const zone = document.getElementById('import_drop_zone');
+    const fileInput = document.getElementById('file_multiple_resi');
+    const label = document.getElementById('import_drop_filename');
+
+    function setLabel(file) {
+        if (file) {
+            label.innerHTML = `<i class="feather icon-check-circle text-success mr-1"></i><strong>${file.name}</strong> (${(file.size / 1024).toFixed(0)} KB)`;
+            zone.style.borderColor = '#28a745';
+            zone.style.background = '#f0fff4';
+        } else {
+            label.textContent = '';
+            zone.style.borderColor = '';
+            zone.style.background = '';
+        }
+    }
+
+    fileInput.addEventListener('change', function () {
+        setLabel(this.files[0] || null);
+    });
+
+    zone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        zone.classList.add('dragover');
+    });
+
+    zone.addEventListener('dragleave', function (e) {
+        if (!zone.contains(e.relatedTarget)) zone.classList.remove('dragover');
+    });
+
+    zone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const file = e.dataTransfer?.files[0];
+        if (!file) return;
+        if (file.type !== 'application/pdf') {
+            Toast.fire({ icon: 'warning', title: 'Hanya file PDF yang diizinkan.' });
+            return;
+        }
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        setLabel(file);
+    });
+})();
 
         // ================================================================
         // MODAL HELPERS

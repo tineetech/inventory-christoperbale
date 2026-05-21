@@ -1,43 +1,160 @@
+"""
+ocr_pdf.py — patched v3
+=======================
+Fix utama:
+  - extract_resi_from_barcode_cv: sebelumnya hanya terima barcode
+    yang mengandung 'SPX' → resi SiCepat (pure digits) dibuang.
+
+  Solusi: gunakan expedition_registry.validate_barcode_as_resi()
+  sehingga semua ekspedisi yang terdaftar otomatis didukung tanpa
+  perlu hardcode filter per ekspedisi di sini.
+
+  Alur baru:
+    1. Decode barcode dengan QR detector dan cv2.barcode
+    2. Validasi hasil decode via registry → jika match → return resi
+    3. Jika tidak ada yang match → return None
+
+  Backward compatible: return value tetap str | None.
+"""
+
 import pytesseract
 from pdf2image import convert_from_path
 import cv2
 import numpy as np
 import re
 
+# ── Import registry ekspedisi ──────────────────────────────────────────────
+from expedition_registry import (
+    validate_barcode_as_resi,
+    get_barcode_zones,
+    EXPEDITION_REGISTRY,
+)
 
-def extract_resi_from_barcode_cv(img_cv):
-    qr_detector = cv2.QRCodeDetector()
-    data, _, _ = qr_detector.detectAndDecode(img_cv)
-    if data and re.search(r'SPX', data, re.IGNORECASE):
-        print(f"[QR] {repr(data)}")
-        return data.strip()
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Barcode decoder helpers
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _try_qr_detector(img_cv: np.ndarray) -> list[str]:
+    """Coba decode QR code dengan cv2.QRCodeDetector."""
+    results = []
+    try:
+        qr_detector = cv2.QRCodeDetector()
+        data, _, _ = qr_detector.detectAndDecode(img_cv)
+        if data:
+            results.append(data.strip())
+    except Exception as e:
+        print(f"[QR] error: {e}")
+    return results
+
+
+def _try_barcode_detector(img_cv: np.ndarray) -> list[str]:
+    """Coba decode barcode Code128/EAN/dll dengan cv2.barcode.BarcodeDetector."""
+    results = []
     try:
         bd = cv2.barcode.BarcodeDetector()
         ok, decoded_info, decoded_type, _ = bd.detectAndDecodeWithType(img_cv)
         if ok:
             for info in decoded_info:
-                if info and re.search(r'SPX', info, re.IGNORECASE):
-                    print(f"[Barcode] {repr(info)}")
-                    return info.strip()
-
-        gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-        h, w = gray.shape
-        crop = gray[int(h*0.15):int(h*0.40), 0:w]
-        crop = cv2.resize(crop, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
-        _, crop_bin = cv2.threshold(crop, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-        crop_bgr = cv2.cvtColor(crop_bin, cv2.COLOR_GRAY2BGR)
-        ok2, decoded_info2, _, _ = bd.detectAndDecodeWithType(crop_bgr)
-        if ok2:
-            for info in decoded_info2:
-                if info and re.search(r'SPX', info, re.IGNORECASE):
-                    print(f"[Barcode crop] {repr(info)}")
-                    return info.strip()
+                if info:
+                    results.append(info.strip())
     except AttributeError:
-        print("[WARN] cv2.barcode tidak tersedia")
+        pass  # cv2.barcode tidak tersedia di build ini
+    except Exception as e:
+        print(f"[Barcode] error: {e}")
+    return results
 
+
+def _decode_all_barcodes(img_cv: np.ndarray) -> list[str]:
+    """
+    Coba semua decoder yang tersedia pada sebuah image.
+    Return: list teks hasil decode (deduplicated).
+    """
+    seen = set()
+    results = []
+
+    for text in _try_qr_detector(img_cv) + _try_barcode_detector(img_cv):
+        if text and text not in seen:
+            seen.add(text)
+            results.append(text)
+
+    return results
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Fungsi utama: extract resi dari barcode
+# ──────────────────────────────────────────────────────────────────────────────
+
+def extract_resi_from_barcode_cv(img_cv: np.ndarray,
+                                  expedition_key: str = None) -> str | None:
+    """
+    Extract nomor resi dari barcode/QR yang ada di gambar.
+
+    Mendukung semua ekspedisi yang terdaftar di expedition_registry.py.
+    Sebelumnya fungsi ini hanya terima barcode 'SPX...' — sekarang
+    validasi dilakukan via registry sehingga SiCepat, JNE, dll otomatis
+    didukung tanpa perlu ubah file ini.
+
+    Args:
+        img_cv         : numpy array BGR dari cv2.imread / cv2.cvtColor
+        expedition_key : Hint ekspedisi (opsional). Jika diketahui dari
+                         teks PDF layer, pass ke sini untuk scan lebih
+                         akurat. Jika None → coba semua ekspedisi.
+
+    Return: nomor resi (sudah dinormalisasi), atau None.
+    """
+    h, w = img_cv.shape[:2]
+    gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+
+    # Ambil zona crop dari registry
+    zones = get_barcode_zones(expedition_key)
+
+    # Preprocessing variants yang dicoba per zona
+    def _get_variants(crop_gray, crop_bgr):
+        variants = [("orig", crop_bgr)]
+        # Scale 3x + OTSU untuk barcode kecil/blur
+        scaled = cv2.resize(crop_gray, None, fx=3, fy=3,
+                            interpolation=cv2.INTER_CUBIC)
+        _, bw = cv2.threshold(scaled, 0, 255,
+                              cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        variants.append(("3x_otsu", cv2.cvtColor(bw, cv2.COLOR_GRAY2BGR)))
+        # Scale 2x
+        scaled2 = cv2.resize(crop_gray, None, fx=2, fy=2,
+                             interpolation=cv2.INTER_CUBIC)
+        variants.append(("2x", cv2.cvtColor(scaled2, cv2.COLOR_GRAY2BGR)))
+        return variants
+
+    for zone_idx, (y0p, y1p, x0p, x1p) in enumerate(zones):
+        y0 = int(h * y0p); y1 = int(h * y1p)
+        x0 = int(w * x0p); x1 = int(w * x1p)
+
+        if y1 <= y0 or x1 <= x0:
+            continue
+
+        crop_gray = gray[y0:y1, x0:x1]
+        crop_bgr  = img_cv[y0:y1, x0:x1]
+
+        print(f"[Barcode] Zone {zone_idx} y={y0}-{y1} x={x0}-{x1}")
+
+        for variant_name, var_bgr in _get_variants(crop_gray, crop_bgr):
+            decoded_texts = _decode_all_barcodes(var_bgr)
+
+            for text in decoded_texts:
+                resi, detected_exp = validate_barcode_as_resi(text, expedition_key)
+                if resi:
+                    print(f"[Barcode] ✅ Resi={resi!r} exp={detected_exp} "
+                          f"zone={zone_idx} variant={variant_name}")
+                    return resi
+                else:
+                    print(f"[Barcode] Bukan resi: {text!r}")
+
+    print(f"[Barcode] Tidak ada resi ditemukan (expedition_key={expedition_key!r})")
     return None
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Item parsing dari image (tidak berubah dari versi sebelumnya)
+# ──────────────────────────────────────────────────────────────────────────────
 
 def extract_items_from_img_cv(img_cv):
     """
@@ -133,13 +250,7 @@ def extract_items_from_img_cv(img_cv):
     qty_x     = col_x.get('qty',     width * 0.85)
     header_y  = header_row[0]['y']
 
-    # ----------------------------------------------------------------
-    # Kelompokkan rows menjadi "item groups"
-    # Item baru: line_text diawali angka (nomor urut) diikuti spasi + huruf
-    # Toleran terhadap OCR noise (misal '1Christian' → tetap match r'^\d+\s*\S')
-    # Baris wrap: tidak diawali angka, atau angka tapi bukan nomor urut item
-    # ----------------------------------------------------------------
-    item_groups: list[list] = []   # tiap elemen = list of rows (1 item)
+    item_groups: list[list] = []
 
     for row in rows:
         if row[0]['y'] <= header_y:
@@ -147,18 +258,13 @@ def extract_items_from_img_cv(img_cv):
 
         line_text = " ".join(w['text'] for w in row)
 
-        # Sentinel: baris "Pesan:" → stop
         if re.match(r'Pesan\s*:', line_text, re.IGNORECASE):
             break
 
-        # Deteksi item baru: line_text diawali angka kecil (1-99) lalu spasi/huruf
-        # AND word paling kiri ada di zona kolom nama (bukan zona SKU/variasi/qty)
         leftmost = min(row, key=lambda w: w['x'])
         line_starts_with_num = bool(re.match(r'^\d{1,2}[\s\.]', line_text))
         leftmost_in_nama_zone = leftmost['x'] < sku_x
 
-        # Fallback: kalau line_text diawali angka tapi tanpa spasi (OCR noise)
-        # cek apakah word pertama murni angka kecil
         if not line_starts_with_num:
             first_word = row[0]['text'] if row else ''
             line_starts_with_num = bool(re.match(r'^\d{1,2}$', first_word))
@@ -170,13 +276,8 @@ def extract_items_from_img_cv(img_cv):
         if is_new_item:
             item_groups.append([row])
         elif item_groups:
-            # Baris lanjutan (wrap nama produk / kolom lain)
             item_groups[-1].append(row)
-        # Kalau belum ada grup, skip (sisa header dll)
 
-    # ----------------------------------------------------------------
-    # Parse tiap grup → 1 item
-    # ----------------------------------------------------------------
     items = []
 
     for group in item_groups:
@@ -198,7 +299,6 @@ def extract_items_from_img_cv(img_cv):
                 else:
                     qty_parts.append(t)
 
-        # Buang nomor urut dari nama
         nama    = re.sub(r'^\d+\s*', '', " ".join(nama_parts)).strip()
         sku     = " ".join(sku_parts).strip()
         variasi = " ".join(var_parts).strip()
