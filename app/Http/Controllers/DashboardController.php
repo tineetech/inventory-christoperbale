@@ -13,6 +13,9 @@ use App\Models\Penjualan;
 use App\Models\Pembelian;
 use App\Models\StokMovement;
 use App\Models\AdjustStok;
+use Carbon\Carbon;
+use Carbon\CarbonPeriod;
+
 
 class DashboardController extends Controller
 {
@@ -47,48 +50,87 @@ class DashboardController extends Controller
             ->withQueryString();
 
         $penjualanDraft = Penjualan::with(['dropshipper', 'user'])
-        ->where('is_draft', 'yes')
-        ->orderBy('updated_at', 'desc')
-        ->paginate(10, ['*'], 'draft_page')
-        ->withQueryString();
+            ->where('is_draft', 'yes')
+            ->orderBy('updated_at', 'desc')
+            ->paginate(10, ['*'], 'draft_page')
+            ->withQueryString();
 
-        // ── STATISTIK PENJUALAN: Januari s/d Juni tahun berjalan ──
-        $tahun        = now()->year;
-        $bulanLabels  = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'];
+        // ── FILTER TANGGAL ─────────────────────────────
+        $fromDate = $request->filled('from_date')
+            ? $request->from_date
+            : now()->startOfYear()->format('Y-m-d');
 
-        // Query jumlah transaksi per bulan (Jan–Jun)
-        $rawTransaksi = Penjualan::selectRaw('MONTH(tanggal) as bulan, COUNT(*) as total')
-            ->whereYear('tanggal', $tahun)
-            ->whereMonth('tanggal', '<=', 6)
-            ->where('is_draft', '!=', 'yes')
-            ->groupBy('bulan')
-            ->pluck('total', 'bulan');
+        $toDate = $request->filled('to_date')
+            ? $request->to_date
+            : now()->endOfMonth()->format('Y-m-d');
 
-        // Query total omzet per bulan (Jan–Jun)
-        $rawOmzet = Penjualan::selectRaw('MONTH(tanggal) as bulan, SUM(total_harga) as omzet')
-            ->whereYear('tanggal', $tahun)
-            ->whereMonth('tanggal', '<=', 6)
-            ->where('is_draft', '!=', 'yes')
-            ->groupBy('bulan')
-            ->pluck('omzet', 'bulan');
-
-        // Bangun array lengkap bulan 1–6 (isi 0 jika tidak ada data)
-        $dataTransaksi = [];
-        $dataOmzet     = [];
-
-        for ($m = 1; $m <= 6; $m++) {
-            $dataTransaksi[] = (int) ($rawTransaksi[$m] ?? 0);
-            $dataOmzet[]     = (float) ($rawOmzet[$m] ?? 0);
+        // Jika from > to → tukar
+        if ($fromDate > $toDate) {
+            [$fromDate, $toDate] = [$toDate, $fromDate];
         }
 
-        // Summary card tambahan
+        // ── QUERY DATABASE ─────────────────────────────
+        $rawChart = Penjualan::selectRaw('
+        YEAR(tanggal) as tahun,
+        MONTH(tanggal) as bulan,
+        COUNT(*) as total_transaksi,
+        SUM(total_harga) as total_omzet
+    ')
+            ->whereDate('tanggal', '>=', $fromDate)
+            ->whereDate('tanggal', '<=', $toDate)
+            ->where('is_draft', '!=', 'yes')
+            ->groupBy('tahun', 'bulan')
+            ->orderBy('tahun')
+            ->orderBy('bulan')
+            ->get();
+
+        // Mapping data DB supaya gampang dicari
+        $mapped = [];
+
+        foreach ($rawChart as $row) {
+            $key = $row->tahun . '-' . str_pad($row->bulan, 2, '0', STR_PAD_LEFT);
+
+            $mapped[$key] = [
+                'transaksi' => (int) $row->total_transaksi,
+                'omzet' => (float) $row->total_omzet,
+            ];
+        }
+
+        // ── GENERATE SEMUA BULAN DALAM RANGE ───────────
+        $bulanLabels = [];
+        $dataTransaksi = [];
+        $dataOmzet = [];
+
+        $period = CarbonPeriod::create(
+            Carbon::parse($fromDate)->startOfMonth(),
+            '1 month',
+            Carbon::parse($toDate)->startOfMonth()
+        );
+
+        foreach ($period as $date) {
+
+            $key = $date->format('Y-m');
+
+            $bulanLabels[] = $date
+                ->locale('id')
+                ->translatedFormat('M Y');
+
+            $dataTransaksi[] = $mapped[$key]['transaksi'] ?? 0;
+            $dataOmzet[] = $mapped[$key]['omzet'] ?? 0;
+        }
+
+        // ── SUMMARY ────────────────────────────────────
         $totalTransaksiH1 = array_sum($dataTransaksi);
-        $totalOmzetH1     = array_sum($dataOmzet);
+        $totalOmzetH1 = array_sum($dataOmzet);
+
+        $tahun = now()->year;
 
         return view('pages.dashboard', compact(
             'totalBarang',
             'totalSupplier',
             'totalDropshipper',
+            'fromDate',
+            'toDate',
             'totalStok',
             'penjualanHariIni',
             'pembelianHariIni',

@@ -148,42 +148,90 @@
 
                 @if (hasPermission('lihat', 'dashboard_trx'))
                     <div class="card mb-4">
-                        <div class="card-header with-elements">
-                            <div>
-                                <h6 class="card-header-title mb-0">
-                                    <i class="feather icon-bar-chart-2 mr-1 text-primary"></i>
-                                    Statistik Penjualan
-                                    <span class="badge badge-primary badge-pill ml-1" style="font-size:.7rem;">
-                                        Jan – Jun {{ $tahun }}
-                                    </span>
-                                </h6>
-                                <small class="text-muted">Jumlah transaksi &amp; omzet per bulan</small>
-                            </div>
-                            <div class="card-header-elements ml-auto d-flex align-items-center gap-3">
+                        <div class="card-header">
 
-                                {{-- Summary kecil --}}
-                                <div class="text-right mr-3 d-none d-md-block">
-                                    <div class="small text-muted">Total Transaksi</div>
-                                    <strong class="text-primary">{{ number_format($totalTransaksiH1) }}</strong>
-                                </div>
-                                <div class="text-right mr-3 d-none d-md-block">
-                                    <div class="small text-muted">Total Omzet</div>
-                                    <strong class="text-danger">Rp {{ number_format($totalOmzetH1, 0, ',', '.') }}</strong>
-                                </div>
+                            {{-- ROW 1 --}}
+                            <div class="d-flex flex-wrap justify-content-between align-items-start mb-3">
 
-                                {{-- Toggle show/hide --}}
-                                <label class="text m-0">
-                                    <span class="text-light text-tiny font-weight-semibold align-middle">SHOW STATS</span>
-                                    <span
-                                        class="switcher switcher-primary switcher-sm d-inline-block align-middle mr-0 ml-2">
-                                        <input type="checkbox" class="switcher-input" id="toggleStats" checked>
-                                        <span class="switcher-indicator">
-                                            <span class="switcher-yes"></span>
-                                            <span class="switcher-no"></span>
+                                {{-- KIRI --}}
+                                <div>
+                                    <h6 class="card-header-title mb-1">
+                                        <i class="feather icon-bar-chart-2 mr-1 text-primary"></i>
+                                        Statistik Penjualan
+                                    </h6>
+
+                                    <div class="d-flex align-items-center flex-wrap gap-2">
+                                        <small class="text-muted mr-2">
+                                            Jumlah transaksi & omzet per bulan
+                                        </small>
+
+                                        <span class="badge badge-primary badge-pill">
+                                            {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
+                                            -
+                                            {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
                                         </span>
-                                    </span>
-                                </label>
+                                    </div>
+                                </div>
+
+                                {{-- KANAN --}}
+                                <div class="d-flex align-items-center flex-wrap mt-2 mt-md-0">
+
+                                    <div class="text-right mr-4">
+                                        <div class="small text-muted">Total Transaksi</div>
+                                        <strong class="text-primary">
+                                            {{ number_format($totalTransaksiH1) }}
+                                        </strong>
+                                    </div>
+
+                                    <div class="text-right mr-4">
+                                        <div class="small text-muted">Total Omzet</div>
+                                        <strong class="text-danger">
+                                            Rp {{ number_format($totalOmzetH1, 0, ',', '.') }}
+                                        </strong>
+                                    </div>
+
+                                    <label class="m-0 d-flex align-items-center">
+                                        <span class="small text-muted mr-2">SHOW</span>
+
+                                        <span class="switcher switcher-primary switcher-sm">
+                                            <input type="checkbox" class="switcher-input" id="toggleStats" checked>
+
+                                            <span class="switcher-indicator">
+                                                <span class="switcher-yes"></span>
+                                                <span class="switcher-no"></span>
+                                            </span>
+                                        </span>
+                                    </label>
+
+                                </div>
                             </div>
+
+                            {{-- ROW 2 : FILTER --}}
+                            <form method="GET" action="{{ url()->current() }}" class="d-flex flex-wrap w-full align-items-end">
+
+                                @foreach (request()->except(['from_date', 'to_date']) as $key => $value)
+                                    <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                @endforeach
+
+                                <div class="mr-2">
+                                    <label class="small text-muted mb-1">Dari Tanggal</label>
+                                    <input type="date" name="from_date" class="form-control form-control-sm"
+                                        value="{{ request('from_date', $fromDate) }}">
+                                </div>
+
+                                <div class="mr-2">
+                                    <label class="small text-muted mb-1">Sampai</label>
+                                    <input type="date" name="to_date" class="form-control form-control-sm"
+                                        value="{{ request('to_date', $toDate) }}">
+                                </div>
+
+                                <button type="submit" class="btn btn-sm btn-primary">
+                                    <i class="feather icon-filter mr-1"></i>
+                                    Filter
+                                </button>
+
+                            </form>
+
                         </div>
 
                         <div class="card-body" id="statisticsChartWrap">
@@ -227,144 +275,151 @@
         {{-- Stok Kritis dan penjualan draft --}}
         <div class="row mt-2">
             {{-- Draft Penjualan --}}
-            @if (hasPermission('lihat', 'dashboard_trx'))
-                <div class="col-md-6">
-                    <div class="card p-3 mb-4">
-                        <div class="card-header d-flex justify-content-between align-items-center" style="border:none">
-                            <h6 class="mb-0 text-warning">
-                                <i class="feather icon-file-text mr-2"></i> Penjualan Draft
-                                <small class="text-muted">Transaksi yang belum diselesaikan</small>
-                            </h6>
-                            <span class="badge badge-warning">{{ $penjualanDraft->total() }} transaksi</span>
-                        </div>
+            {{-- @if (hasPermission('lihat', 'dashboard_trx')) --}}
+            <div class="col-md-6">
+                <div class="card p-3 mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="border:none">
+                        <h6 class="mb-0 text-warning">
+                            <i class="feather icon-file-text mr-2"></i> Penjualan Draft
+                            <small class="text-muted">Transaksi yang belum diselesaikan</small>
+                        </h6>
+                        <span class="badge badge-warning">{{ $penjualanDraft->total() }} transaksi</span>
+                    </div>
 
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead class="thead-light">
-                                    <tr>
-                                        <th>No</th>
-                                        <th>Kode</th>
-                                        <th>Tanggal</th>
-                                        <th>Dropshipper</th>
-                                        <th>No. Pesanan</th>
-                                        <th>Total Harga</th>
-                                        <th>Dibuat Oleh</th>
-                                        <th>Terakhir Update</th>
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>No</th>
+                                    <th>Kode</th>
+                                    <th>Tanggal</th>
+                                    <th>Dropshipper</th>
+                                    <th>No. Pesanan</th>
+                                    <th>Total Harga</th>
+                                    <th>Dibuat Oleh</th>
+                                    <th>Terakhir Update</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse ($penjualanDraft as $index => $draft)
+                                    <tr onclick="window.location='{{ route('penjualan.edit', $draft->id) }}'"
+                                        style="cursor: pointer">
+                                        <td>{{ $penjualanDraft->firstItem() + $index }}</td>
+                                        <td>
+                                            <code>{{ $draft->kode_penjualan ?? '-' }}</code>
+                                        </td>
+                                        <td>{{ \Carbon\Carbon::parse($draft->tanggal)->format('d/m/Y') }}</td>
+                                        <td>{{ $draft->dropshipper->nama ?? '-' }}</td>
+                                        <td>{{ $draft->nomor_pesanan ?? '-' }}</td>
+                                        <td>Rp {{ number_format($draft->total_harga ?? 0, 0, ',', '.') }}</td>
+                                        <td>{{ $draft->user->nama ?? '-' }}</td>
+                                        <td>
+                                            <small class="text-muted">
+                                                {{ $draft->updated_at->diffForHumans() }}
+                                            </small>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @forelse ($penjualanDraft as $index => $draft)
-                                        <tr onclick="window.location='{{ route('penjualan.edit', $draft->id) }}'"
-                                            style="cursor: pointer">
-                                            <td>{{ $penjualanDraft->firstItem() + $index }}</td>
-                                            <td>
-                                                <code>{{ $draft->kode_penjualan ?? '-' }}</code>
-                                            </td>
-                                            <td>{{ \Carbon\Carbon::parse($draft->tanggal)->format('d/m/Y') }}</td>
-                                            <td>{{ $draft->dropshipper->nama ?? '-' }}</td>
-                                            <td>{{ $draft->nomor_pesanan ?? '-' }}</td>
-                                            <td>Rp {{ number_format($draft->total_harga ?? 0, 0, ',', '.') }}</td>
-                                            <td>{{ $draft->user->nama ?? '-' }}</td>
-                                            <td>
-                                                <small class="text-muted">
-                                                    {{ $draft->updated_at->diffForHumans() }}
-                                                </small>
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="8" class="text-center text-muted py-4">
-                                                <i class="feather icon-check-circle text-success mr-2"></i>
-                                                Tidak ada penjualan draft
-                                            </td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
+                                @empty
+                                    <tr>
+                                        <td colspan="8" class="text-center text-muted py-4">
+                                            <i class="feather icon-check-circle text-success mr-2"></i>
+                                            Tidak ada penjualan draft
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {{-- Footer: info + pagination --}}
+                    <div class="d-flex flex-wrap justify-content-between align-items-center px-3 py-3 border-top gap-2">
+
+                        <div class="text-muted small">
+                            @if ($penjualanDraft->total() > 0)
+                                Showing <strong>{{ $penjualanDraft->firstItem() }}</strong>
+                                to <strong>{{ $penjualanDraft->lastItem() }}</strong>
+                                of <strong>{{ $penjualanDraft->total() }}</strong> entries
+                            @else
+                                No entries found
+                            @endif
                         </div>
 
-                        {{-- Footer: info + pagination --}}
-                        <div class="d-flex flex-wrap justify-content-between align-items-center px-3 py-3 border-top gap-2">
+                        @if ($penjualanDraft->hasPages())
+                            @php
+                                $currentPage = $penjualanDraft->currentPage();
+                                $lastPage = $penjualanDraft->lastPage();
+                                $showStartEllipsis = $currentPage > 3;
+                                $showEndEllipsis = $currentPage < $lastPage - 2;
+                                $start = max(2, $currentPage - 1);
+                                $end = min($lastPage - 1, $currentPage + 1);
+                                if ($currentPage <= 3) {
+                                    $end = min($lastPage - 1, 4);
+                                }
+                                if ($currentPage >= $lastPage - 2) {
+                                    $start = max(2, $lastPage - 3);
+                                }
+                            @endphp
 
-                            <div class="text-muted small">
-                                @if ($penjualanDraft->total() > 0)
-                                    Showing <strong>{{ $penjualanDraft->firstItem() }}</strong>
-                                    to <strong>{{ $penjualanDraft->lastItem() }}</strong>
-                                    of <strong>{{ $penjualanDraft->total() }}</strong> entries
+                            <ul class="pagination pagination-sm mb-0 flex-wrap">
+
+                                <li class="page-item {{ $penjualanDraft->onFirstPage() ? 'disabled' : '' }}">
+                                    <a class="page-link" href="{{ $penjualanDraft->previousPageUrl() ?? '#' }}">
+                                        <i class="feather icon-chevron-left"></i>
+                                    </a>
+                                </li>
+
+                                @if ($lastPage <= 7)
+                                    @for ($i = 1; $i <= $lastPage; $i++)
+                                        <li class="page-item {{ $currentPage == $i ? 'active' : '' }}">
+                                            <a class="page-link"
+                                                href="{{ $penjualanDraft->url($i) }}">{{ $i }}</a>
+                                        </li>
+                                    @endfor
                                 @else
-                                    No entries found
-                                @endif
-                            </div>
-
-                            @if ($penjualanDraft->hasPages())
-                                @php
-                                    $currentPage = $penjualanDraft->currentPage();
-                                    $lastPage    = $penjualanDraft->lastPage();
-                                    $showStartEllipsis = $currentPage > 3;
-                                    $showEndEllipsis   = $currentPage < $lastPage - 2;
-                                    $start = max(2, $currentPage - 1);
-                                    $end   = min($lastPage - 1, $currentPage + 1);
-                                    if ($currentPage <= 3) $end   = min($lastPage - 1, 4);
-                                    if ($currentPage >= $lastPage - 2) $start = max(2, $lastPage - 3);
-                                @endphp
-
-                                <ul class="pagination pagination-sm mb-0 flex-wrap">
-
-                                    <li class="page-item {{ $penjualanDraft->onFirstPage() ? 'disabled' : '' }}">
-                                        <a class="page-link" href="{{ $penjualanDraft->previousPageUrl() ?? '#' }}">
-                                            <i class="feather icon-chevron-left"></i>
-                                        </a>
+                                    <li class="page-item {{ $currentPage == 1 ? 'active' : '' }}">
+                                        <a class="page-link" href="{{ $penjualanDraft->url(1) }}">1</a>
                                     </li>
 
-                                    @if ($lastPage <= 7)
-                                        @for ($i = 1; $i <= $lastPage; $i++)
-                                            <li class="page-item {{ $currentPage == $i ? 'active' : '' }}">
-                                                <a class="page-link" href="{{ $penjualanDraft->url($i) }}">{{ $i }}</a>
-                                            </li>
-                                        @endfor
-                                    @else
-                                        <li class="page-item {{ $currentPage == 1 ? 'active' : '' }}">
-                                            <a class="page-link" href="{{ $penjualanDraft->url(1) }}">1</a>
-                                        </li>
-
-                                        @if ($showStartEllipsis)
-                                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                                        @endif
-
-                                        @for ($i = $start; $i <= $end; $i++)
-                                            <li class="page-item {{ $currentPage == $i ? 'active' : '' }}">
-                                                <a class="page-link" href="{{ $penjualanDraft->url($i) }}">{{ $i }}</a>
-                                            </li>
-                                        @endfor
-
-                                        @if ($showEndEllipsis)
-                                            <li class="page-item disabled"><span class="page-link">...</span></li>
-                                        @endif
-
-                                        <li class="page-item {{ $currentPage == $lastPage ? 'active' : '' }}">
-                                            <a class="page-link" href="{{ $penjualanDraft->url($lastPage) }}">{{ $lastPage }}</a>
-                                        </li>
+                                    @if ($showStartEllipsis)
+                                        <li class="page-item disabled"><span class="page-link">...</span></li>
                                     @endif
 
-                                    <li class="page-item {{ !$penjualanDraft->hasMorePages() ? 'disabled' : '' }}">
-                                        <a class="page-link" href="{{ $penjualanDraft->nextPageUrl() ?? '#' }}">
-                                            <i class="feather icon-chevron-right"></i>
-                                        </a>
+                                    @for ($i = $start; $i <= $end; $i++)
+                                        <li class="page-item {{ $currentPage == $i ? 'active' : '' }}">
+                                            <a class="page-link"
+                                                href="{{ $penjualanDraft->url($i) }}">{{ $i }}</a>
+                                        </li>
+                                    @endfor
+
+                                    @if ($showEndEllipsis)
+                                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                                    @endif
+
+                                    <li class="page-item {{ $currentPage == $lastPage ? 'active' : '' }}">
+                                        <a class="page-link"
+                                            href="{{ $penjualanDraft->url($lastPage) }}">{{ $lastPage }}</a>
                                     </li>
+                                @endif
 
-                                </ul>
-                            @endif
+                                <li class="page-item {{ !$penjualanDraft->hasMorePages() ? 'disabled' : '' }}">
+                                    <a class="page-link" href="{{ $penjualanDraft->nextPageUrl() ?? '#' }}">
+                                        <i class="feather icon-chevron-right"></i>
+                                    </a>
+                                </li>
 
-                        </div>
+                            </ul>
+                        @endif
 
                     </div>
+
                 </div>
-            @endif
-            @if (hasPermission('lihat', 'dashboard_trx'))
+            </div>
+            {{-- @endif --}}
+            {{-- @if (hasPermission('lihat', 'dashboard_trx')) --}}
             <div class="col-md-6">
-            @else
-            <div class="col-md-12">
-            @endif
+                {{-- @else --}}
+                {{-- <div class="col-md-12">
+            @endif --}}
                 <div class="card p-3 mb-4">
                     <div class="card-header d-flex justify-content-between align-items-center" style="border:none">
                         <h6 class="mb-0 text-danger">

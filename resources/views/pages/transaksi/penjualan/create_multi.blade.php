@@ -1705,7 +1705,7 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
                 placeholder: "Cari SKU / Nama Barang",
                 multiple: true,
                 width: '100%',
-                closeOnSelect: false,
+                closeOnSelect: true,
                 ajax: {
                     url: "/api/product/search",
                     dataType: "json",

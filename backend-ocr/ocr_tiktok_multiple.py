@@ -1,44 +1,28 @@
 """
-ocr_tiktok_multiple.py  (v3 - fixed order_id + seller_sku)
-===========================================================
-Fix v3:
-  1. Order ID: perluas zona OCR ke 68-90%, tambah multiple crop zone,
-     dan fallback baca langsung dari teks OCR full halaman bagian bawah.
-     Pattern "Order Id : 583..." ada tepat di bawah barcode 1D.
+ocr_tiktok_multiple.py  (v5 - fix continuation page detection)
+===============================================================
+Fix v5:
+  Root cause v4:
+    _is_continuation_page() memeriksa:
+        result.get('resi') is None AND result.get('order_id') is None
+    
+    Padahal halaman 22 (lanjutan resi JX9489617439) terbaca:
+        resi=None, order_id=584175205435671665, items=1
+    
+    order_id terbaca dari teks PDF → kondisi "order_id=None" TIDAK terpenuhi
+    → halaman 22 TIDAK ter-merge ke halaman 21 → SKU hilang
 
-  2. Seller SKU: perbaikan boundary kolom menggunakan posisi AKTUAL
-     kata "Seller" di header, bukan midpoint — karena "SKU" pertama
-     (variasi) dan "Seller SKU" jaraknya tidak proporsional.
-     
-     Dari label asli (PDF rendered):
-       - Kolom SKU (variasi): ~40% width  
-       - Kolom Seller SKU:    ~60% width
-       - Kolom Qty:           ~85% width
-     
-     Fix: setelah dapat x dari header kata "Seller", boundary kanan
-     kolom SKU/variasi = midpoint(sku_x, seller_x) - tapi dengan
-     toleransi lebih lebar (+30px) supaya "39", "Hitam," tidak nyasar
-     ke kolom Seller SKU.
-
-  3. Multi-baris Seller SKU (kasus Burgundy, 38 terpotong):
-     Jika baris berikutnya hanya berisi angka di zona SKU dan tidak
-     punya Seller SKU → angka itu adalah lanjutan variasi baris sebelumnya.
-
-Layout resi TikTok J&T (portrait):
-  ┌─────────────────────────────────────┐
-  │  Header J&T (logo, pengirim, dst)   │  0-45%
-  ├─────────────────────────────────────┤
-  │  Nama toko besar (bold)             │  45-55%
-  │  Kode toko (856-TTE08-01, dll)      │
-  ├─────────────────────────────────────┤
-  │  [BARCODE 1D besar - No. Resi JX]   │  55-75%
-  │      JX9214131965                   │
-  ├──────────────────────┬──────────────┤
-  │ Order Id: 58369...   │ Estimated    │  75-80%  <- ORDER ID DI SINI
-  ├──────────────────────┴──────────────┤
-  │  Tabel: Product Name | SKU |        │  80-100%
-  │         Seller SKU   | Qty          │
-  └─────────────────────────────────────┘
+  Fix v5:
+    Halaman lanjutan didefinisikan HANYA berdasarkan absennya resi JX:
+        _is_continuation_page() return True jika resi is None
+    
+    Ini lebih robust karena:
+    - Resi JX adalah identifier unik per pengiriman
+    - Halaman lanjutan memang tidak punya resi baru
+    - order_id boleh terbaca atau tidak (tidak jadi penentu)
+    
+    Juga tambah guard di merge loop: skip jika halaman punya
+    order_id berbeda dari prev (berarti halaman baru, bukan lanjutan).
 """
 
 import re
@@ -83,16 +67,13 @@ def _cv_to_base64_jpeg(img_cv: np.ndarray, quality: int = 70, max_width: int = 9
 def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
     JX_RE = re.compile(r'JX\d{10}', re.IGNORECASE)
 
-    # --- Strategy 1: cv2 QRCodeDetector ---
     qr = cv2.QRCodeDetector()
     data, _, _ = qr.detectAndDecode(img_cv)
     if data:
         m = JX_RE.search(data)
         if m:
-            print(f"[Resi JX] QR: {m.group()}")
             return m.group()
 
-    # --- Strategy 2: cv2 BarcodeDetector full image ---
     bd = None
     try:
         bd = cv2.barcode.BarcodeDetector()
@@ -102,12 +83,10 @@ def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
                 if info:
                     m = JX_RE.search(info)
                     if m:
-                        print(f"[Resi JX] BarcodeDetector full: {m.group()}")
                         return m.group()
     except AttributeError:
         bd = None
 
-    # --- Strategy 3: crop zona barcode JX (40-82% tinggi) + scale 3x ---
     h, w = img_cv.shape[:2]
     gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
 
@@ -128,12 +107,10 @@ def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
                         if info:
                             m = JX_RE.search(info)
                             if m:
-                                print(f"[Resi JX] BarcodeDetector crop ({y0p},{y1p}): {m.group()}")
                                 return m.group()
             except Exception:
                 pass
 
-    # --- Strategy 4: zxing-cpp fallback ---
     try:
         import zxingcpp
         for (y0p, y1p) in [(0.50, 0.80), (0.40, 0.85), (0.30, 0.90)]:
@@ -153,7 +130,6 @@ def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
                 for r in zxingcpp.read_barcodes(img_scan):
                     m = JX_RE.search(r.text)
                     if m:
-                        print(f"[Resi JX] zxing ({y0p},{y1p}) {scale}x: {m.group()}")
                         return m.group()
     except ImportError:
         pass
@@ -163,36 +139,19 @@ def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
 
 
 # ──────────────────────────────────────────────────────────────────
-# FIX v3: Baca Order ID - zona diperluas + multiple crop + fallback
+# Baca Order ID via OCR
 # ──────────────────────────────────────────────────────────────────
 
 def _extract_order_id_from_ocr(img_cv: np.ndarray) -> str | None:
-    """
-    Baca Order ID dari teks OCR di zona bawah barcode resi TikTok.
-
-    "Order Id : 583699161565201746" ada di ~75-82% tinggi halaman,
-    di sisi KIRI, bersebrangan dengan "Estimated Date:" di sisi kanan.
-
-    Fix v3:
-    - Coba beberapa zona crop yang lebih luas (68-92%)
-    - Juga coba crop hanya sisi KIRI (0-55% width) supaya teks
-      "Order Id" tidak tercampur "Estimated Date"
-    - Fallback: OCR full halaman bagian bawah (65-100%)
-    """
     h, w = img_cv.shape[:2]
     gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
 
-    ORDER_RE = re.compile(
-        r'Order\s*I[dD]\s*[:\s]*(\d{12,})',
-        re.IGNORECASE
-    )
+    ORDER_RE   = re.compile(r'Order\s*I[dD]\s*[:\s]*(\d{12,})', re.IGNORECASE)
     LONG_NUM_RE = re.compile(r'\b(\d{15,})\b')
 
     def _ocr_crop(y0_pct, y1_pct, x0_pct=0.0, x1_pct=1.0, scale=3):
-        y0 = int(h * y0_pct)
-        y1 = int(h * y1_pct)
-        x0 = int(w * x0_pct)
-        x1 = int(w * x1_pct)
+        y0 = int(h * y0_pct); y1 = int(h * y1_pct)
+        x0 = int(w * x0_pct); x1 = int(w * x1_pct)
         crop = gray[y0:y1, x0:x1]
         if crop.size == 0:
             return ""
@@ -200,73 +159,35 @@ def _extract_order_id_from_ocr(img_cv: np.ndarray) -> str | None:
         _, bw  = cv2.threshold(scaled, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         return pytesseract.image_to_string(bw, config="--psm 6")
 
-    # Daftar zona yang dicoba, dari yang paling spesifik ke paling luas
-    # (y0_pct, y1_pct, x0_pct, x1_pct)
     zones = [
-        (0.65, 0.90, 0.0, 1.00),   # ← pindah ke atas, ini yang selalu berhasil
+        (0.65, 0.90, 0.0, 1.00),
         (0.72, 0.83, 0.0, 0.55),
         (0.70, 0.85, 0.0, 0.55),
         (0.68, 0.87, 0.0, 0.60),
-        (0.60, 1.00, 0.0, 1.00),   # fallback
+        (0.60, 1.00, 0.0, 1.00),
     ]
 
     for (y0p, y1p, x0p, x1p) in zones:
         text = _ocr_crop(y0p, y1p, x0p, x1p)
-        raw  = text.strip()[:150]
-        print(f"[OrderID OCR zona {y0p:.2f}-{y1p:.2f} x{x0p:.1f}-{x1p:.1f}] raw='{raw}'")
-
         m = ORDER_RE.search(text)
         if m:
-            order_id = m.group(1)
-            print(f"[OrderID OCR zona] found: {order_id}")
-            return order_id
-
-        # Fallback angka panjang
+            return m.group(1)
         nums = LONG_NUM_RE.findall(text)
         if nums:
-            order_id = nums[0]
-            print(f"[OrderID OCR zona] fallback angka panjang: {order_id}")
-            return order_id
+            return nums[0]
 
-    print("[OrderID OCR zona] Tidak ditemukan")
     return None
 
 
 # ──────────────────────────────────────────────────────────────────
-# FIX v3: Extract items - perbaikan boundary kolom Seller SKU
+# Extract items via OCR (image)
 # ──────────────────────────────────────────────────────────────────
 
 def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
-    """
-    Parse tabel produk di bagian bawah resi TikTok.
-    Kolom: Product Name | SKU (variasi) | Seller SKU | Qty
-
-    Fix v3 boundary:
-    - Dari observasi label asli, kolom di PDF ~A4 portrait:
-        Product Name : x=0    ~ 38% width
-        SKU          : x=38%  ~ 52% width  (kolom variasi: "Tan, 39", "Hitam, 38")
-        Seller SKU   : x=58%  ~ 83% width  (CBJESSICA, CBJULIE - bisa kosong)
-        Qty          : x=83%  ~ 100% width
-    - Boundary dihitung dari posisi HEADER WORD, bukan midpoint murni.
-    - Toleransi: b_sku_end = seller_sku_x - 20 (bukan midpoint)
-      supaya variasi multi-token ("Bronze, 41") tidak overflowing ke Seller SKU.
-    
-    Fix multi-baris variasi (Burgundy case):
-    - Jika baris lanjutan hanya ada kata di zona SKU/variasi (dan tidak ada 
-      di zona nama maupun Seller SKU), gabungkan ke variasi item sebelumnya.
-
-    Multi-item per resi:
-    - Setiap ketemu Seller SKU valid baru = item baru, item sebelumnya disimpan.
-    - Qty dibaca dari kolom Qty di baris yang sama dengan Seller SKU.
-    - Jika qty tidak ada di baris utama (qty_line kosong), cari di baris lanjutan
-      yang punya kata di zona qty saja.
-    - Default qty = 1 jika sama sekali tidak terbaca.
-    """
     gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
     gray = cv2.resize(gray, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
     height, width = gray.shape
 
-    # Cari area tabel
     table_gray     = None
     table_y_offset = 0
     for start_pct in [0.70, 0.72, 0.75, 0.78, 0.80, 0.82]:
@@ -284,23 +205,17 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
         print("[TikTok Items] Tabel tidak ditemukan")
         return []
 
-    # OCR word-level
     data = pytesseract.image_to_data(
         table_gray,
         output_type=pytesseract.Output.DICT,
         config="--psm 6"
     )
 
-    # Cluster words per baris (toleransi Y = 20px)
     words_list = []
     for i, word in enumerate(data['text']):
         if not word.strip() or data['conf'][i] < 0:
             continue
-        words_list.append({
-            'text': word,
-            'x'   : data['left'][i],
-            'y'   : data['top'][i],
-        })
+        words_list.append({'text': word, 'x': data['left'][i], 'y': data['top'][i]})
 
     if not words_list:
         return []
@@ -319,24 +234,16 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
         cur.sort(key=lambda r: r['x'])
         rows.append(cur)
 
-    print(f"[TikTok Items] Total rows OCR: {len(rows)}")
-    for row in rows[:8]:
-        print(f"  y={row[0]['y']:4d} | {' '.join(w['text'] for w in row)}")
-
-    # Cari header row
     header_row = None
     for row in rows:
         line = " ".join(w['text'] for w in row)
         if re.search(r'product\s*name', line, re.IGNORECASE):
             header_row = row
-            print(f"[TikTok Items] Header: {line}")
             break
 
     if not header_row:
-        print("[TikTok Items] Header tidak ditemukan")
         return []
 
-    # ── Deteksi posisi kolom dari header ──────────────────────────
     col_x      = {}
     saw_seller = False
     seller_x_candidate = None
@@ -363,32 +270,19 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
             saw_seller = False
             seller_x_candidate = None
 
-    print(f"[TikTok Items] Column X raw: {col_x}")
-
     if 'seller_sku' not in col_x:
-        print("[TikTok Items] Kolom Seller SKU tidak ditemukan, skip items")
         return []
 
     sku_x        = col_x.get('sku',        width * 0.35)
     seller_sku_x = col_x['seller_sku']
     qty_x        = col_x.get('qty',        width * 0.88)
 
-    # ── FIX v3: Boundary kolom ──────────────────────────────────────
-    # b_nama_end: batas kanan kolom Product Name = posisi kolom SKU
-    # b_sku_end : batas kanan kolom SKU/variasi  = seller_sku_x - 20px
-    #             (bukan midpoint - supaya "39", "Hitam," tidak overflow)
-    # b_seller_end: batas kanan Seller SKU = midpoint(seller_sku_x, qty_x)
     b_nama_end   = sku_x
-    b_sku_end    = seller_sku_x - 20          # FIX: ketat ke kiri dari Seller SKU
+    b_sku_end    = seller_sku_x - 20
     b_seller_end = (seller_sku_x + qty_x) / 2
 
-    print(f"[TikTok Items] Boundaries: nama<{b_nama_end:.0f} "
-          f"| sku<{b_sku_end:.0f} | seller_sku<{b_seller_end:.0f} | qty≥{b_seller_end:.0f}")
-
     header_y = header_row[0]['y']
-
-    # ── Parse baris produk ────────────────────────────────────────
-    items = []
+    items    = []
     current_item = None
 
     for row in rows:
@@ -396,15 +290,10 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
             continue
 
         line = " ".join(w['text'] for w in row)
-
         if re.search(r'qty\s*total|order\s*i[dD]', line, re.IGNORECASE):
             break
 
-        nama_parts       = []
-        sku_parts        = []
-        seller_sku_parts = []
-        qty_parts        = []
-
+        nama_parts, sku_parts, seller_sku_parts, qty_parts = [], [], [], []
         for w in row:
             x = w['x']
             if x < b_nama_end:
@@ -421,24 +310,14 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
         sku_line       = " ".join(sku_parts).strip()
         qty_line       = " ".join(qty_parts).strip()
 
-        print(f"[TikTok Items] y={row[0]['y']:4d} | "
-              f"nama={repr(nama_line[:30])} | "
-              f"sku_var={repr(sku_line[:15])} | "
-              f"seller_sku={repr(seller_sku_raw)} | "
-              f"qty={repr(qty_line)}")
-
-        # Seller SKU valid: hanya huruf/angka/dash/underscore, min 2 char
         seller_sku_valid = (
             seller_sku_raw
             and re.match(r'^[A-Za-z0-9\-_]{2,}$', seller_sku_raw)
         )
 
         if seller_sku_valid:
-            # ── Baris utama item BARU ──────────────────────────────
             if current_item:
                 items.append(current_item)
-
-            # Qty: ambil dari baris ini; strip semua non-digit lalu parse
             qty = 1
             if qty_line:
                 qty_digits = re.sub(r'\D', '', qty_line)
@@ -446,28 +325,14 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
                     qty = int(qty_digits) if qty_digits else 1
                 except ValueError:
                     qty = 1
-
             current_item = {
                 "nama"    : nama_line,
                 "sku"     : seller_sku_raw,
                 "variasi" : sku_line,
                 "qty"     : qty,
-                "_qty_set": qty_line != "",   # flag: qty sudah terbaca di baris ini
+                "_qty_set": qty_line != "",
             }
-
         elif current_item:
-            # ── Baris lanjutan ──────────────────────────────────────
-            # Klasifikasi berdasarkan kolom mana yang terisi:
-            #
-            # (a) Ada qty_line dan qty belum di-set → ambil qty dari baris ini
-            #     Terjadi kalau layout qty turun ke baris 2 (jarang tapi mungkin)
-            #
-            # (b) Hanya sku_line terisi (Burgundy case: "38" di baris bawah)
-            #     → lanjutan variasi
-            #
-            # (c) Ada nama_line → lanjutan nama produk (wrap)
-            #     → gabungkan nama, dan sku_line juga jika ada
-
             if qty_line and not current_item.get("_qty_set"):
                 qty_digits = re.sub(r'\D', '', qty_line)
                 try:
@@ -475,12 +340,9 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
                     current_item["_qty_set"] = True
                 except ValueError:
                     pass
-
             if sku_line and not nama_line and not seller_sku_raw:
-                # Kasus Burgundy: hanya lanjutan variasi
                 current_item["variasi"] = (current_item["variasi"] + " " + sku_line).strip()
             elif nama_line:
-                # Wrap nama produk
                 current_item["nama"] = (current_item["nama"] + " " + nama_line).strip()
                 if sku_line:
                     current_item["variasi"] = (current_item["variasi"] + " " + sku_line).strip()
@@ -488,23 +350,17 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
     if current_item:
         items.append(current_item)
 
-    # Hapus internal flag sebelum return
     for item in items:
         item.pop("_qty_set", None)
-
-    for item in items:
-        print(f"[TikTok Items] FINAL: sku={repr(item['sku'])} "
-              f"variasi={repr(item['variasi'])} qty={item['qty']} "
-              f"nama={repr(item['nama'][:40])}")
 
     return items
 
 
 # ──────────────────────────────────────────────────────────────────
-# Proses 1 halaman
+# Parse items dari PDF text layer (per halaman)
 # ──────────────────────────────────────────────────────────────────
+
 def _parse_items_tiktok_from_pdf_page(page) -> list[dict]:
-    """Parse items dari PDF text layer TikTok menggunakan koordinat X kata."""
     try:
         words = page.extract_words(x_tolerance=3, y_tolerance=3,
                                    keep_blank_chars=False, use_text_flow=False)
@@ -515,7 +371,6 @@ def _parse_items_tiktok_from_pdf_page(page) -> list[dict]:
     if not words:
         return []
 
-    # Cluster per baris
     words.sort(key=lambda w: (w['top'], w['x0']))
     rows, cur = [], [words[0]]
     for w in words[1:]:
@@ -530,9 +385,13 @@ def _parse_items_tiktok_from_pdf_page(page) -> list[dict]:
         cur.sort(key=lambda r: r['x0'])
         rows.append(cur)
 
-    # Cari header
-    header_row = None
-    header_idx = None
+    page_width = page.width
+    col_x      = {}
+    saw_seller = False
+    seller_x_cand = None
+    header_row  = None
+    header_idx  = None
+
     for i, row in enumerate(rows):
         line = " ".join(w['text'] for w in row)
         if re.search(r'product\s*name', line, re.IGNORECASE):
@@ -542,12 +401,6 @@ def _parse_items_tiktok_from_pdf_page(page) -> list[dict]:
 
     if not header_row:
         return []
-
-    # Posisi kolom dari header
-    page_width   = page.width
-    col_x        = {}
-    saw_seller   = False
-    seller_x_cand = None
 
     for w in header_row:
         t = w['text'].lower().strip()
@@ -575,7 +428,7 @@ def _parse_items_tiktok_from_pdf_page(page) -> list[dict]:
     x_qty        = col_x.get('qty',        page_width * 0.85)
     b_seller_end = (x_seller_sku + x_qty) / 2
 
-    items = []
+    items        = []
     current_item = None
 
     for row in rows[header_idx + 1:]:
@@ -625,40 +478,86 @@ def _parse_items_tiktok_from_pdf_page(page) -> list[dict]:
         print(f"[TikTok PDF Words] FINAL: sku={item['sku']} variasi={item['variasi']} qty={item['qty']}")
 
     return items
-    
-def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None) -> dict:
+
+
+# ──────────────────────────────────────────────────────────────────
+# FIX v5: Deteksi continuation page — HANYA berdasarkan absennya resi JX
+# ──────────────────────────────────────────────────────────────────
+
+def _is_continuation_page(result: dict) -> bool:
+    """
+    FIX v5: Halaman lanjutan = tidak punya resi JX (resi is None).
+
+    Perubahan dari v4:
+      v4: resi is None AND order_id is None   ← BUG
+          Halaman 22 punya order_id terbaca dari teks PDF
+          → kondisi order_id=None TIDAK terpenuhi
+          → tidak ter-merge → SKU hilang
+
+      v5: resi is None                        ← FIX
+          Cukup cek resi JX saja. Resi JX adalah identifier
+          unik per pengiriman. Halaman lanjutan memang tidak
+          punya resi baru, order_id boleh ada atau tidak.
+    """
+    return result.get('resi') is None
+
+
+# ──────────────────────────────────────────────────────────────────
+# Proses 1 halaman
+# ──────────────────────────────────────────────────────────────────
+
+def _process_single_page(img_cv: np.ndarray, page_num: int,
+                          pdf_path: str = None, pdf_page_obj=None) -> dict:
     print(f"\n[TikTok Page {page_num}] Mulai proses...")
 
     image_b64 = _cv_to_base64_jpeg(img_cv)
-    print(f"[TikTok Page {page_num}] image_base64 length={len(image_b64)}")
 
-    # 1. Resi dari barcode (selalu pakai cv2, cepat)
+    # 1. Resi dari barcode
     resi = _extract_resi_from_barcode(img_cv)
 
-    # ── Coba PDF text layer dulu (jauh lebih cepat dari OCR) ──────
-    if pdf_path:
+    # ── Coba PDF text layer ──────────────────────────────────────
+    pdfplumber_page = pdf_page_obj
+
+    if pdfplumber_page is None and pdf_path:
         try:
             import pdfplumber
             with pdfplumber.open(pdf_path) as pdf:
-                page = pdf.pages[page_num - 1]
-                text = page.extract_text() or ""
-                if text.strip():
-                    print(f"[TikTok Page {page_num}] ✅ PDF text layer OK, skip OCR")
-                    m = re.search(r'Order\s*I[dD]\s*[:\s]+(\d{15,})', text)
-                    order_id = m.group(1) if m else None
-                    items    = _parse_items_tiktok_from_pdf_page(page)
-                    if not resi:
-                        m2 = re.search(r'JX\d{10}', text, re.IGNORECASE)
-                        resi = m2.group() if m2 else None
-                    print(f"[TikTok Page {page_num}] resi={resi} order_id={order_id} items={len(items)}")
-                    return {
-                        "page": page_num, "resi": resi,
-                        "order_id": order_id, "items": items,
-                        "skus": [i['sku'] for i in items],
-                        "image_base64": image_b64,
-                    }
+                pdfplumber_page = pdf.pages[page_num - 1]
+                text  = pdfplumber_page.extract_text() or ""
+                items = _parse_items_tiktok_from_pdf_page(pdfplumber_page)
+                if not resi:
+                    m2 = re.search(r'JX\d{10}', text, re.IGNORECASE)
+                    resi = m2.group() if m2 else None
+                m = re.search(r'Order\s*I[dD]\s*[:\s]+(\d{15,})', text)
+                order_id = m.group(1) if m else None
+                print(f"[TikTok Page {page_num}] resi={resi} order_id={order_id} items={len(items)}")
+                return {
+                    "page": page_num, "resi": resi,
+                    "order_id": order_id, "items": items,
+                    "skus": [i['sku'] for i in items],
+                    "image_base64": image_b64,
+                }
         except Exception as e:
             print(f"[TikTok Page {page_num}] PDF layer error: {e}, fallback OCR")
+
+    if pdfplumber_page is not None:
+        try:
+            text  = pdfplumber_page.extract_text() or ""
+            items = _parse_items_tiktok_from_pdf_page(pdfplumber_page)
+            if not resi:
+                m2 = re.search(r'JX\d{10}', text, re.IGNORECASE)
+                resi = m2.group() if m2 else None
+            m = re.search(r'Order\s*I[dD]\s*[:\s]+(\d{15,})', text)
+            order_id = m.group(1) if m else None
+            print(f"[TikTok Page {page_num}] resi={resi} order_id={order_id} items={len(items)}")
+            return {
+                "page": page_num, "resi": resi,
+                "order_id": order_id, "items": items,
+                "skus": [i['sku'] for i in items],
+                "image_base64": image_b64,
+            }
+        except Exception as e:
+            print(f"[TikTok Page {page_num}] PDF page obj error: {e}, fallback OCR")
 
     # ── Fallback: OCR Tesseract ───────────────────────────────────
     order_id = _extract_order_id_from_ocr(img_cv)
@@ -681,21 +580,49 @@ def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None
         "image_base64": image_b64,
     }
 
+
 # ──────────────────────────────────────────────────────────────────
-# Public API: extract dari PDF
+# FIX v5: Public API — extract dari PDF dengan merge continuation page
 # ──────────────────────────────────────────────────────────────────
 
 def extract_multiple_resi_tiktok_from_pdf(pdf_path: str) -> list[dict]:
+    """
+    Extract semua resi dari PDF multi-halaman TikTok/J&T.
+
+    FIX v5: _is_continuation_page() sekarang hanya cek resi is None,
+    bukan resi is None AND order_id is None.
+
+    Contoh kasus yang kini ter-fix:
+      Hal. 21: resi=JX9489617439, order_id=584175205435671665, items=[]
+      Hal. 22: resi=None, order_id=584175205435671665, items=[{sku=dalbz37}]
+               ← v4 tidak merge karena order_id != None
+               ← v5 merge karena resi=None ✅
+
+    Guard tambahan: jika halaman lanjutan punya order_id yang berbeda
+    dari prev, berarti ini halaman baru → tidak di-merge (append sebagai
+    entri baru dengan resi=None, akan dihandle sebagai orphan).
+    """
     print(f"[TikTok Multiple] Converting PDF: {pdf_path}")
     images  = convert_from_path(pdf_path, dpi=150)
-    results = []
+    raw_results = []
 
     print(f"[TikTok Multiple] Total {len(images)} halaman")
 
+    try:
+        import pdfplumber
+        pdf_obj = pdfplumber.open(pdf_path)
+        pdf_pages = pdf_obj.pages
+    except Exception:
+        pdf_obj   = None
+        pdf_pages = [None] * len(images)
+
     for page_num, img_pil in enumerate(images, start=1):
         img_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+        pdf_page = pdf_pages[page_num - 1] if pdf_pages else None
         try:
-            result = _process_single_page(img_cv, page_num)
+            result = _process_single_page(img_cv, page_num,
+                                           pdf_path=pdf_path,
+                                           pdf_page_obj=pdf_page)
         except Exception as e:
             print(f"[TikTok Multiple] Page {page_num} error: {e}")
             traceback.print_exc()
@@ -707,10 +634,51 @@ def extract_multiple_resi_tiktok_from_pdf(pdf_path: str) -> list[dict]:
                 "skus"        : [],
                 "image_base64": _cv_to_base64_jpeg(img_cv),
             }
-        results.append(result)
+        raw_results.append(result)
 
-    print(f"[TikTok Multiple] Selesai. {len(results)} halaman diproses.")
-    return results
+    if pdf_obj:
+        pdf_obj.close()
+
+    # ── FIX v5: Merge continuation pages ─────────────────────────
+    merged_results = []
+    for result in raw_results:
+        if _is_continuation_page(result) and merged_results:
+            prev = merged_results[-1]
+
+            # Guard: jika order_id berbeda (keduanya ada), ini bukan lanjutan
+            # dari prev → append sebagai entri tersendiri
+            if (result.get('order_id') is not None
+                    and prev.get('order_id') is not None
+                    and result['order_id'] != prev['order_id']):
+                print(f"[TikTok Multiple] Page {result['page']} resi=None tapi "
+                      f"order_id berbeda ({result['order_id']} vs {prev['order_id']}), "
+                      f"append sebagai entri baru")
+                merged_results.append(result)
+                continue
+
+            # Merge items ke resi sebelumnya
+            if result['items']:
+                prev['items'].extend(result['items'])
+                prev['skus'] = [i['sku'] for i in prev['items']]
+                print(f"[TikTok Multiple] Page {result['page']} merged "
+                      f"({len(result['items'])} items) ke resi {prev['resi']} "
+                      f"[order_id={prev['order_id']}]")
+            else:
+                print(f"[TikTok Multiple] Page {result['page']} adalah "
+                      f"continuation page tapi items kosong, skip merge")
+
+            # Simpan image tambahan (opsional)
+            if 'extra_images' not in prev:
+                prev['extra_images'] = []
+            prev['extra_images'].append(result['image_base64'])
+
+        else:
+            merged_results.append(result)
+
+    print(f"[TikTok Multiple] Selesai. "
+          f"{len(raw_results)} halaman → {len(merged_results)} resi setelah merge.")
+
+    return merged_results
 
 
 # ──────────────────────────────────────────────────────────────────

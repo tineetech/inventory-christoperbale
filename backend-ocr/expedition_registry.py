@@ -1,26 +1,59 @@
 """
 expedition_registry.py — Sistem Registry Ekspedisi
 ====================================================
-[versi patched v4]
+[versi patched v6]
 
-Fix v4 vs v3:
-  Bug: Resi JNE tidak terdeteksi karena:
-    1. "CASHLESS" + "PENJUAL TIDAK PERLU BAYAR ONGKIR" adalah teks SHOPEE
-       standar — bukan eksklusif SiCepat. Fingerprint ini menyebabkan hampir
-       semua label Shopee dideteksi sebagai SiCepat, termasuk JNE.
-    2. Kode hub BDO10101 (JNE) match pattern hub SiCepat [A-Z]{3}\d{5}
-       karena pattern terlalu lebar.
-    3. Pattern resi JNE hanya cover prefix CGK, belum cover CM, BDO, SUB,
-       MLG, dan banyak kode kota JNE lainnya.
+Fix v6 vs v5:
+  Bug: Halaman SiCepat dengan hub DPS10009 terdeteksi sebagai JNE
+       → resi tidak terbaca (resi=None).
 
-  Fix:
-    1. Hapus "PENJUAL TIDAK PERLU BAYAR" dan "CASHLESS" dari
-       text_fingerprints SiCepat — ini teks Shopee generik, bukan ciri khas.
-    2. Perkuat hub SiCepat: digit pertama setelah 3 huruf harus '0'
-       (pola real: BOO20130, CGK00001) → [A-Z]{3}0\d{4}
-    3. Tambah hub_code_patterns JNE: kode-kode kota JNE yang diketahui.
-    4. Perluas resi_text_patterns JNE agar cover lebih banyak prefix kota.
-    5. Tambah "No. Resi: CM..." ke extract_resi_from_text agar terbaca.
+  Root cause v5:
+    Kode kota "DPS" (Denpasar) masuk ke dalam _JNE_CITY_CODES.
+    Akibatnya, negative-lookahead pada SiCepat hub pattern MENGECUALIKAN
+    DPS, sehingga DPS10009 tidak match SiCepat.
+    Sebaliknya hub JNE pattern r'\b(BDO|...|DPS|...)\d{3,6}\b' MATCH
+    DPS10009, dan sistem mendeteksi sebagai JNE.
+    JNE barcode scan tidak menemukan resi 12 digit → resi=None.
+
+    Catatan penting tentang text layer PDF:
+    Logo SiCepat di PDF ini disimpan sebagai IMAGE, bukan teks.
+    Akibatnya kata "SICEPAT" tidak ada di text layer, sehingga
+    Layer1 keyword detection tidak bisa menyelamatkan page ini.
+    Satu-satunya sinyal yang tersedia adalah hub code DPS10009
+    dan format resi 12 digit.
+
+  Fix v6:
+    1. Hapus DPS dari _JNE_CITY_CODES.
+       DPS (Denpasar) dipakai BERSAMA oleh SiCepat dan JNE,
+       sama seperti CGK (Jakarta) dan SRG (Semarang).
+       → Deteksi DPS diselesaikan via Layer1 keyword atau
+         Layer3 resi format, bukan hub eksklusif.
+
+    2. Tambah RESCUE FALLBACK di detect_expedition_from_text():
+       Jika hasil deteksi = 'jne' TAPI teks mengandung resi
+       12 digit numerik murni (format SiCepat), override ke 'sicepat'.
+       Ini adalah safety net untuk kasus di mana:
+         - Hub code ambigu atau belum dikenal
+         - Keyword SICEPAT tidak ada di text layer (logo = image)
+         - Format resi adalah satu-satunya pembeda yang tersisa
+
+    3. Tambah _SICEPAT_RESI_12_PAT sebagai pattern rescue
+       (re.compile di level modul agar tidak dikompilasi ulang setiap call).
+
+    4. Audit kode-kode di _JNE_CITY_CODES:
+       Kode yang dipakai BERSAMA (SiCepat + JNE) TIDAK boleh masuk daftar.
+       Kode yang EKSKLUSIF JNE boleh masuk.
+       Daftar kode bersama yang diketahui: CGK, SRG, DPS.
+       Kode-kode ini dideteksi via Layer1/Layer3, bukan hub eksklusif.
+
+  Perubahan kode:
+    - _JNE_CITY_CODES: hapus "DPS"
+    - Tambah _SICEPAT_RESI_12_PAT (module-level constant)
+    - detect_expedition_from_text(): tambah rescue block setelah Layer2/Layer3
+    - Komentar diperjelas untuk tiap kode kota di _JNE_CITY_CODES
+
+  Tidak ada perubahan pada ExpeditionConfig, normalize_fn, atau
+  extract_resi_from_text / validate_barcode_as_resi.
 """
 
 import re
@@ -69,6 +102,65 @@ def _normalize_ninja(resi: str) -> str:
 
 def _normalize_lion(resi: str) -> str:
     return resi.strip().upper()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Kode kota JNE (dipakai untuk hub JNE dan negative-lookahead SiCepat)
+# ──────────────────────────────────────────────────────────────────────────────
+#
+# ATURAN PENTING:
+#   Hanya masukkan kode yang EKSKLUSIF milik JNE.
+#   Kode yang dipakai BERSAMA dengan SiCepat (atau kurir lain) JANGAN dimasukkan.
+#   Kode bersama yang diketahui: CGK, SRG, DPS → dideteksi via Layer1/Layer3.
+#
+# v6: DPS dihapus karena SiCepat menggunakan DPS sebagai prefix hub
+#     (contoh real: DPS10009 dari PDF CBG_16-22).
+
+_JNE_CITY_CODES = (
+    "BDO",  # Bandung       — eksklusif JNE
+    "MLG",  # Malang        — eksklusif JNE
+    "JOG",  # Yogyakarta    — eksklusif JNE
+    "MES",  # Medan         — eksklusif JNE
+    "BPN",  # Balikpapan    — eksklusif JNE
+    "PLM",  # Palembang     — eksklusif JNE
+    "PNK",  # Pontianak     — eksklusif JNE
+    "UPG",  # Ujung Pandang — eksklusif JNE
+    # "DPS" ← DIHAPUS v6: Denpasar dipakai SiCepat (DPS10009) dan JNE
+    "LOP",  # Lombok        — eksklusif JNE
+    "AMQ",  # Ambon         — eksklusif JNE
+    "MDC",  # Manado        — eksklusif JNE
+    "BTH",  # Batam         — eksklusif JNE
+    "PKU",  # Pekanbaru     — eksklusif JNE
+    "TKG",  # Bandar Lampung — eksklusif JNE
+    "PDG",  # Padang        — eksklusif JNE
+    "BKS",  # Bekasi        — eksklusif JNE
+    "CBN",  # Cirebon       — eksklusif JNE
+    "CIK",  # Cikarang      — eksklusif JNE
+    "CLP",  # Cilegon       — eksklusif JNE
+    "BJM",  # Banjarmasin   — eksklusif JNE
+    "KOE",  # Kupang        — eksklusif JNE
+    "TTE",  # Ternate       — eksklusif JNE
+    "BIK",  # Biak          — eksklusif JNE
+    "MKS",  # Makassar      — eksklusif JNE
+    "SOC",  # Solo          — eksklusif JNE
+    "SMG",  # Semarang kode lain — eksklusif JNE
+    # Catatan: CGK dan SRG dipakai BERSAMA (SiCepat & JNE).
+    # DPS juga dipakai BERSAMA (ditambahkan ke catatan v6).
+    # Ketiga kode ini dideteksi via Layer1 keyword atau Layer3 format resi.
+)
+
+_JNE_CODES_RE = "|".join(_JNE_CITY_CODES)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Pattern rescue: resi 12 digit numerik murni → SiCepat
+# Dipakai di rescue fallback detect_expedition_from_text()
+# ──────────────────────────────────────────────────────────────────────────────
+
+_SICEPAT_RESI_12_PAT = re.compile(
+    r'\bNo\.?\s*Resi\s*[:\s]+(\d{12})(?!\d)',
+    re.IGNORECASE
+)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -126,13 +218,9 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
     ),
 
     # ── 3. SiCepat ────────────────────────────────────────────────────────────
-    # FIX v4:
-    #   - Hapus fingerprint "PENJUAL TIDAK PERLU BAYAR" dan "CASHLESS" —
-    #     kedua teks ini muncul di label Shopee SEMUA ekspedisi, bukan
-    #     eksklusif SiCepat. Menyebabkan false positive masif.
-    #   - Perkuat hub pattern: SiCepat real → digit pertama setelah 3 huruf
-    #     adalah '0' (BOO20130, CGK00001). Pattern baru: [A-Z]{3}0\d{4}
-    #     sehingga BDO10101 (JNE) tidak lagi match.
+    # Fix v5: digit pertama hub 0,1,2 — sesuai data real.
+    # Fix v6: DPS tidak lagi di-exclude (dihapus dari _JNE_CITY_CODES),
+    #         sehingga DPS10009 sekarang match SiCepat secara langsung.
     "sicepat": ExpeditionConfig(
         name="SiCepat",
         resi_text_patterns=[
@@ -152,34 +240,28 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
             re.compile(r'^26\d{4}[A-Z0-9]{6,}$'),
         ],
         hub_code_patterns=[
-            # FIX: digit pertama setelah 3 huruf HARUS '0' (pola real SiCepat)
-            # BOO20130, CGK00001, BDG01234 — BUKAN BDO10101 (itu JNE)
-            re.compile(r'\b[A-Z]{3}0\d{4}\b'),
+            # digit pertama 0,1,2 — sesuai data real SiCepat.
+            # Negative-lookahead mengecualikan kode kota EKSKLUSIF JNE saja.
+            # DPS sudah tidak ada di _JNE_CITY_CODES sehingga DPS10009 match.
+            re.compile(
+                r'\b(?!(?:' + _JNE_CODES_RE + r')[012])[A-Z]{3}[012]\d{4}\b'
+            ),
         ],
         text_fingerprints=[
-            # DIHAPUS: "PENJUAL TIDAK PERLU BAYAR ONGKIR" → teks Shopee generik
-            # DIHAPUS: "PENJUAL TIDAK PERLU BAYAR"        → teks Shopee generik
-            # DIHAPUS: "CASHLESS"                         → teks Shopee generik
             "SICEPAT",
             "SICEPA",
         ],
     ),
 
     # ── 4. JNE ────────────────────────────────────────────────────────────────
-    # FIX v4:
-    #   - Perluas resi_text_patterns: cover prefix kota JNE selain CGK.
-    #     Format resi JNE: [2-3 huruf kota][8-13 digit][opsional huruf]
-    #     Contoh real: CM94708765990, CGK10285432198, BDO123456789
-    #   - Tambah hub_code_patterns: kode-kode kota/hub JNE yang diketahui.
-    #     Format hub JNE di label: [kode kota] + angka, misal BDO10101
+    # Fix v5: hub hanya match kode eksklusif JNE.
+    # Fix v6: DPS tidak lagi di daftar — tidak ada perubahan pattern di sini,
+    #         tapi efeknya DPS tidak lagi match hub JNE secara salah.
     "jne": ExpeditionConfig(
         name="JNE",
         resi_text_patterns=[
-            # Pattern utama: 2-3 huruf + 8-13 digit (cover CM, CGK, BDO, SUB, dll)
             re.compile(r'No\.?\s*Resi\s*[:\s]+([A-Z]{2,3}\d{8,13}[A-Z0-9]*)', re.IGNORECASE),
-            # Fallback langsung: CM + digit (common JNE prefix)
             re.compile(r'\bNo\.\s*Resi\s*[:\s]*(CM\d{8,})', re.IGNORECASE),
-            # Barcode / teks bebas: awali CGK (paling umum)
             re.compile(r'(CGK[A-Z0-9]{8,})', re.IGNORECASE),
         ],
         barcode_resi_patterns=[
@@ -193,15 +275,16 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
         ],
         normalize_fn=_normalize_jne,
         hub_code_patterns=[
-            # FIX: hub JNE dikenal dengan kode kota 2-3 huruf + 4-6 digit
-            # Contoh: BDO10101, CGK12345, SUB00123, MLG00456, JOG10001
-            # Bedakan dari SiCepat (digit pertama '0') dengan accept digit apapun
-            re.compile(r'\b(BDO|CGK|SUB|MLG|JOG|MES|BPN|PLM|PNK|UPG|DPS|LOP|AMQ|MDC|SRG|SMG|SOC|BTH|PKU|TKG|PDG|BKS|CBN|CIK|CLP|BJM|KOE|TTE|BIK|MKS)\d{3,6}\b', re.IGNORECASE),
+            # Hanya kode kota JNE eksklusif — tidak termasuk DPS/CGK/SRG.
+            re.compile(
+                r'\b(' + _JNE_CODES_RE + r')\d{3,6}\b',
+                re.IGNORECASE
+            ),
         ],
         text_fingerprints=[
             "JNE",
             "JALUR NUGRAHA",
-            "PESANAN ANDA DIASURANSIKAN",  # teks khas JNE
+            "PESANAN ANDA DIASURANSIKAN",
         ],
     ),
 
@@ -287,11 +370,19 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
 
 def detect_expedition_from_text(text: str) -> Optional[str]:
     """
-    Deteksi ekspedisi dari teks PDF layer / OCR (3 lapis).
+    Deteksi ekspedisi dari teks PDF layer / OCR (3 lapis + rescue fallback).
 
-    PENTING — urutan keyword_map:
-    "JNE" harus dicek SEBELUM loop hub_code/fingerprint karena teks JNE
-    sering mengandung nama "JNE" secara eksplisit di label.
+    Alur:
+      Layer 1 → keyword eksplisit ("JNE", "SICEPAT", dll.)
+      Layer 2 → hub code & text fingerprint (SiCepat dicek sebelum JNE)
+      Layer 3 → inferensi dari format No. Resi
+      Rescue  → jika result='jne' tapi resi 12 digit ditemukan → override sicepat
+
+    Rescue fallback (v6):
+      Menangani kasus di mana logo kurir disimpan sebagai IMAGE (bukan teks),
+      hub code ambigu, dan satu-satunya sinyal adalah format resi 12 digit.
+      Format resi 12 digit numerik murni adalah format eksklusif SiCepat —
+      JNE tidak pernah menggunakan resi 12 digit murni numerik.
     """
     text_upper = text.upper()
 
@@ -304,7 +395,7 @@ def detect_expedition_from_text(text: str) -> Optional[str]:
         "idexpress" : ["ID EXPRESS", "IDEXPRESS"],
         "ninja"     : ["NINJA EXPRESS", "NINJA XPRESS", "NVSO"],
         "lion"      : ["LION PARCEL", "LION EXPRESS"],
-        "sicepat"   : ["SICEPAT", "SICEPA\u00C0T"],
+        "sicepat"   : ["SICEPAT", "SICEPÀT"],
     }
     for exp_key, keywords in keyword_map.items():
         for kw in keywords:
@@ -313,15 +404,39 @@ def detect_expedition_from_text(text: str) -> Optional[str]:
                 return exp_key
 
     # ── Layer 2: Hub code & text fingerprints ─────────────────────────────────
-    for exp_key, config in EXPEDITION_REGISTRY.items():
+    # SiCepat dicek SEBELUM JNE agar hub seperti DPS/CGK/SRG
+    # tidak salah jatuh ke JNE.
+    priority_order = ["sicepat", "anteraja", "spx", "jne", "jnt",
+                      "idexpress", "ninja", "lion"]
+    layer2_result = None
+    for exp_key in priority_order:
+        config = EXPEDITION_REGISTRY.get(exp_key)
+        if not config:
+            continue
         for hub_pat in config.hub_code_patterns:
             if hub_pat.search(text):
                 print(f"[Registry detect] Layer2 hub_code match: {exp_key!r}")
-                return exp_key
+                layer2_result = exp_key
+                break
+        if layer2_result:
+            break
         for fp in config.text_fingerprints:
             if fp.upper() in text_upper:
                 print(f"[Registry detect] Layer2 fingerprint match: {exp_key!r} via {fp!r}")
-                return exp_key
+                layer2_result = exp_key
+                break
+        if layer2_result:
+            break
+
+    if layer2_result:
+        # ── Rescue dari Layer 2 ───────────────────────────────────────────────
+        # Jika terdeteksi JNE tapi resi 12 digit ada → override ke sicepat.
+        # Kasus: hub ambigu (misal BDO-like code belum dikenal) + resi sicepat.
+        # JNE tidak pernah menggunakan resi 12 digit numerik murni.
+        if layer2_result == "jne" and _SICEPAT_RESI_12_PAT.search(text):
+            print("[Registry detect] Rescue: Layer2=jne tapi resi 12 digit → override sicepat")
+            return "sicepat"
+        return layer2_result
 
     # ── Layer 3: Inferensi dari format resi ───────────────────────────────────
     resi_inference = re.search(
@@ -338,14 +453,20 @@ def detect_expedition_from_text(text: str) -> Optional[str]:
                               f"via resi={candidate!r}")
                         return exp_key
 
+    # ── Rescue akhir: tidak ada sinyal lain, tapi resi 12 digit ada ──────────
+    # Jika semua layer gagal mendeteksi ekspedisi, tapi teks mengandung
+    # pola No. Resi dengan 12 digit → kembalikan sicepat sebagai best-effort.
+    # Ini menangani kasus ekstrem di mana hub code tidak dikenal sama sekali
+    # dan tidak ada keyword di text layer.
+    if _SICEPAT_RESI_12_PAT.search(text):
+        print("[Registry detect] Rescue akhir: resi 12 digit ditemukan tanpa sinyal lain → sicepat")
+        return "sicepat"
+
     print("[Registry detect] Ekspedisi tidak terdeteksi dari teks")
     return None
 
 
 def extract_resi_from_text(text: str, expedition_key: Optional[str] = None) -> Optional[str]:
-    """
-    Extract nomor resi dari teks OCR / PDF layer.
-    """
     keys_to_try = [expedition_key] if expedition_key else list(EXPEDITION_REGISTRY.keys())
 
     for key in keys_to_try:
@@ -362,7 +483,7 @@ def extract_resi_from_text(text: str, expedition_key: Optional[str] = None) -> O
                     print(f"[Registry] {key}: pattern match tapi excluded: {resi_raw!r}")
                     continue
                 resi = config.normalize_fn(resi_raw) if config.normalize_fn else resi_raw
-                print(f"[Registry] ✅ Resi ditemukan via text [{config.name}]: {resi!r}")
+                print(f"[Registry] Resi ditemukan via text [{config.name}]: {resi!r}")
                 return resi
 
     return None
@@ -385,7 +506,7 @@ def validate_barcode_as_resi(
                 if excluded:
                     continue
                 resi = config.normalize_fn(barcode_text) if config.normalize_fn else barcode_text
-                print(f"[Registry] ✅ Barcode valid sebagai resi [{config.name}]: {resi!r}")
+                print(f"[Registry] Barcode valid sebagai resi [{config.name}]: {resi!r}")
                 return resi, key
 
     return None, None
@@ -410,50 +531,99 @@ def get_barcode_zones(expedition_key: Optional[str] = None) -> list[tuple]:
 # ──────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 60)
-    print("TEST detect_expedition_from_text")
+    print("TEST detect_expedition_from_text — v6")
     print("=" * 60)
 
-    # Teks dari PDF URBAN_84_SHP_150526.pdf (JNE Reguler Shopee)
-    jne_label_text = """
-BDO10101 No. Resi: CM94708765990
-Penerima:Diah Sabariah    Pengirim: Urban Foot Step
-HOME                      6281282127888
-Perumahan Kota baru arjasari blok a3/10 rt. 00  KAB. BOGOR
-4 rw. 13, ARJASARI, KAB. BANDUNG, JAWA BARAT
-KAB. BANDUNG              ARJASARI
-CASHLESS    Penjual tidak perlu bayar ongkir ke Kurir
-Berat: 850 gr  COD: Rp0
-Batas Kirim: 15-05-2026
-No. Pesanan: 260515EUQ8R5TY
-# Nama Produk   SKU       Variasi  Qty
-1 Christian Bale CAMELLIA sandal kulit flatform wanita ban 3 premium original
-  cmlcrm37      CREAM,37  1
-Pesan: (260515EUQ8R5TY)
-"""
-
     test_cases = [
-        # (text, expected_expedition, expected_resi, description)
-        (jne_label_text, "jne", "CM94708765990", "JNE via hub BDO10101 + resi CM"),
-        ("SPXID067214182654 No. Resi: SPXID067214182654", "spx", "SPXID067214182654", "SPX via keyword"),
-        ("No. Resi: 004607855558\nBOO20130", "sicepat", "004607855558", "SiCepat via hub BOO20130"),
-        ("PAKEKO\nNo. Resi: 11003785760273", "anteraja", "11003785760273", "AnterAja via PAKEKO"),
-        # Pastikan CASHLESS saja tidak lagi trigger SiCepat
-        ("CASHLESS Penjual tidak perlu bayar ongkir ke Kurir\nNo. Resi: 004607855558", "sicepat", "004607855558", "SiCepat resi 12 digit (CASHLESS bukan trigger)"),
+        # ── v6: Fix utama — DPS10009 ──────────────────────────────────────────
+        # Page 1: DPS10009, resi 004610042992 — WAS BROKEN in v5
+        # Text layer TIDAK mengandung "SICEPAT" (logo = image),
+        # deteksi murni via hub DPS10009.
+        (
+            "REG | DPS10009 | No. Resi: 004610042992 | Penerima: | Gek Niken",
+            "sicepat", "004610042992",
+            "SiCepat DPS10009 — WAS BROKEN in v5 (DPS was in JNE list)"
+        ),
+        # ── Halaman 2-7 dari PDF CBG_16-22 ───────────────────────────────────
+        (
+            "CGK10501 No. Resi: 004610046236\nNo. Pesanan: 26052374NAWUHQ",
+            "sicepat", "004610046236", "SiCepat CGK10501 (digit 1)"
+        ),
+        (
+            "SRG10015 No. Resi: 004610056006\nNo. Pesanan: 26052377VT2NSP",
+            "sicepat", "004610056006", "SiCepat SRG10015 (digit 1)"
+        ),
+        (
+            "BOO20159 No. Resi: 004610059503\nNo. Pesanan: 2605247WD28N4S",
+            "sicepat", "004610059503", "SiCepat BOO20159 (digit 2)"
+        ),
+        (
+            "CGK10508 No. Resi: 004610056007\nNo. Pesanan: 26052483K5B24K",
+            "sicepat", "004610056007", "SiCepat CGK10508 (digit 1)"
+        ),
+        (
+            "CGK10106 No. Resi: 004610050079\nNo. Pesanan: 26052495S4TV9N",
+            "sicepat", "004610050079", "SiCepat CGK10106 (digit 1)"
+        ),
+        (
+            "BOO20123 No. Resi: 004610057812\nNo. Pesanan: 2605259UP19TYH",
+            "sicepat", "004610057812", "SiCepat BOO20123 (digit 2)"
+        ),
+        # ── Rescue fallback test ──────────────────────────────────────────────
+        # Kasus: hub belum dikenal di future, tapi resi 12 digit → sicepat
+        (
+            "XYZ10999 No. Resi: 009900112233\nKAB. BOGOR",
+            "sicepat", "009900112233",
+            "Rescue akhir: hub belum dikenal XYZ10999 + resi 12 digit → sicepat"
+        ),
+        # ── Pastikan JNE tidak terganggu ──────────────────────────────────────
+        (
+            "BDO10101 No. Resi: CM94708765990\nJNE\nNo. Pesanan: 260515EUQ8R5TY",
+            "jne", "CM94708765990", "JNE via keyword + hub BDO10101"
+        ),
+        (
+            "BDO10101 No. Resi: CM94708765990\nPenerima: Diah",
+            "jne", "CM94708765990", "JNE via hub BDO10101 saja (no keyword)"
+        ),
+        # JNE dengan kota DPS (Denpasar, tapi resi bukan 12 digit) → JNE via keyword
+        (
+            "DPS 123456 No. Resi: CM94708765990\nJNE",
+            "jne", "CM94708765990", "JNE DPS via keyword (resi bukan 12 digit)"
+        ),
+        # ── Test lama ─────────────────────────────────────────────────────────
+        (
+            "SPXID067214182654 No. Resi: SPXID067214182654",
+            "spx", "SPXID067214182654", "SPX via keyword"
+        ),
+        (
+            "No. Resi: 004607855558\nBOO20130",
+            "sicepat", "004607855558", "SiCepat via hub BOO20130"
+        ),
+        (
+            "PAKEKO\nNo. Resi: 11003785760273",
+            "anteraja", "11003785760273", "AnterAja via PAKEKO"
+        ),
+        (
+            "CASHLESS Penjual tidak perlu bayar ongkir ke Kurir\nNo. Resi: 004607855558",
+            "sicepat", "004607855558",
+            "SiCepat resi 12 digit (CASHLESS bukan trigger, rescue akhir)"
+        ),
     ]
 
     all_pass = True
     for text, exp_exp, exp_resi, desc in test_cases:
-        detected_exp = detect_expedition_from_text(text)
+        detected_exp  = detect_expedition_from_text(text)
         detected_resi = extract_resi_from_text(text, detected_exp)
         ok_exp  = detected_exp  == exp_exp
         ok_resi = detected_resi == exp_resi
         ok = ok_exp and ok_resi
-        if not ok: all_pass = False
-        print(f"{'✅' if ok else '❌'} {desc}")
+        if not ok:
+            all_pass = False
+        print(f"{'OK' if ok else 'FAIL'} {desc}")
         if not ok_exp:
             print(f"   expedition got={detected_exp!r} expected={exp_exp!r}")
         if not ok_resi:
             print(f"   resi      got={detected_resi!r} expected={exp_resi!r}")
 
     print("=" * 60)
-    print(f"{'✅ SEMUA PASS' if all_pass else '❌ ADA YANG GAGAL'}")
+    print(f"{'SEMUA PASS' if all_pass else 'ADA YANG GAGAL'}")
