@@ -74,7 +74,7 @@ class BackupController extends Controller
                 'role_hak_akses',
                 'hak_akses',
                 'satuan',
-                'dropsipper',
+                'dropshipper',
                 'supplier',
             ];
 
