@@ -16,44 +16,70 @@ class ImportPenjualanController extends Controller
     // ================================================================
     // ENDPOINT BARU (Async): Step 1 — Submit job, dapat job_id
     // ================================================================
+    
     public function submitMultipleResiJob(Request $request)
     {
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:20480',
-            'mode' => 'nullable|string|in:shopee,tiktok',
+            'file'           => 'required|file|mimes:jpg,jpeg,png,pdf|max:20480',
+            'mode'           => 'nullable|string|in:shopee,tiktok',
+            'ekspedisi_mode' => 'nullable|string|max:50',  // ← TAMBAHAN
         ]);
-
-        $mode = $request->input('mode', 'shopee');
-        $file = $request->file('file');
-
+    
+        $mode          = $request->input('mode', 'shopee');
+        $ekspedisiMode = $request->input('ekspedisi_mode');  // ← TAMBAHAN
+        $file          = $request->file('file');
+    
+        // Build multipart payload ke FastAPI
+        $multipart = [
+            [
+                'name'     => 'file',
+                'contents' => file_get_contents($file->getRealPath()),
+                'filename' => $file->getClientOriginalName(),
+            ],
+            [
+                'name'     => 'mode',
+                'contents' => $mode,
+            ],
+        ];
+    
+        // Hanya kirim ekspedisi_mode kalau diisi (tidak kirim string kosong)
+        if ($ekspedisiMode) {
+            $multipart[] = [
+                'name'     => 'ekspedisi_mode',
+                'contents' => $ekspedisiMode,
+            ];
+        }
+    
         try {
+            // Gunakan multipart manual supaya bisa kirim field campuran
             $response = Http::timeout(30)
                 ->attach(
                     'file',
                     file_get_contents($file->getRealPath()),
                     $file->getClientOriginalName()
                 )
-                ->post($this->fastApiUrl() . '/scan-resi-multiple-async', [
-                    'mode' => $mode,
-                ]);
-
+                ->post($this->fastApiUrl() . '/scan-resi-multiple-async', array_filter([
+                    'mode'           => $mode,
+                    'ekspedisi_mode' => $ekspedisiMode ?: null,  // ← TAMBAHAN
+                ]));
+    
             if ($response->failed()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'OCR service error: HTTP ' . $response->status(),
                 ], 502);
             }
-
+    
             $payload = $response->json();
-
-            // Kembalikan job_id ke frontend untuk polling
+    
             return response()->json([
-                'success'     => true,
-                'job_id'      => $payload['job_id'],
-                'total_pages' => $payload['total_pages'],
-                'status'      => 'queued',
+                'success'        => true,
+                'job_id'         => $payload['job_id'],
+                'total_pages'    => $payload['total_pages'],
+                'ekspedisi_mode' => $payload['ekspedisi_mode'] ?? $ekspedisiMode,  // echo balik
+                'status'         => 'queued',
             ]);
-
+    
         } catch (\Illuminate\Http\Client\ConnectionException $e) {
             return response()->json([
                 'success' => false,
@@ -66,7 +92,6 @@ class ImportPenjualanController extends Controller
             ], 500);
         }
     }
-
     // ================================================================
     // ENDPOINT BARU (Async): Step 2 — Polling status job
     // ================================================================

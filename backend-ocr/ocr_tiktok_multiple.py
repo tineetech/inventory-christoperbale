@@ -626,7 +626,7 @@ def _parse_items_tiktok_from_pdf_page(page) -> list[dict]:
 
     return items
     
-def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None) -> dict:
+def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None,ekspedisi_mode: str = None) -> dict:
     print(f"\n[TikTok Page {page_num}] Mulai proses...")
 
     image_b64 = _cv_to_base64_jpeg(img_cv)

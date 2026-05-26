@@ -1,19 +1,12 @@
 """
-ocr_shopee_multiple.py — patched v3
+ocr_shopee_multiple.py — patched v4
 ====================================
-Fix utama vs v2:
-  - _process_single_page_cv: sebelumnya hanya bisa ekstrak resi SPX.
-    Sekarang gunakan expedition_registry untuk deteksi resi dari
-    semua ekspedisi (SiCepat, JNE, J&T, dll).
-
-  Alur baru di _process_single_page_cv:
-    1. Extract teks dari PDF layer (atau OCR fallback)
-    2. Deteksi ekspedisi dari teks → expedition_key
-    3. Scan barcode dengan hint expedition_key → resi lebih akurat
-    4. Jika barcode gagal → coba extract resi dari teks via registry
-
-  Semua perubahan lain (timeout handling, pdfplumber, item parsing)
-  tetap sama seperti v2.
+Fix v4 vs v3:
+  - _process_single_page_cv sekarang menerima ekspedisi_mode (opsional).
+    Jika diisi → skip auto-detect, langsung pakai registry ekspedisi tsb
+    via process_label(). Eliminasi false-positive antar ekspedisi.
+  - Jika ekspedisi_mode=None → perilaku auto-detect v3 tetap jalan.
+  - Tidak ada perubahan lain.
 """
 
 import re
@@ -33,6 +26,7 @@ from ocr_pdf_patch import extract_order_id_from_barcode
 
 # ── Import registry ekspedisi ──────────────────────────────────────────────
 from expedition_registry import (
+    process_label,               # ← v4: entry point utama
     detect_expedition_from_text,
     extract_resi_from_text,
     validate_barcode_as_resi,
@@ -44,7 +38,7 @@ _pdfplumber_lock = threading.Lock()
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Timeout wrapper (tidak berubah dari v2)
+# Timeout wrapper (tidak berubah dari v3)
 # ──────────────────────────────────────────────────────────────────────────────
 
 class TesseractTimeout(Exception):
@@ -78,7 +72,7 @@ def run_tesseract_data_safe(img, output_type, config="", timeout_sec=30):
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# PDF text layer extraction (tidak berubah dari v2)
+# PDF text layer extraction (tidak berubah dari v3)
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _extract_text_and_items_from_pdf_layer(pdf_path: str, page_num: int) -> tuple[str, list]:
@@ -274,7 +268,7 @@ def _parse_items_from_pdf_text(text: str) -> list:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Image helpers
+# Image helpers (tidak berubah dari v3)
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _cv_to_base64_jpeg(img_cv: np.ndarray, quality: int = 70, max_width: int = 900) -> str:
@@ -303,20 +297,24 @@ def _extract_items_safe(img_cv: np.ndarray, timeout_sec: int = 45) -> list:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Core processor — v3: expedition-aware
+# Core processor — v4: ekspedisi_mode aware
 # ──────────────────────────────────────────────────────────────────────────────
 
-def _process_single_page_cv(img_cv: np.ndarray, page_num: int,
-                              pdf_path: str = None) -> dict:
+def _process_single_page_cv(
+    img_cv        : np.ndarray,
+    page_num      : int,
+    pdf_path      : str = None,
+    ekspedisi_mode: str = None,   # ← TAMBAHAN v4
+) -> dict:
     """
     Proses 1 cv2 BGR image → hasil parse 1 resi.
 
-    Perubahan v3:
-    - Deteksi ekspedisi dari teks PDF layer / OCR
-    - Scan barcode dengan hint ekspedisi (lebih akurat)
-    - Fallback extract resi dari teks jika barcode gagal
+    ekspedisi_mode : kunci ekspedisi yang sudah diketahui ("jne", "sicepat", dst).
+                     Jika diisi → skip auto-detect Layer 1/2/3, langsung pakai
+                     registry ekspedisi tsb. Eliminasi false-positive.
+                     Jika None → auto-detect seperti v3.
     """
-    print(f"\n[Page {page_num}] Mulai proses...")
+    print(f"\n[Page {page_num}] Mulai proses... ekspedisi_mode={ekspedisi_mode or 'auto'}")
 
     image_b64 = _cv_to_base64_jpeg(img_cv)
 
@@ -348,37 +346,35 @@ def _process_single_page_cv(img_cv: np.ndarray, page_num: int,
             print(f"[Page {page_num}] Item parsing error: {e}")
             items = []
 
-    # ── Step 2: Deteksi ekspedisi dari teks ────────────────────────────────
-    expedition_key = detect_expedition_from_text(ocr_text)
+    # ── Step 2: Deteksi ekspedisi + extract resi dari teks ────────────────
+    # v4: gunakan process_label() — kalau ekspedisi_mode diisi, skip auto-detect
+    expedition_key, resi_from_text = process_label(ocr_text, ekspedisi_mode=ekspedisi_mode)
     print(f"[Page {page_num}] Ekspedisi terdeteksi: {expedition_key!r}")
 
     # ── Step 3: Scan barcode dengan hint ekspedisi ─────────────────────────
     print(f"[Page {page_num}] Scanning barcode (expedition={expedition_key!r})...")
     resi_from_barcode = extract_resi_from_barcode_cv(img_cv, expedition_key)
 
-    # ── Step 4: Jika barcode gagal → extract resi dari teks ───────────────
-    resi_from_text = None
-    if not resi_from_barcode:
-        resi_from_text = extract_resi_from_text(ocr_text, expedition_key)
-        if resi_from_text:
-            print(f"[Page {page_num}] ✅ Resi dari teks: {resi_from_text!r}")
-
+    # Barcode lebih dipercaya daripada teks — pakai barcode kalau ada
     resi = resi_from_barcode or resi_from_text
+    if resi_from_barcode:
+        print(f"[Page {page_num}] ✅ Resi dari barcode: {resi_from_barcode!r}")
+    elif resi_from_text:
+        print(f"[Page {page_num}] ✅ Resi dari teks: {resi_from_text!r}")
 
-    # ── Step 5: Gabungkan ke full_text ────────────────────────────────────
+    # ── Step 4: Gabungkan ke full_text ────────────────────────────────────
     if resi:
         full_text = f"No.Resi: {resi}\n" + ocr_text
     else:
         full_text = ocr_text
 
-    # ── Step 6: Parse Shopee (order_id, items, skus) ──────────────────────
+    # ── Step 5: Parse Shopee (order_id, items, skus) ──────────────────────
     result = parse_shopee(full_text, items)
 
-    # Override resi jika sudah didapat dari barcode/teks
     if resi:
         result["resi"] = resi
 
-    # ── Step 7: Order ID dari barcode ─────────────────────────────────────
+    # ── Step 6: Order ID dari barcode ─────────────────────────────────────
     order_id_from_barcode = None
     try:
         order_id_from_barcode = extract_order_id_from_barcode(img_cv)
@@ -395,7 +391,7 @@ def _process_single_page_cv(img_cv: np.ndarray, page_num: int,
 
     result["page"]         = page_num
     result["image_base64"] = image_b64
-    result["expedition"]   = expedition_key  # ← field baru, informatif
+    result["expedition"]   = expedition_key
 
     print(f"[Page {page_num}] ✅ SELESAI — resi={result.get('resi')} "
           f"order_id={result.get('order_id')} exp={expedition_key} "

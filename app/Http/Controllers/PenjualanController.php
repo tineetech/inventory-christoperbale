@@ -772,7 +772,7 @@ class PenjualanController extends Controller
 
         // Siapkan data lengkap untuk setiap penjualan
         $struks = $penjualanList->map(function ($penjualan) {
-            $nomorUrut   = Penjualan::where('id', '<=', $penjualan->id)->where('dropshipper_id', $penjualan->dropshipper_id)->count();
+            $nomorUrut   = Penjualan::where('id', '<=', $penjualan->id)->whereDate('tanggal', today())->where('dropshipper_id', $penjualan->dropshipper_id)->count();
             $dropshipper = strtoupper($penjualan->dropshipper->nama);
             $nomorStruk  = sprintf(
                 $dropshipper . "-%04d-%s",
@@ -821,7 +821,7 @@ class PenjualanController extends Controller
     {
         $penjualan = Penjualan::findOrFail($id);
 
-        $nomorUrut = Penjualan::where('id', '<=', $penjualan->id)->where('dropshipper_id', $penjualan->dropshipper_id)->count();
+        $nomorUrut = Penjualan::where('id', '<=', $penjualan->id)->whereDate('tanggal', today())->where('dropshipper_id', $penjualan->dropshipper_id)->count();
         $dropshipper = strtoupper($penjualan->dropshipper->nama);
         $noUrutAwal = $dropshipper . "-%04d-%s";
         // dd($nomorUrut);

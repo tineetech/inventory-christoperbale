@@ -7,6 +7,10 @@ Update:
   3. Import cleanup_pdf_task dari tasks
 """
 
+from typing import Optional
+from expedition_registry import resolve_ekspedisi_mode   # ← import helper baru
+ 
+
 from fastapi import FastAPI, UploadFile, File, Form
 import shutil
 import uuid
@@ -121,23 +125,34 @@ async def scan_resi_multiple(mode: str = Form(...), file: UploadFile = File(...)
 # ENDPOINT ASYNC: Submit job → return job_id langsung
 # ──────────────────────────────────────────────────────────────────
 
+
+ 
 @app.post("/scan-resi-multiple-async")
 async def scan_resi_multiple_async(
-    mode: str = Form(...),
-    file: UploadFile = File(...)
+    mode            : str            = Form(...),
+    ekspedisi_mode  : Optional[str]  = Form(None),   # ← TAMBAHAN: opsional
+    file            : UploadFile     = File(...)
 ):
     ext = file.filename.split(".")[-1].lower()
     if ext not in ALLOWED_EXT:
         return {"error": "Format file tidak didukung. Gunakan PDF/JPG/PNG"}
-
+ 
     if mode not in ("shopee", "tiktok"):
         return {"error": f"mode '{mode}' tidak dikenal"}
-
+ 
+    # Validasi & normalisasi ekspedisi_mode kalau dikirim
+    # Contoh input valid: "jne", "JNE", "JNE Reguler", "j&t", "sicepat", dsb.
+    resolved_ekspedisi = None
+    if ekspedisi_mode:
+        resolved_ekspedisi = resolve_ekspedisi_mode(ekspedisi_mode)
+        if resolved_ekspedisi is None:
+            return {"error": f"ekspedisi_mode '{ekspedisi_mode}' tidak dikenal"}
+ 
     job_id   = str(uuid.uuid4())
     filename = f"{UPLOAD_DIR}/{job_id}.{ext}"
     with open(filename, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-
+ 
     total_pages = None
     if ext == "pdf":
         try:
@@ -146,19 +161,21 @@ async def scan_resi_multiple_async(
             total_pages = len(reader.pages)
         except Exception:
             pass
-
+ 
     r.hset(f"ocr_job:{job_id}", mapping={
-        "status"      : "queued",
-        "mode"        : mode,
-        "total_pages" : total_pages or 0,
-        "done_pages"  : 0,
-        "failed_pages": 0,
+        "status"          : "queued",
+        "mode"            : mode,
+        "ekspedisi_mode"  : resolved_ekspedisi or "",   # ← simpan ke Redis
+        "total_pages"     : total_pages or 0,
+        "done_pages"      : 0,
+        "failed_pages"    : 0,
     })
     r.expire(f"ocr_job:{job_id}", 3600)
-
+ 
     if ext == "pdf":
         enqueue_pdf_pages.apply_async(
             args=[job_id, filename, mode],
+            kwargs={"ekspedisi_mode": resolved_ekspedisi},   # ← pass ke task
             queue="ocr",
         )
     else:
@@ -167,18 +184,23 @@ async def scan_resi_multiple_async(
         r.hset(f"ocr_job:{job_id}", "status", "processing")
         process_page_task.apply_async(
             args  = [job_id, 1, filename, mode],
-            kwargs= {"pdf_path": None},
+            kwargs= {
+                "pdf_path"       : None,
+                "ekspedisi_mode" : resolved_ekspedisi,   # ← pass ke task
+            },
             queue = "ocr",
         )
-
-    print(f"[Async] Job {job_id} queued | mode={mode} | ext={ext} | pages={total_pages}")
-
+ 
+    print(f"[Async] Job {job_id} queued | mode={mode} | "
+          f"ekspedisi={resolved_ekspedisi or 'auto'} | ext={ext} | pages={total_pages}")
+ 
     return {
-        "job_id"     : job_id,
-        "status"     : "queued",
-        "total_pages": total_pages,
+        "job_id"         : job_id,
+        "status"         : "queued",
+        "total_pages"    : total_pages,
+        "ekspedisi_mode" : resolved_ekspedisi,   # echo balik ke client
     }
-
+ 
 
 # ──────────────────────────────────────────────────────────────────
 # ENDPOINT: Cek status + ambil hasil

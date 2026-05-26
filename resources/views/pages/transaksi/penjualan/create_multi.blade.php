@@ -422,6 +422,19 @@
             border-color: #adb5bd;
             background: #fff;
         }
+
+        
+    /* Ekspedisi cards — active state pakai warna netral */
+    [id^="mode_card_ekspedisi_"].active {
+        border-color: #4e73df;
+        background: #eef2ff;
+        box-shadow: 0 0 0 3px rgba(78, 115, 223, .12);
+    }
+ 
+    /* Hide ekspedisi selector saat mode = tiktok */
+    #ekspedisi-selector.hidden {
+        display: none !important;
+    }
     </style>
 @endsection
 
@@ -524,6 +537,66 @@
                     </div>
                     {{-- END SELECT MODE --}}
 
+                    
+{{-- ★ SELECT EKSPEDISI (tampil hanya saat mode=shopee) --}}
+<div class="mt-3" id="ekspedisi-selector" style="">
+    <label class="font-weight-bold small text-uppercase" style="letter-spacing:.06em; color:#495057;">
+        <i class="feather icon-truck mr-1"></i> Ekspedisi
+    </label>
+    <div class="d-flex flex-wrap" style="gap:8px;">
+ 
+        {{-- Auto-detect --}}
+        <label class="mode-option">
+            <input type="radio" name="import_ekspedisi" id="ekspedisi_auto" value="" checked hidden>
+            <div class="mode-card" id="mode_card_ekspedisi_auto" style="min-width:90px;">
+                <i class="feather icon-zap mr-1" style="font-size:.9rem;"></i>
+                <span>Auto</span>
+                <i class="feather icon-check-circle ml-2 mode-check"></i>
+            </div>
+        </label>
+ 
+        <label class="mode-option">
+            <input type="radio" name="import_ekspedisi" id="ekspedisi_spx" value="spx" hidden>
+            <div class="mode-card" id="mode_card_ekspedisi_spx" style="min-width:90px;">
+                <span>SPX</span>
+                <i class="feather icon-check-circle ml-2 mode-check"></i>
+            </div>
+        </label>
+ 
+        <label class="mode-option">
+            <input type="radio" name="import_ekspedisi" id="ekspedisi_sicepat" value="sicepat" hidden>
+            <div class="mode-card" id="mode_card_ekspedisi_sicepat" style="min-width:90px;">
+                <span>SiCepat</span>
+                <i class="feather icon-check-circle ml-2 mode-check"></i>
+            </div>
+        </label>
+ 
+        <label class="mode-option">
+            <input type="radio" name="import_ekspedisi" id="ekspedisi_anteraja" value="anteraja" hidden>
+            <div class="mode-card" id="mode_card_ekspedisi_anteraja" style="min-width:90px;">
+                <span>AnterAja</span>
+                <i class="feather icon-check-circle ml-2 mode-check"></i>
+            </div>
+        </label>
+ 
+ 
+        <label class="mode-option">
+            <input type="radio" name="import_ekspedisi" id="ekspedisi_jne" value="jne" hidden>
+            <div class="mode-card" id="mode_card_ekspedisi_jne" style="min-width:90px;">
+                <span>JNE</span>
+                <i class="feather icon-check-circle ml-2 mode-check"></i>
+            </div>
+        </label>
+        
+ 
+    </div>
+    <p class="text-muted small mb-0 mt-1">
+        <i class="feather icon-info mr-1"></i>
+        Pilih <strong>Auto</strong> untuk deteksi otomatis (Auto lebih akurat kepada ekspedisi SPX).
+        Pilih ekspedisi spesifik untuk hasil lebih akurat.
+    </p>
+</div>
+{{-- END SELECT EKSPEDISI --}}
                     <button type="button" id="btn_import_multiple" class="btn btn-primary w-100 mt-3"
                         style="font-size:1rem;padding:12px;">
                         <i class="feather icon-zap mr-2"></i>
@@ -2120,126 +2193,60 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
         // ================================================================
         // MODE SELECTOR
         // ================================================================
+        
+// ── 1. Helper: ambil nilai ekspedisi_mode ────────────────────────────────────
+function getEkspedisiMode() {
+    return document.querySelector('input[name="import_ekspedisi"]:checked')?.value ?? '';
+}
+ 
+// ── 2. Listener ekspedisi card click ────────────────────────────────────────
+document.querySelectorAll('[id^="mode_card_ekspedisi_"]').forEach(card => {
+    card.addEventListener('click', function () {
+        const key = this.id.replace('mode_card_ekspedisi_', '');
+        document.getElementById(`ekspedisi_${key}`)?.setAttribute('checked', true);
+        document.querySelectorAll('[id^="mode_card_ekspedisi_"]').forEach(c => c.classList.remove('active'));
+        this.classList.add('active');
+        // sync radio
+        const radio = document.getElementById(`ekspedisi_${key}`);
+        if (radio) radio.checked = true;
+    });
+});
+ 
         function getImportMode() {
             return document.querySelector('input[name="import_mode"]:checked')?.value ?? 'shopee';
         }
-        $('input[name="import_mode"]').on('change', function() {
-            const mode = this.value;
-            $('.mode-card').removeClass('active');
-            $(`#mode_card_${mode}`).addClass('active');
-            $('#import_mode_badge').text(mode === 'shopee' ? 'Shopee' : 'TikTok J&T');
-        });
+        
+$('input[name="import_mode"]').on('change', function () {
+    const mode = this.value;
+
+    // ← TAMBAH: update active state card platform
+    $('.mode-card--shopee, .mode-card--tiktok').removeClass('active');
+    $(`#mode_card_${mode}`).addClass('active');
+
+    // update badge teks di button import
+    $('#import_mode_badge').text(mode === 'shopee' ? 'Shopee' : 'TikTok J&T');
+
+    if (mode === 'tiktok') {
+        $('#ekspedisi-selector').addClass('hidden');
+        // Reset ke auto saat tiktok
+        document.getElementById('ekspedisi_auto').checked = true;
+        document.querySelectorAll('[id^="mode_card_ekspedisi_"]').forEach(c => c.classList.remove('active'));
+        document.getElementById('mode_card_ekspedisi_auto').classList.add('active');
+    } else {
+        $('#ekspedisi-selector').removeClass('hidden');
+    }
+});
+ 
+
         $('.mode-card[id^="mode_card_shopee"], .mode-card[id^="mode_card_tiktok"]').on('click', function() {
             const mode = $(this).attr('id').replace('mode_card_', '');
             $(`#import_mode_${mode}`).prop('checked', true).trigger('change');
         });
 
-        // ================================================================
-        // IMPORT MULTIPLE RESI
-        // ================================================================
-        // $('#btn_import_multiple').on('click', async function() {
-        //     const file = document.getElementById('file_multiple_resi').files[0];
-        //     if (!file) { Swal.fire('Oops!', 'Pilih file resi terlebih dahulu.', 'warning'); return; }
-
-        //     const mode      = getImportMode();
-        //     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
-
-        //     $('#import-loading').addClass('active');
-        //     $('#loading-text').text(`Mengirim file ke server OCR (${mode})...`);
-        //     clearInfoPanel();
-
-        //     const formData = new FormData();
-        //     formData.append('file', file);
-        //     formData.append('mode', mode);
-
-        //     try {
-        //         const response = await fetch('/api/penjualan/import/multiple-resi', {
-        //             method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken }, body: formData,
-        //         });
-        //         const result = await response.json();
-        //         $('#import-loading').removeClass('active');
-
-        //         if (!response.ok || !result.success) {
-        //             Swal.fire('Gagal', result.message ?? 'Terjadi kesalahan.', 'error'); return;
-        //         }
-
-        //         const backendWarnings  = result.warnings ?? [];
-        //         const extraErrors      = [];
-        //         const skippedDuplicates = [];
-
-        //         if (!result.data || result.data.length === 0) {
-        //             renderInfoPanel(backendWarnings, [], { total: 0, skipped: result.total_skipped ?? 0 });
-        //             Swal.fire('Info', 'Tidak ada resi yang berhasil diimport.', 'info');
-        //             return;
-        //         }
-
-        //         for (const resiData of result.data) {
-        //             const resiVal    = (resiData.resi     ?? '').trim();
-        //             const pesananVal = (resiData.order_id ?? '').trim();
-
-        //             // ── Cek duplicate sebelum buat card ──────────────────
-        //             const dup = checkDuplicateResi(resiVal, pesananVal);
-        //             if (dup.isDuplicate) {
-        //                 const label = dup.type === 'resi' ? 'No. Resi' : 'No. Pesanan';
-        //                 skippedDuplicates.push(
-        //                     `Hal. ${resiData.page}: ${label} <strong>${dup.value}</strong> sudah ada di list, dilewati.`
-        //                 );
-        //                 continue;
-        //             }
-
-        //             // ── Buat card (skipDupCheck=true karena sudah dicek) ──
-        //             const cardId = addResiCard(resiVal, pesananVal, true);
-        //             if (!cardId) continue;
-
-        //             // Inject gambar resi
-        //             if (resiData.image_base64) {
-        //                 const filename = `resi_page${resiData.page}_${resiVal || 'unknown'}.jpg`;
-        //                 storeBase64ForCard(cardId, resiData.image_base64, filename);
-        //                 showFilePreview(cardId, resiData.image_base64, filename);
-        //             }
-
-        //             // Lookup & inject produk
-        //             if (resiData.items && resiData.items.length > 0) {
-        //                 for (const ocrItem of resiData.items) {
-        //                     const sku = ocrItem.sku;
-        //                     if (!sku) continue;
-        //                     try {
-        //                         const res      = await fetch(`/api/product/search?q=${encodeURIComponent(sku)}`);
-        //                         const products = await res.json();
-        //                         if (!products || products.length === 0) {
-        //                             extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak ditemukan.`);
-        //                             continue;
-        //                         }
-        //                         const product = products.find(p => p.sku === sku) ?? products[0];
-        //                         if (product.sku !== sku)
-        //                             extraErrors.push(`Hal. ${resiData.page}: SKU <strong>${sku}</strong> tidak exact, pakai <strong>${product.sku}</strong>.`);
-        //                         addItemToCard(cardId, product, ocrItem.qty ?? 1);
-        //                         setTimeout(() => {
-        //                             if (resiVal)    $(`#row_${cardId}_${product.id} .nomor_resi`).val(resiVal);
-        //                             if (pesananVal) $(`#row_${cardId}_${product.id} .nomor_pesanan`).val(pesananVal);
-        //                         }, 100);
-        //                     } catch (err) {
-        //                         extraErrors.push(`Hal. ${resiData.page}: Gagal cari SKU <strong>${sku}</strong> — ${err.message}`);
-        //                     }
-        //                 }
-        //             }
-        //         }
-
-        //         // Gabungkan duplicate notices ke panel
-        //         skippedDuplicates.forEach(msg => extraErrors.push(msg));
-
-        //         renderInfoPanel(backendWarnings, extraErrors, {
-        //             total  : result.total - skippedDuplicates.length,
-        //             skipped: (result.total_skipped ?? 0) + skippedDuplicates.length,
-        //         });
-        //         document.getElementById('file_multiple_resi').value = '';
-        //         $('html, body').animate({ scrollTop: $('#import-info-panel').offset().top - 80 }, 400);
-
-        //     } catch (err) {
-        //         $('#import-loading').removeClass('active');
-        //         Swal.fire('Error', 'Koneksi gagal: ' + err.message, 'error');
-        //     }
-        // });
+        
+ 
+// ── 4. Init: set auto card sebagai active ────────────────────────────────────
+document.getElementById('mode_card_ekspedisi_auto')?.classList.add('active');
 
         // ================================================================
         // FORM SUBMIT
@@ -2447,6 +2454,11 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
             const formData = new FormData();
             formData.append('file', file);
             formData.append('mode', mode);
+            
+            const ekspedisiMode = getEkspedisiMode();
+            if (ekspedisiMode) formData.append('ekspedisi_mode', ekspedisiMode);
+            modalLog(`Ekspedisi: ${ekspedisiMode || 'auto-detect'}`, 'info');
+        
 
             let submitResult;
             try {

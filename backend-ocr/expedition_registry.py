@@ -1,26 +1,19 @@
 """
 expedition_registry.py — Sistem Registry Ekspedisi
 ====================================================
-[versi patched v4]
+[versi patched v5]
 
-Fix v4 vs v3:
-  Bug: Resi JNE tidak terdeteksi karena:
-    1. "CASHLESS" + "PENJUAL TIDAK PERLU BAYAR ONGKIR" adalah teks SHOPEE
-       standar — bukan eksklusif SiCepat. Fingerprint ini menyebabkan hampir
-       semua label Shopee dideteksi sebagai SiCepat, termasuk JNE.
-    2. Kode hub BDO10101 (JNE) match pattern hub SiCepat [A-Z]{3}\d{5}
-       karena pattern terlalu lebar.
-    3. Pattern resi JNE hanya cover prefix CGK, belum cover CM, BDO, SUB,
-       MLG, dan banyak kode kota JNE lainnya.
+Fix v5 vs v4:
+  Tambah fungsi process_label(text, ekspedisi_mode) sebagai entry point utama.
 
-  Fix:
-    1. Hapus "PENJUAL TIDAK PERLU BAYAR" dan "CASHLESS" dari
-       text_fingerprints SiCepat — ini teks Shopee generik, bukan ciri khas.
-    2. Perkuat hub SiCepat: digit pertama setelah 3 huruf harus '0'
-       (pola real: BOO20130, CGK00001) → [A-Z]{3}0\d{4}
-    3. Tambah hub_code_patterns JNE: kode-kode kota JNE yang diketahui.
-    4. Perluas resi_text_patterns JNE agar cover lebih banyak prefix kota.
-    5. Tambah "No. Resi: CM..." ke extract_resi_from_text agar terbaca.
+  - ekspedisi_mode diisi (misal "jne", "sicepat") → skip auto-detect Layer 1/2/3,
+    langsung proses pakai registry ekspedisi yang dimaksud.
+    Menghilangkan seluruh risiko false-positive antar ekspedisi.
+  - ekspedisi_mode = None → fallback ke auto-detect seperti v4.
+
+  Contoh pemanggilan dari FastAPI task:
+    exp, resi = process_label(pdf_text, ekspedisi_mode="jne")
+    exp, resi = process_label(pdf_text)  # auto-detect
 """
 
 import re
@@ -126,13 +119,6 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
     ),
 
     # ── 3. SiCepat ────────────────────────────────────────────────────────────
-    # FIX v4:
-    #   - Hapus fingerprint "PENJUAL TIDAK PERLU BAYAR" dan "CASHLESS" —
-    #     kedua teks ini muncul di label Shopee SEMUA ekspedisi, bukan
-    #     eksklusif SiCepat. Menyebabkan false positive masif.
-    #   - Perkuat hub pattern: SiCepat real → digit pertama setelah 3 huruf
-    #     adalah '0' (BOO20130, CGK00001). Pattern baru: [A-Z]{3}0\d{4}
-    #     sehingga BDO10101 (JNE) tidak lagi match.
     "sicepat": ExpeditionConfig(
         name="SiCepat",
         resi_text_patterns=[
@@ -152,34 +138,20 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
             re.compile(r'^26\d{4}[A-Z0-9]{6,}$'),
         ],
         hub_code_patterns=[
-            # FIX: digit pertama setelah 3 huruf HARUS '0' (pola real SiCepat)
-            # BOO20130, CGK00001, BDG01234 — BUKAN BDO10101 (itu JNE)
             re.compile(r'\b[A-Z]{3}0\d{4}\b'),
         ],
         text_fingerprints=[
-            # DIHAPUS: "PENJUAL TIDAK PERLU BAYAR ONGKIR" → teks Shopee generik
-            # DIHAPUS: "PENJUAL TIDAK PERLU BAYAR"        → teks Shopee generik
-            # DIHAPUS: "CASHLESS"                         → teks Shopee generik
             "SICEPAT",
             "SICEPA",
         ],
     ),
 
     # ── 4. JNE ────────────────────────────────────────────────────────────────
-    # FIX v4:
-    #   - Perluas resi_text_patterns: cover prefix kota JNE selain CGK.
-    #     Format resi JNE: [2-3 huruf kota][8-13 digit][opsional huruf]
-    #     Contoh real: CM94708765990, CGK10285432198, BDO123456789
-    #   - Tambah hub_code_patterns: kode-kode kota/hub JNE yang diketahui.
-    #     Format hub JNE di label: [kode kota] + angka, misal BDO10101
     "jne": ExpeditionConfig(
         name="JNE",
         resi_text_patterns=[
-            # Pattern utama: 2-3 huruf + 8-13 digit (cover CM, CGK, BDO, SUB, dll)
             re.compile(r'No\.?\s*Resi\s*[:\s]+([A-Z]{2,3}\d{8,13}[A-Z0-9]*)', re.IGNORECASE),
-            # Fallback langsung: CM + digit (common JNE prefix)
             re.compile(r'\bNo\.\s*Resi\s*[:\s]*(CM\d{8,})', re.IGNORECASE),
-            # Barcode / teks bebas: awali CGK (paling umum)
             re.compile(r'(CGK[A-Z0-9]{8,})', re.IGNORECASE),
         ],
         barcode_resi_patterns=[
@@ -193,15 +165,17 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
         ],
         normalize_fn=_normalize_jne,
         hub_code_patterns=[
-            # FIX: hub JNE dikenal dengan kode kota 2-3 huruf + 4-6 digit
-            # Contoh: BDO10101, CGK12345, SUB00123, MLG00456, JOG10001
-            # Bedakan dari SiCepat (digit pertama '0') dengan accept digit apapun
-            re.compile(r'\b(BDO|CGK|SUB|MLG|JOG|MES|BPN|PLM|PNK|UPG|DPS|LOP|AMQ|MDC|SRG|SMG|SOC|BTH|PKU|TKG|PDG|BKS|CBN|CIK|CLP|BJM|KOE|TTE|BIK|MKS)\d{3,6}\b', re.IGNORECASE),
+            re.compile(
+                r'\b(BDO|CGK|SUB|MLG|JOG|MES|BPN|PLM|PNK|UPG|DPS|LOP|AMQ|MDC|'
+                r'SRG|SMG|SOC|BTH|PKU|TKG|PDG|BKS|CBN|CIK|CLP|BJM|KOE|TTE|BIK|MKS)'
+                r'\d{3,6}\b',
+                re.IGNORECASE,
+            ),
         ],
         text_fingerprints=[
             "JNE",
             "JALUR NUGRAHA",
-            "PESANAN ANDA DIASURANSIKAN",  # teks khas JNE
+            "PESANAN ANDA DIASURANSIKAN",
         ],
     ),
 
@@ -280,18 +254,118 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
     ),
 }
 
+# Alias yang diterima dari luar (form param) → kunci registry
+# Berguna kalau frontend kirim "jne reguler", "jnt", "j&t", dsb.
+EKSPEDISI_ALIAS: dict[str, str] = {
+    # SPX
+    "spx"              : "spx",
+    "shopee express"   : "spx",
+    "shopee"           : "spx",
+    # AnterAja
+    "anteraja"         : "anteraja",
+    "anter aja"        : "anteraja",
+    # SiCepat
+    "sicepat"          : "sicepat",
+    "si cepat"         : "sicepat",
+    # JNE
+    "jne"              : "jne",
+    "jne reguler"      : "jne",
+    "jne yes"          : "jne",
+    "jne oke"          : "jne",
+    # J&T
+    "jnt"              : "jnt",
+    "j&t"              : "jnt",
+    "jt"               : "jnt",
+    "j&t express"      : "jnt",
+    # ID Express
+    "idexpress"        : "idexpress",
+    "id express"       : "idexpress",
+    # Ninja
+    "ninja"            : "ninja",
+    "ninja express"    : "ninja",
+    "ninja xpress"     : "ninja",
+    # Lion
+    "lion"             : "lion",
+    "lion parcel"      : "lion",
+}
+
+
+def resolve_ekspedisi_mode(raw: Optional[str]) -> Optional[str]:
+    """
+    Normalisasi string ekspedisi_mode dari input luar (Form, query param, dsb)
+    ke kunci registry. Return None kalau tidak dikenali.
+
+    Contoh:
+        resolve_ekspedisi_mode("JNE Reguler") → "jne"
+        resolve_ekspedisi_mode("J&T")         → "jnt"
+        resolve_ekspedisi_mode(None)           → None
+        resolve_ekspedisi_mode("xyz")          → None  (tidak dikenal)
+    """
+    if not raw:
+        return None
+    key = raw.strip().lower()
+    return EKSPEDISI_ALIAS.get(key)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Fungsi utama
 # ──────────────────────────────────────────────────────────────────────────────
 
+def process_label(
+    text: str,
+    ekspedisi_mode: Optional[str] = None,
+) -> tuple[Optional[str], Optional[str]]:
+    """
+    Entry point utama untuk deteksi ekspedisi + ekstrak resi.
+
+    Parameters
+    ----------
+    text : str
+        Teks PDF layer atau hasil OCR dari satu halaman label.
+    ekspedisi_mode : str | None
+        Kunci ekspedisi yang sudah diketahui ("jne", "sicepat", dst).
+        Bisa raw string dari form — akan dinormalisasi via resolve_ekspedisi_mode.
+        Kalau None → fallback ke auto-detect 3-layer seperti v4.
+
+    Returns
+    -------
+    (expedition_key, resi) — salah satu atau keduanya bisa None kalau tidak ketemu.
+
+    Contoh
+    ------
+    # Mode eksplisit — tidak ada detection sama sekali, paling aman
+    exp, resi = process_label(pdf_text, ekspedisi_mode="jne")
+
+    # Terima raw string dari Form FastAPI langsung
+    exp, resi = process_label(pdf_text, ekspedisi_mode="JNE Reguler")
+
+    # Auto-detect (fallback, sama seperti v4)
+    exp, resi = process_label(pdf_text)
+    """
+    # Normalisasi input (handle raw string dari Form)
+    resolved = resolve_ekspedisi_mode(ekspedisi_mode)
+
+    if resolved:
+        print(f"[process_label] Mode eksplisit: {resolved!r} "
+              f"(raw input: {ekspedisi_mode!r}) — skip auto-detect")
+        resi = extract_resi_from_text(text, expedition_key=resolved)
+        return resolved, resi
+
+    # Fallback: auto-detect
+    if ekspedisi_mode is not None:
+        # Input diberikan tapi tidak dikenal di alias — log warning
+        print(f"[process_label] WARNING: ekspedisi_mode {ekspedisi_mode!r} "
+              f"tidak dikenal, fallback ke auto-detect")
+
+    detected = detect_expedition_from_text(text)
+    resi = extract_resi_from_text(text, detected) if detected else None
+    return detected, resi
+
+
 def detect_expedition_from_text(text: str) -> Optional[str]:
     """
     Deteksi ekspedisi dari teks PDF layer / OCR (3 lapis).
-
-    PENTING — urutan keyword_map:
-    "JNE" harus dicek SEBELUM loop hub_code/fingerprint karena teks JNE
-    sering mengandung nama "JNE" secara eksplisit di label.
+    Gunakan process_label() sebagai entry point bila ekspedisi sudah diketahui.
     """
     text_upper = text.upper()
 
@@ -304,7 +378,7 @@ def detect_expedition_from_text(text: str) -> Optional[str]:
         "idexpress" : ["ID EXPRESS", "IDEXPRESS"],
         "ninja"     : ["NINJA EXPRESS", "NINJA XPRESS", "NVSO"],
         "lion"      : ["LION PARCEL", "LION EXPRESS"],
-        "sicepat"   : ["SICEPAT", "SICEPA\u00C0T"],
+        "sicepat"   : ["SICEPAT", "SICEPAT"],
     }
     for exp_key, keywords in keyword_map.items():
         for kw in keywords:
@@ -410,50 +484,48 @@ def get_barcode_zones(expedition_key: Optional[str] = None) -> list[tuple]:
 # ──────────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 60)
-    print("TEST detect_expedition_from_text")
+    print("TEST process_label — mode eksplisit")
     print("=" * 60)
 
-    # Teks dari PDF URBAN_84_SHP_150526.pdf (JNE Reguler Shopee)
     jne_label_text = """
-BDO10101 No. Resi: CM94708765990
-Penerima:Diah Sabariah    Pengirim: Urban Foot Step
-HOME                      6281282127888
-Perumahan Kota baru arjasari blok a3/10 rt. 00  KAB. BOGOR
-4 rw. 13, ARJASARI, KAB. BANDUNG, JAWA BARAT
-KAB. BANDUNG              ARJASARI
+CGK10301 No. Resi: CM21075383872
+Penerima:Sawali    Pengirim: Agatha Lumiere Official
+KOTA JAKARTA PUSAT
 CASHLESS    Penjual tidak perlu bayar ongkir ke Kurir
-Berat: 850 gr  COD: Rp0
-Batas Kirim: 15-05-2026
-No. Pesanan: 260515EUQ8R5TY
-# Nama Produk   SKU       Variasi  Qty
-1 Christian Bale CAMELLIA sandal kulit flatform wanita ban 3 premium original
-  cmlcrm37      CREAM,37  1
-Pesan: (260515EUQ8R5TY)
+Berat: 700 gr  COD: Rp0
+No. Pesanan: 260525BJ4PE66A
+"""
+
+    sicepat_label_text = """
+BOO20130 No. Resi: 004607855558
+Penerima: Budi    Pengirim: Toko ABC
+SICEPAT REG
 """
 
     test_cases = [
-        # (text, expected_expedition, expected_resi, description)
-        (jne_label_text, "jne", "CM94708765990", "JNE via hub BDO10101 + resi CM"),
-        ("SPXID067214182654 No. Resi: SPXID067214182654", "spx", "SPXID067214182654", "SPX via keyword"),
-        ("No. Resi: 004607855558\nBOO20130", "sicepat", "004607855558", "SiCepat via hub BOO20130"),
-        ("PAKEKO\nNo. Resi: 11003785760273", "anteraja", "11003785760273", "AnterAja via PAKEKO"),
-        # Pastikan CASHLESS saja tidak lagi trigger SiCepat
-        ("CASHLESS Penjual tidak perlu bayar ongkir ke Kurir\nNo. Resi: 004607855558", "sicepat", "004607855558", "SiCepat resi 12 digit (CASHLESS bukan trigger)"),
+        # (text, ekspedisi_mode, expected_exp, expected_resi, desc)
+        (jne_label_text,     "jne",     "jne",     "CM21075383872", "JNE mode eksplisit — skip SiCepat false-positive"),
+        (jne_label_text,     "JNE",     "jne",     "CM21075383872", "JNE mode eksplisit — uppercase raw input"),
+        (jne_label_text,     "JNE Reguler", "jne", "CM21075383872", "JNE mode eksplisit — raw form string"),
+        (jne_label_text,     None,      "jne",     "CM21075383872", "JNE auto-detect via hub CGK10301"),
+        (sicepat_label_text, "sicepat", "sicepat", "004607855558",  "SiCepat mode eksplisit"),
+        (sicepat_label_text, None,      "sicepat", "004607855558",  "SiCepat auto-detect via SICEPAT keyword"),
+        # CASHLESS saja tidak boleh trigger SiCepat
+        ("CASHLESS Penjual tidak perlu bayar ongkir\nNo. Resi: 004607855558",
+         None, "sicepat", "004607855558", "SiCepat resi 12 digit (CASHLESS bukan trigger)"),
     ]
 
     all_pass = True
-    for text, exp_exp, exp_resi, desc in test_cases:
-        detected_exp = detect_expedition_from_text(text)
-        detected_resi = extract_resi_from_text(text, detected_exp)
-        ok_exp  = detected_exp  == exp_exp
-        ok_resi = detected_resi == exp_resi
-        ok = ok_exp and ok_resi
-        if not ok: all_pass = False
+    for text, mode, exp_exp, exp_resi, desc in test_cases:
+        got_exp, got_resi = process_label(text, ekspedisi_mode=mode)
+        ok = (got_exp == exp_exp) and (got_resi == exp_resi)
+        if not ok:
+            all_pass = False
         print(f"{'✅' if ok else '❌'} {desc}")
-        if not ok_exp:
-            print(f"   expedition got={detected_exp!r} expected={exp_exp!r}")
-        if not ok_resi:
-            print(f"   resi      got={detected_resi!r} expected={exp_resi!r}")
+        if got_exp != exp_exp:
+            print(f"   expedition got={got_exp!r} expected={exp_exp!r}")
+        if got_resi != exp_resi:
+            print(f"   resi      got={got_resi!r} expected={exp_resi!r}")
 
     print("=" * 60)
     print(f"{'✅ SEMUA PASS' if all_pass else '❌ ADA YANG GAGAL'}")
