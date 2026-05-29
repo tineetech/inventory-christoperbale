@@ -1,13 +1,7 @@
-"""
-tasks.py — patched v4
-Fix v4 vs v3:
-  1. Fix retry bug: PNG tidak boleh dihapus di finally kalau task masih
-     akan di-retry. Sebelumnya finally selalu hapus PNG → retry gagal
-     karena file sudah tidak ada.
-     Solusi: hapus PNG hanya di blok else (sukses) atau MaxRetriesExceededError.
+# tasks.py — patched v5
+# Fix v5: merge halaman dengan order_id sama saat job selesai
+# Merge dilakukan di Redis level setelah semua page task selesai.
 
-  2. ekspedisi_mode diteruskan ke _process_single_page_cv (dari v3).
-"""
 from dotenv import load_dotenv
 import json
 import traceback
@@ -30,10 +24,6 @@ r = redis.from_url(REDIS_URL, decode_responses=True)
 JOB_TTL = 3600
 
 
-# ──────────────────────────────────────────────────────────────────
-# Helper Redis (tidak berubah dari v3)
-# ──────────────────────────────────────────────────────────────────
-
 def _job_key(job_id: str) -> str:
     return f"ocr_job:{job_id}"
 
@@ -50,6 +40,135 @@ def _init_job(job_id: str, total_pages: int, mode: str):
     r.delete(f"ocr_job:{job_id}:pages")
 
 
+# ──────────────────────────────────────────────────────────────────
+# FIX v5: Merge pages dengan order_id sama di Redis
+# ──────────────────────────────────────────────────────────────────
+
+def _merge_redis_pages(job_id: str):
+    """
+    Baca semua page result dari Redis, merge yang punya order_id sama,
+    lalu tulis balik hasil yang sudah di-merge.
+
+    Dipanggil hanya sekali saat job status berubah ke 'done'.
+
+    Kasus yang di-handle:
+    - Halaman 21: resi=JX9489617439, order_id=584175205435671665, items=[]
+    - Halaman 22: resi=None, order_id=584175205435671665, items=[dalbz37]
+    → Hasil merge: resi=JX9489617439, order_id=584175205435671665, items=[dalbz37]
+    """
+    pages_key = f"ocr_job:{job_id}:pages"
+    raw_pages = r.lrange(pages_key, 0, -1)
+
+    if not raw_pages:
+        return
+
+    # Parse semua hasil
+    results = []
+    for raw in raw_pages:
+        try:
+            results.append(json.loads(raw))
+        except Exception:
+            pass
+
+    # Sort by page number supaya urutan konsisten
+    results.sort(key=lambda x: x.get("page", 0))
+
+    # Merge by order_id
+    merged = []
+    order_id_map = {}  # order_id -> index di merged
+
+    for page_result in results:
+        order_id = page_result.get("order_id")
+        resi     = page_result.get("resi")
+        items    = page_result.get("items", [])
+        mode     = page_result.get("mode")  # shopee tidak perlu merge
+
+        # Shopee tidak punya multi-halaman per order, skip merge
+        # (bisa dideteksi dari absennya order_id atau mode)
+        if not order_id:
+            merged.append(page_result)
+            continue
+
+        if order_id in order_id_map:
+            # Merge ke entri yang sudah ada
+            idx      = order_id_map[order_id]
+            existing = merged[idx]
+
+            # Gabungkan items, hindari duplikat SKU
+            existing_skus = {i["sku"] for i in existing.get("items", [])}
+            new_items = []
+            for item in items:
+                if item.get("sku") and item["sku"] not in existing_skus:
+                    new_items.append(item)
+                    existing_skus.add(item["sku"])
+
+            existing["items"] = existing.get("items", []) + new_items
+            existing["skus"]  = [i["sku"] for i in existing["items"]]
+
+            # Ambil resi jika halaman utama belum punya
+            if not existing.get("resi") and resi:
+                existing["resi"] = resi
+
+            # Catat halaman yang terlibat (opsional, untuk debug)
+            pages_involved = existing.get("pages", [existing.get("page")])
+            if page_result.get("page") not in pages_involved:
+                pages_involved.append(page_result["page"])
+            existing["pages"] = pages_involved
+
+            print(f"[Merge v5] Page {page_result.get('page')} merged → "
+                  f"order_id={order_id} total_items={len(existing['items'])}")
+        else:
+            # Entri baru
+            entry = dict(page_result)
+            entry["pages"] = [page_result.get("page")]
+            merged.append(entry)
+            order_id_map[order_id] = len(merged) - 1
+
+    # Tulis balik ke Redis (hapus lama, isi baru)
+    pipe = r.pipeline()
+    pipe.delete(pages_key)
+    for entry in merged:
+        pipe.rpush(pages_key, json.dumps(entry))
+    pipe.expire(pages_key, JOB_TTL)
+    pipe.execute()
+
+    print(f"[Merge v5] Job {job_id}: {len(results)} halaman → "
+          f"{len(merged)} resi unik setelah merge.")
+
+
+# ──────────────────────────────────────────────────────────────────
+# Helper Redis
+# ──────────────────────────────────────────────────────────────────
+
+def _check_and_finalize(job_id: str):
+    """
+    Cek apakah job sudah selesai (done+failed >= total).
+    Jika ya, jalankan merge lalu set status=done.
+    Pakai Redis SET NX sebagai lock supaya merge hanya jalan sekali
+    meskipun 2 task selesai bersamaan.
+    """
+    meta  = r.hgetall(_job_key(job_id))
+    done  = int(meta.get("done_pages", 0))
+    failed= int(meta.get("failed_pages", 0))
+    total = int(meta.get("total_pages", 0))
+
+    if done + failed >= total and total > 0:
+        # Lock: hanya 1 worker yang boleh merge
+        lock_key = f"ocr_job:{job_id}:merge_lock"
+        acquired = r.set(lock_key, "1", nx=True, ex=60)
+        if acquired:
+            mode = meta.get("mode", "")
+            if mode == "tiktok":
+                try:
+                    _merge_redis_pages(job_id)
+                except Exception as e:
+                    print(f"[Merge v5] Error saat merge job {job_id}: {e}")
+                    traceback.print_exc()
+            r.hset(_job_key(job_id), "status", "done")
+            print(f"[Job {job_id}] Status → done "
+                  f"(done={done} failed={failed} total={total})")
+
+
 def _save_page_result(job_id: str, page_num: int, result: dict):
     pipe = r.pipeline()
     pipe.rpush(f"ocr_job:{job_id}:pages", json.dumps(result))
@@ -57,11 +176,7 @@ def _save_page_result(job_id: str, page_num: int, result: dict):
     pipe.expire(f"ocr_job:{job_id}:pages", JOB_TTL)
     pipe.execute()
 
-    meta  = r.hgetall(_job_key(job_id))
-    done  = int(meta.get("done_pages", 0)) + int(meta.get("failed_pages", 0))
-    total = int(meta.get("total_pages", 0))
-    if done >= total:
-        r.hset(_job_key(job_id), "status", "done")
+    _check_and_finalize(job_id)  # FIX v5: ganti inline check → centralized + merge
 
 
 def _mark_page_failed(job_id: str, page_num: int, error: str):
@@ -79,15 +194,10 @@ def _mark_page_failed(job_id: str, page_num: int, error: str):
     pipe.expire(f"ocr_job:{job_id}:pages", JOB_TTL)
     pipe.execute()
 
-    meta  = r.hgetall(_job_key(job_id))
-    done  = int(meta.get("done_pages", 0)) + int(meta.get("failed_pages", 0))
-    total = int(meta.get("total_pages", 0))
-    if done >= total:
-        r.hset(_job_key(job_id), "status", "done")
+    _check_and_finalize(job_id)  # FIX v5: sama
 
 
 def _safe_remove(path: str):
-    """Hapus file tanpa raise exception."""
     try:
         if path and os.path.exists(path):
             os.remove(path)
@@ -96,8 +206,7 @@ def _safe_remove(path: str):
 
 
 # ──────────────────────────────────────────────────────────────────
-# Task: proses 1 halaman
-# v4: fix retry bug PNG + ekspedisi_mode
+# Task: proses 1 halaman (tidak berubah dari v4)
 # ──────────────────────────────────────────────────────────────────
 
 @celery.task(bind=True, max_retries=3, default_retry_delay=5)
@@ -110,12 +219,6 @@ def process_page_task(
     pdf_path      : str = None,
     ekspedisi_mode: str = None,
 ):
-    """
-    Proses satu halaman resi dari file gambar sementara.
-
-    FIX v4: PNG hanya dihapus setelah sukses atau MaxRetriesExceededError.
-            Sebelumnya dihapus di finally → retry selalu gagal file not found.
-    """
     if not os.path.exists(img_path):
         raise Exception(f"File sudah tidak ada: {img_path}")
 
@@ -142,22 +245,16 @@ def process_page_task(
             raise ValueError(f"mode tidak dikenal: {mode}")
 
         _save_page_result(job_id, page_num, result)
-
-        # ✅ Sukses — baru hapus PNG
         _safe_remove(img_path)
 
     except Exception as exc:
         print(f"[Task] Page {page_num} error: {exc}")
         traceback.print_exc()
         try:
-            # Masih bisa retry — JANGAN hapus PNG dulu
             raise self.retry(exc=exc, countdown=5)
         except self.MaxRetriesExceededError:
-            # Habis retry — hapus PNG, tandai failed
             _safe_remove(img_path)
             _mark_page_failed(job_id, page_num, str(exc))
-
-    # TIDAK ada finally block — PNG diurus di blok sukses / MaxRetriesExceededError
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -210,7 +307,7 @@ def enqueue_pdf_pages(
 
 
 # ──────────────────────────────────────────────────────────────────
-# Task: cleanup PDF setelah job done (tidak berubah)
+# Task: cleanup PDF
 # ──────────────────────────────────────────────────────────────────
 
 @celery.task

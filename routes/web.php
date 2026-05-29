@@ -283,6 +283,8 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::post('/master/barang/bulk-update-hpp', [BarangController::class, 'bulkUpdateHpp'])
         ->name('barang.bulk-update-hpp')
         ->middleware('permission:edit,barang');
+    Route::post('/master/barang/bulk-update-harga-reseller', [BarangController::class, 'bulkUpdateHargaReseller'])
+        ->name('barang.bulk-update-harga-reseller');
 
 
     /*

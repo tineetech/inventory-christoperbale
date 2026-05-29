@@ -344,4 +344,29 @@ class BarangController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
+
+    public function bulkUpdateHargaReseller(Request $request)
+    {
+        $request->validate([
+            'ids'            => 'required|array|min:1',
+            'ids.*'          => 'exists:barang,id',
+            'harga_reseller' => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            Barang::whereIn('id', $request->ids)
+                ->update(['harga_2' => $request->harga_reseller]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($request->ids) . ' barang berhasil diupdate harga reseller-nya.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
 }

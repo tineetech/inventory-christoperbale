@@ -685,6 +685,61 @@ def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None
 # Public API: extract dari PDF
 # ──────────────────────────────────────────────────────────────────
 
+def _merge_pages_by_order(results: list[dict]) -> list[dict]:
+    """
+    Merge halaman-halaman yang memiliki order_id sama menjadi satu entri.
+    
+    Kasus: Order dengan banyak item kadang terpecah ke 2 halaman:
+    - Halaman N: ada resi + order_id, tabel header ada tapi items kosong (overflow ke hal berikut)
+    - Halaman N+1: tidak ada resi baru, order_id sama, berisi items lanjutan
+    
+    Strategy:
+    1. Group by order_id (non-None)
+    2. Untuk halaman tanpa resi tapi order_id sama dengan halaman sebelumnya → merge items
+    3. Halaman tanpa order_id sama sekali → cek apakah order_id sama dengan hasil sebelumnya
+       (fallback: jika halaman N+1 tidak punya resi DAN order_id-nya sama dengan N → merge)
+    """
+    merged = []
+    order_id_map = {}  # order_id -> index di merged
+
+    for page_result in results:
+        order_id = page_result.get("order_id")
+        resi = page_result.get("resi")
+        items = page_result.get("items", [])
+
+        if order_id and order_id in order_id_map:
+            # Sudah ada entri dengan order_id ini → merge items
+            idx = order_id_map[order_id]
+            existing = merged[idx]
+            
+            # Gabungkan items (hindari duplikat SKU)
+            existing_skus = {i["sku"] for i in existing["items"]}
+            for item in items:
+                if item["sku"] not in existing_skus:
+                    existing["items"].append(item)
+                    existing["skus"].append(item["sku"])
+                    existing_skus.add(item["sku"])
+            
+            # Ambil resi jika halaman sebelumnya belum punya
+            if not existing.get("resi") and resi:
+                existing["resi"] = resi
+            
+            # Simpan semua page numbers yang terlibat
+            existing.setdefault("pages", [existing["page"]]).append(page_result["page"])
+            
+            print(f"[Merge] Page {page_result['page']} merged into order_id={order_id} "
+                  f"(+{len(items)} items, total={len(existing['items'])})")
+        else:
+            # Entri baru
+            entry = dict(page_result)
+            entry["pages"] = [page_result["page"]]
+            merged.append(entry)
+            if order_id:
+                order_id_map[order_id] = len(merged) - 1
+
+    return merged
+
+
 def extract_multiple_resi_tiktok_from_pdf(pdf_path: str) -> list[dict]:
     print(f"[TikTok Multiple] Converting PDF: {pdf_path}")
     images  = convert_from_path(pdf_path, dpi=150)
@@ -695,7 +750,7 @@ def extract_multiple_resi_tiktok_from_pdf(pdf_path: str) -> list[dict]:
     for page_num, img_pil in enumerate(images, start=1):
         img_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
         try:
-            result = _process_single_page(img_cv, page_num)
+            result = _process_single_page(img_cv, page_num, pdf_path=pdf_path)
         except Exception as e:
             print(f"[TikTok Multiple] Page {page_num} error: {e}")
             traceback.print_exc()
@@ -709,10 +764,12 @@ def extract_multiple_resi_tiktok_from_pdf(pdf_path: str) -> list[dict]:
             }
         results.append(result)
 
-    print(f"[TikTok Multiple] Selesai. {len(results)} halaman diproses.")
-    return results
-
-
+    # ── POST-PROCESSING: merge halaman dengan order_id sama ──────
+    merged_results = _merge_pages_by_order(results)
+    
+    print(f"[TikTok Multiple] Selesai. {len(images)} halaman → "
+          f"{len(merged_results)} resi unik setelah merge.")
+    return merged_results
 # ──────────────────────────────────────────────────────────────────
 # Public API: extract dari image
 # ──────────────────────────────────────────────────────────────────

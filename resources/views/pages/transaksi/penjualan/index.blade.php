@@ -88,55 +88,60 @@
                                         @endif
                                     </div>
 
-                                    {{-- Row 2: Scan input (full width on mobile) --}}
-                                    {{-- <div class="mb-2">
-                                        <div class="input-group input-group-sm">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text bg-primary text-white border-0">
-                                                    <i class="feather icon-zap mr-1"></i>
-                                                    <span class="d-none d-sm-inline small">Scan Resi</span>
-                                                </span>
-                                            </div>
-                                            <input type="text"
-                                                   class="form-control"
-                                                   id="scanOutPenjualan"
-                                                   placeholder="Arahkan scanner ke nomor resi..."
-                                                   autocomplete="off"
-                                                   inputmode="none">
-                                        </div>
-                                    </div> --}}
-
                                     {{-- Row 3: Filter tanggal + search --}}
-                                    <div class="d-flex flex-wrap align-items-center" style="gap:6px">
-                                        <input type="date" id="dateFrom" class="form-control form-control-sm"
-                                            style="min-width:130px;flex:1 1 130px">
-                                        <input type="time" id="timeFrom" class="form-control form-control-sm"
-                                            style="min-width:100px;flex:1 1 100px">
-                                        <span class="text-muted small">s/d</span>
-                                        <input type="date" id="dateTo" class="form-control form-control-sm"
-                                            style="min-width:130px;flex:1 1 130px">
-                                        <input type="time" id="timeTo" class="form-control form-control-sm"
-                                            style="min-width:100px;flex:1 1 100px">
-                                        <input type="text" class="form-control form-control-sm" id="searchTable"
-                                            placeholder="Search penjualan..." style="min-width:140px;flex:2 1 160px">
+<div class="d-flex flex-wrap align-items-center" style="gap:6px">
 
-                                        <select id="filterDropshipper" class="form-control form-control-sm"
-                                            style="min-width:140px;flex:2 1 160px">
-                                            <option value="">-- Semua Dropshipper --</option>
-                                            @foreach($dropshippers as $ds)
-                                                <option value="{{ $ds->nama }}">{{ $ds->nama }}</option>
-                                            @endforeach
-                                        </select>
-                                        <select id="filterPrintStatus" class="form-control form-control-sm"
-                                            style="min-width:130px;flex:1 1 130px">
-                                            <option value="">-- Semua Status Print --</option>
-                                            <option value="belum">Belum Print</option>
-                                            <option value="sudah">Sudah Print</option>
-                                        </select>
-                                        <input type="text" class="form-control" id="scanOutPenjualan"
-                                            placeholder="Arahkan scanner ke nomor resi..." autocomplete="off"
-                                            style="min-width:140px;flex:2 1 160px" inputmode="none">
-                                    </div>
+    {{-- Baris 1: Tanggal & Waktu --}}
+    <div class="d-flex flex-wrap align-items-center w-100" style="gap:6px">
+        <input type="date" id="dateFrom" class="form-control form-control-sm"
+            style="min-width:130px;flex:1 1 130px">
+        <input type="time" id="timeFrom" class="form-control form-control-sm"
+            style="min-width:100px;flex:1 1 100px">
+        <span class="text-muted small">s/d</span>
+        <input type="date" id="dateTo" class="form-control form-control-sm"
+            style="min-width:130px;flex:1 1 130px">
+        <input type="time" id="timeTo" class="form-control form-control-sm"
+            style="min-width:100px;flex:1 1 100px">
+    </div>
+
+    {{-- Baris 2: Search fullwidth --}}
+    <div class="input-group input-group-sm w-100">
+        <div class="input-group-prepend">
+            <span class="input-group-text"><i class="feather icon-search"></i></span>
+        </div>
+        <input type="text" class="form-control" id="searchTable"
+            placeholder="Cari kode penjualan, nomor resi, dropshipper...">
+    </div>
+
+    {{-- Baris 3: Dropdown filter --}}
+    <div class="d-flex flex-wrap w-100" style="gap:6px">
+        <select id="filterDropshipper" class="form-control form-control-sm"
+            style="min-width:140px;flex:2 1 160px">
+            <option value="">-- Semua Dropshipper --</option>
+            @foreach($dropshippers as $ds)
+                <option value="{{ $ds->nama }}">{{ $ds->nama }}</option>
+            @endforeach
+        </select>
+        <select id="filterPrintStatus" class="form-control form-control-sm"
+            style="min-width:130px;flex:1 1 130px">
+            <option value="">-- Semua Status Print --</option>
+            <option value="belum">Belum Print</option>
+            <option value="sudah">Sudah Print</option>
+        </select>
+        <select id="filterScanOut" class="form-control form-control-sm"
+            style="min-width:130px;flex:1 1 130px">
+            <option value="">-- Semua Scan Out --</option>
+            <option value="pending">Pending</option>
+            <option value="done">Done</option>
+        </select>
+        
+        <input type="text" class="form-control" id="scanOutPenjualan"
+            placeholder="(SCAN OUT) Arahkan scanner ke nomor resi..."
+            style="min-width:130px;flex:1 1 130px"
+            autocomplete="off" inputmode="none">
+    </div>
+
+</div>
 
                                 </div>
 
@@ -470,48 +475,51 @@
         // FILTER & SEARCH
         // =====================================================
         function applyFilters() {
-            const keyword      = (document.getElementById('searchTable').value || '').toLowerCase();
-            const dateFrom     = document.getElementById('dateFrom').value;
-            const dateTo       = document.getElementById('dateTo').value;
-            const timeFrom     = document.getElementById('timeFrom').value;
-            const timeTo       = document.getElementById('timeTo').value;
-            const dropshipper  = document.getElementById('filterDropshipper').value;
-            const printStatus  = document.getElementById('filterPrintStatus').value; // ✅ tambah
+    const keyword      = (document.getElementById('searchTable').value || '').toLowerCase();
+    const dateFrom     = document.getElementById('dateFrom').value;
+    const dateTo       = document.getElementById('dateTo').value;
+    const timeFrom     = document.getElementById('timeFrom').value;
+    const timeTo       = document.getElementById('timeTo').value;
+    const dropshipper  = document.getElementById('filterDropshipper').value;
+    const printStatus  = document.getElementById('filterPrintStatus').value;
+    const scanOut      = document.getElementById('filterScanOut').value; // ✅ tambah
 
-            const hasKeyword = keyword.trim().length > 0;
+    const hasKeyword = keyword.trim().length > 0;
 
-            const datetimeFrom = dateFrom ? (dateFrom + ' ' + (timeFrom || '00:00')) : null;
-            const datetimeTo   = dateTo   ? (dateTo   + ' ' + (timeTo   || '23:59')) : null;
+    const datetimeFrom = dateFrom ? (dateFrom + ' ' + (timeFrom || '00:00')) : null;
+    const datetimeTo   = dateTo   ? (dateTo   + ' ' + (timeTo   || '23:59')) : null;
 
-            filteredData = allData.filter(pj => {
-                const textMatch = [
-                    pj.kode_penjualan, pj.nomor_resi, pj.nomor_pesanan,
-                    pj.nomor_transaksi, pj.dropshipper, pj.keterangan, pj.scan_out
-                ].filter(Boolean).some(v => v.toLowerCase().includes(keyword));
+    filteredData = allData.filter(pj => {
+        const textMatch = [
+            pj.kode_penjualan, pj.nomor_resi, pj.nomor_pesanan,
+            pj.nomor_transaksi, pj.dropshipper, pj.keterangan, pj.scan_out
+        ].filter(Boolean).some(v => v.toLowerCase().includes(keyword));
 
-                let dateMatch = true;
-                if (!hasKeyword) {
-                    let raw = pj.tanggal ?? '';
-                    if (raw.includes('T')) raw = raw.replace('T', ' ').split('.')[0];
-                    const dtNormalized = raw.substring(0, 16);
-                    if (datetimeFrom) dateMatch = dtNormalized >= datetimeFrom;
-                    if (datetimeTo)   dateMatch = dateMatch && (dtNormalized <= datetimeTo);
-                }
-
-                const dropshipperMatch = !dropshipper || (pj.dropshipper === dropshipper);
-                const printMatch       = !printStatus || (pj.strukprint_status === printStatus); // ✅ tambah
-
-                return textMatch && dateMatch && dropshipperMatch && printMatch;
-            });
-
-            if (currentSortCol !== null) applySortOnFiltered();
-            currentPage = 1;
-            renderTable();
+        let dateMatch = true;
+        if (!hasKeyword) {
+            let raw = pj.tanggal ?? '';
+            if (raw.includes('T')) raw = raw.replace('T', ' ').split('.')[0];
+            const dtNormalized = raw.substring(0, 16);
+            if (datetimeFrom) dateMatch = dtNormalized >= datetimeFrom;
+            if (datetimeTo)   dateMatch = dateMatch && (dtNormalized <= datetimeTo);
         }
+
+        const dropshipperMatch = !dropshipper || (pj.dropshipper === dropshipper);
+        const printMatch       = !printStatus || (pj.strukprint_status === printStatus);
+        const scanOutMatch     = !scanOut || (pj.scan_out === scanOut); // ✅ tambah
+
+        return textMatch && dateMatch && dropshipperMatch && printMatch && scanOutMatch;
+    });
+
+    if (currentSortCol !== null) applySortOnFiltered();
+    currentPage = 1;
+    renderTable();
+}
         document.getElementById('filterPrintStatus').addEventListener('change', applyFilters);
         document.getElementById('filterDropshipper').addEventListener('change', applyFilters);
         document.getElementById('timeFrom').addEventListener('change', applyFilters);
         document.getElementById('timeTo').addEventListener('change', applyFilters);
+        document.getElementById('filterScanOut').addEventListener('change', applyFilters);
         // Di event listener searchTable
         document.getElementById('searchTable').addEventListener('keyup', function() {
             const hasKeyword = this.value.trim().length > 0;

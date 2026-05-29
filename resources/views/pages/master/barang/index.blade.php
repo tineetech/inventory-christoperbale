@@ -1,14 +1,15 @@
 @extends('layouts.main')
 
 @section('style')
-<style>
-    #modalHpp {
-        z-index: 1055 !important;
-    }
-    .modal-backdrop {
-        z-index: 1054 !important;
-    }
-</style>
+    <style>
+        #modalHpp {
+            z-index: 1055 !important;
+        }
+
+        .modal-backdrop {
+            z-index: 1054 !important;
+        }
+    </style>
 @endsection
 @section('content')
     <div class="layout-content">
@@ -80,6 +81,14 @@
                                                 <i class="feather icon-percent"></i>
                                                 Bentuk Harga HPP (<span id="selectedCountHpp">0</span>)
                                             </button>
+
+                                            <button id="btnBulkHargaReseller"
+                                                class="btn btn-sm btn-success text-white d-none"
+                                                onclick="openHargaResellerModal()">
+                                                <i class="feather icon-tag"></i>
+                                                Bentuk Harga Reseller (<span id="selectedCountReseller">0</span>)
+                                            </button>
+
                                             <button id="btnBulkDelete" class="btn btn-sm btn-danger d-none"
                                                 onclick="bulkDelete()">
                                                 <i class="feather icon-trash"></i>
@@ -539,6 +548,67 @@
             </div>
         </div>
 
+        {{-- Modal Pembentukan Harga Reseller --}}
+        <div class="modal fade" id="modalHargaReseller" tabindex="-1" role="dialog"
+            aria-labelledby="modalHargaResellerLabel" aria-hidden="true" style="z-index: 1055 !important;">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalHargaResellerLabel">
+                            <i class="feather icon-tag mr-2 text-success"></i> Pembentukan Harga Reseller
+                        </h5>
+                        <button type="button" class="close" data-dismiss="modal">
+                            <span>&times;</span>
+                        </button>
+                    </div>
+
+                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+
+                        {{-- Info jumlah barang --}}
+                        <div class="alert bg-success text-white d-flex align-items-center mb-3" style="gap: 10px;">
+                            <i class="feather icon-info" style="font-size: 1.2rem;"></i>
+                            <div>
+                                Harga Reseller akan diterapkan ke
+                                <strong id="resellerSelectedCount">0</strong> barang yang dipilih.
+                            </div>
+                        </div>
+
+                        {{-- Repeater detail biaya --}}
+                        <div id="resellerItemsWrapper"></div>
+
+                        {{-- Tombol tambah baris --}}
+                        <button type="button" class="btn btn-sm btn-outline-primary mt-1 mb-3"
+                            onclick="addResellerRow()">
+                            <i class="feather icon-plus mr-1"></i> Tambah Detail Biaya Reseller
+                        </button>
+
+                        {{-- Total --}}
+                        <div class="card border-success mt-2">
+                            <div class="card-body py-2 px-3 d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="text-muted small">Total harga yang akan disimpan ke</span>
+                                    <strong class="text-success"> harga reseller</strong>
+                                </div>
+                                <div>
+                                    <span class="text-muted small mr-1">Rp</span>
+                                    <strong id="resellerTotalDisplay"
+                                        style="font-size: 1.3rem; color: #28a745;">0</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                        <button type="button" class="btn btn-success text-white" id="btnSimpanReseller">
+                            <i class="feather icon-save mr-1"></i> Simpan ke Harga Reseller
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         @include('components.footer')
     </div>
 @endsection
@@ -576,17 +646,21 @@
             const checked = document.querySelectorAll('.row-check:checked');
             const btn = document.getElementById('btnBulkDelete');
             const btnHpp = document.getElementById('btnBulkHpp');
+            const btnReseller = document.getElementById('btnBulkHargaReseller');
             const count = checked.length;
 
             document.getElementById('selectedCount').textContent = count;
             document.getElementById('selectedCountHpp').textContent = count;
+            document.getElementById('selectedCountReseller').textContent = count;
 
             if (count > 0) {
                 btn.classList.remove('d-none');
                 btnHpp.classList.remove('d-none');
+                btnReseller.classList.remove('d-none');
             } else {
                 btn.classList.add('d-none');
                 btnHpp.classList.add('d-none');
+                btnReseller.classList.add('d-none');
             }
         }
 
@@ -720,7 +794,7 @@
                     const ext = file.name.split('.').pop().toLowerCase();
                     if (!['xlsx', 'xls', 'csv'].includes(ext)) {
                         Swal.showValidationMessage(
-                        'Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv');
+                            'Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv');
                         return false;
                     }
 
@@ -950,6 +1024,155 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="feather icon-save mr-1"></i> Simpan ke Harga HPP';
+            }
+        });
+
+        // =====================================================
+        // HARGA RESELLER MODAL
+        // =====================================================
+        let resellerSelectedIds = [];
+
+        function openHargaResellerModal() {
+            const checked = document.querySelectorAll('.row-check:checked');
+            resellerSelectedIds = Array.from(checked).map(cb => {
+                const tr = cb.closest('tr');
+                const card = cb.closest('[data-id]');
+                return tr ? tr.getAttribute('data-id') : card?.getAttribute('data-id');
+            }).filter(Boolean);
+
+            if (resellerSelectedIds.length === 0) return;
+
+            document.getElementById('resellerSelectedCount').textContent = resellerSelectedIds.length;
+
+            // Reset repeater ke 1 baris kosong
+            document.getElementById('resellerItemsWrapper').innerHTML = '';
+            addResellerRow();
+            recalcReseller();
+
+            $('#modalHargaReseller').modal('show');
+        }
+
+        function addResellerRow() {
+            const wrapper = document.getElementById('resellerItemsWrapper');
+            const div = document.createElement('div');
+            div.className = 'reseller-item d-flex align-items-center mb-2';
+            div.style.gap = '8px';
+            div.innerHTML = `
+        <input type="text"
+            class="form-control reseller-nama"
+            placeholder="Nama biaya (cth: Modal + Ongkir)">
+        <div class="input-group" style="max-width: 180px;">
+            <div class="input-group-prepend">
+                <span class="input-group-text">Rp</span>
+            </div>
+            <input type="number"
+                class="form-control reseller-harga"
+                placeholder="0"
+                min="0"
+                oninput="recalcReseller()">
+        </div>
+        <button type="button"
+            class="btn btn-sm btn-outline-danger"
+            onclick="removeResellerRow(this)"
+            style="flex-shrink:0">
+            <i class="feather icon-x"></i>
+        </button>
+    `;
+            wrapper.appendChild(div);
+            div.querySelector('.reseller-nama').focus();
+        }
+
+        function removeResellerRow(btn) {
+            const rows = document.querySelectorAll('.reseller-item');
+            if (rows.length <= 1) {
+                rows[0].querySelector('.reseller-nama').value = '';
+                rows[0].querySelector('.reseller-harga').value = '';
+                recalcReseller();
+                return;
+            }
+            btn.closest('.reseller-item').remove();
+            recalcReseller();
+        }
+
+        function recalcReseller() {
+            let total = 0;
+            document.querySelectorAll('.reseller-harga')
+                .forEach(inp => total += parseFloat(inp.value) || 0);
+            document.getElementById('resellerTotalDisplay').textContent =
+                total.toLocaleString('id-ID');
+        }
+
+        document.getElementById('btnSimpanReseller').addEventListener('click', async function() {
+            let total = 0;
+            document.querySelectorAll('.reseller-harga')
+                .forEach(inp => total += parseFloat(inp.value) || 0);
+
+            if (total <= 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Total harga reseller harus lebih dari 0.'
+                });
+                return;
+            }
+
+            const confirm = await Swal.fire({
+                icon: 'question',
+                title: 'Konfirmasi',
+                html: `Simpan <strong>Rp ${total.toLocaleString('id-ID')}</strong> sebagai Harga Reseller untuk <strong>${resellerSelectedIds.length} barang</strong>?`,
+                showCancelButton: true,
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, simpan!',
+                cancelButtonText: 'Batal'
+            });
+
+            if (!confirm.isConfirmed) return;
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menyimpan...';
+
+            try {
+                const res = await fetch('{{ route('barang.bulk-update-harga-reseller') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        ids: resellerSelectedIds,
+                        harga_reseller: total
+                    })
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    $('#modalHargaReseller').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: json.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: json.message ?? 'Terjadi kesalahan.'
+                    });
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Gagal menghubungi server.'
+                });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="feather icon-save mr-1"></i> Simpan ke Harga Reseller';
             }
         });
     </script>
