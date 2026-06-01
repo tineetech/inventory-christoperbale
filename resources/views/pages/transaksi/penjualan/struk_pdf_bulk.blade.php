@@ -69,7 +69,8 @@
     {{-- Resi --}}
     <div class="resi-box">
         @if($resiBase64 && $resiMime)
-            <img src="data:{{ $resiMime }};base64,{{ $resiBase64 }}" alt="Resi">
+            {{-- Setelah compress, selalu JPEG --}}
+            <img src="data:image/jpeg;base64,{{ $resiBase64 }}" alt="Resi">
         @elseif($resiIsPdf)
             <div class="no-resi">📄 File resi berupa PDF — lihat file asli untuk detail</div>
         @else

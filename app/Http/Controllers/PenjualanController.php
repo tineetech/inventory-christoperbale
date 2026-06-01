@@ -768,17 +768,49 @@ class PenjualanController extends Controller
             return response()->json(['error' => 'Tidak ada ID yang dipilih.'], 422);
         }
 
-        $penjualanList = Penjualan::whereIn('id', $ids)->orderBy('id')->get();
+        // Naikkan limit untuk bulk besar
+        ini_set('memory_limit', '512M');
+        set_time_limit(120);
 
-        // Siapkan data lengkap untuk setiap penjualan
-        $struks = $penjualanList->map(function ($penjualan) {
-            $nomorUrut   = Penjualan::where('id', '<=', $penjualan->id)->whereDate('tanggal', today())->where('dropshipper_id', $penjualan->dropshipper_id)->count();
+        // Eager load dropshipper sekaligus — hindari N+1
+        $penjualanList = Penjualan::with('dropshipper')
+            ->whereIn('id', $ids)
+            ->get()
+            ->sortBy(fn($p) => array_search($p->id, $ids))
+            ->values();
+
+        // Pre-fetch SEMUA nomorUrut sekaligus dalam 1-2 query
+        // Kumpulkan semua kombinasi (tanggal, dropshipper_id) dulu
+        $groups = $penjualanList
+            ->map(fn($p) => [
+                'tanggal'        => \Carbon\Carbon::parse($p->tanggal)->format('Y-m-d'),
+                'dropshipper_id' => $p->dropshipper_id,
+            ])
+            ->unique(fn($g) => $g['tanggal'] . '_' . $g['dropshipper_id'])
+            ->values();
+
+        $nomorUrutMap = [];
+        foreach ($groups as $group) {
+            $groupKey = $group['tanggal'] . '_' . $group['dropshipper_id'];
+            $allIds   = Penjualan::whereDate('tanggal', $group['tanggal'])
+                ->where('dropshipper_id', $group['dropshipper_id'])
+                ->orderBy('id')
+                ->pluck('id')
+                ->toArray();
+
+            foreach ($allIds as $idx => $pid) {
+                $nomorUrutMap[$groupKey][$pid] = $idx + 1;
+            }
+        }
+
+        $struks = $penjualanList->map(function ($penjualan) use ($nomorUrutMap) {
+            $tanggalKey = \Carbon\Carbon::parse($penjualan->tanggal)->format('Y-m-d');
+            $groupKey   = $tanggalKey . '_' . $penjualan->dropshipper_id;
+            $nomorUrut  = $nomorUrutMap[$groupKey][$penjualan->id] ?? 1;
+
             $dropshipper = strtoupper($penjualan->dropshipper->nama);
-            $nomorStruk  = sprintf(
-                $dropshipper . "-%04d-%s",
-                $nomorUrut,
-                \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY')
-            );
+            $nomorStruk  = sprintf('%s-%04d-%s', $dropshipper, $nomorUrut,
+                \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY'));
 
             $resiBase64 = null;
             $resiMime   = null;
@@ -790,8 +822,9 @@ class PenjualanController extends Controller
 
                 if (file_exists($resiPath)) {
                     if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                        $resiBase64 = base64_encode(file_get_contents($resiPath));
-                        $resiMime   = match ($ext) {
+                        // Resize/compress gambar sebelum embed ke PDF
+                        $resiBase64 = $this->compressImageToBase64($resiPath, $ext);
+                        $resiMime   = match($ext) {
                             'jpg', 'jpeg' => 'image/jpeg',
                             'png'         => 'image/png',
                             'webp'        => 'image/webp',
@@ -809,7 +842,15 @@ class PenjualanController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'pages.transaksi.penjualan.struk_pdf_bulk',
             compact('struks')
-        )->setPaper([0, 0, 419.53, 595.28]); // A5
+        )
+        ->setPaper([0, 0, 419.53, 595.28])
+        ->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => false,  // matikan remote asset fetch
+            'defaultFont'          => 'Arial',
+            'dpi'                  => 72,     // turunkan DPI (default 96, bisa coba 72)
+        ]);
+
         Penjualan::whereIn('id', $ids)->update(['strukprint_status' => 'sudah']);
 
         $filename = 'struk-bulk-' . now()->format('dmY-His') . '.pdf';
@@ -817,6 +858,54 @@ class PenjualanController extends Controller
         return $pdf->download($filename);
     }
 
+    /**
+     * Compress & resize gambar sebelum di-embed ke PDF.
+     * Max width 800px, quality JPEG 75% — cukup untuk struk cetak.
+     */
+    private function compressImageToBase64(string $path, string $ext): string
+    {
+        // Kalau GD tidak tersedia, fallback ke raw
+        if (!extension_loaded('gd')) {
+            return base64_encode(file_get_contents($path));
+        }
+
+        $src = match($ext) {
+            'png'  => imagecreatefrompng($path),
+            'webp' => imagecreatefromwebp($path),
+            default => imagecreatefromjpeg($path),
+        };
+
+        if (!$src) {
+            return base64_encode(file_get_contents($path));
+        }
+
+        $origW = imagesx($src);
+        $origH = imagesy($src);
+        $maxW  = 800;
+
+        // Resize kalau lebar > 800px
+        if ($origW > $maxW) {
+            $newH  = (int) round($origH * $maxW / $origW);
+            $dst   = imagecreatetruecolor($maxW, $newH);
+
+            // Preserve transparency untuk PNG
+            if ($ext === 'png') {
+                imagealphablending($dst, false);
+                imagesavealpha($dst, true);
+            }
+
+            imagecopyresampled($dst, $src, 0, 0, 0, 0, $maxW, $newH, $origW, $origH);
+            imagedestroy($src);
+            $src = $dst;
+        }
+
+        ob_start();
+        imagejpeg($src, null, 75); // selalu output JPEG, quality 75
+        $data = ob_get_clean();
+        imagedestroy($src);
+
+        return base64_encode($data);
+    }
     public function strukDownload($id)
     {
         $penjualan = Penjualan::findOrFail($id);
