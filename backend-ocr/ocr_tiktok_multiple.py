@@ -81,7 +81,7 @@ def _cv_to_base64_jpeg(img_cv: np.ndarray, quality: int = 70, max_width: int = 9
 # ──────────────────────────────────────────────────────────────────
 
 def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
-    JX_RE = re.compile(r'JX\d{10}', re.IGNORECASE)
+    JX_RE = re.compile(r'J[XY]\d{10}', re.IGNORECASE)
 
     # --- Strategy 1: cv2 QRCodeDetector ---
     qr = cv2.QRCodeDetector()
@@ -89,7 +89,7 @@ def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
     if data:
         m = JX_RE.search(data)
         if m:
-            print(f"[Resi JX] QR: {m.group()}")
+            print(f"[Resi JX/JY] QR: {m.group()}")
             return m.group()
 
     # --- Strategy 2: cv2 BarcodeDetector full image ---
@@ -102,7 +102,7 @@ def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
                 if info:
                     m = JX_RE.search(info)
                     if m:
-                        print(f"[Resi JX] BarcodeDetector full: {m.group()}")
+                        print(f"[Resi JX/JY] BarcodeDetector full: {m.group()}")
                         return m.group()
     except AttributeError:
         bd = None
@@ -128,7 +128,7 @@ def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
                         if info:
                             m = JX_RE.search(info)
                             if m:
-                                print(f"[Resi JX] BarcodeDetector crop ({y0p},{y1p}): {m.group()}")
+                                print(f"[Resi JX/JY] BarcodeDetector crop ({y0p},{y1p}): {m.group()}")
                                 return m.group()
             except Exception:
                 pass
@@ -153,12 +153,12 @@ def _extract_resi_from_barcode(img_cv: np.ndarray) -> str | None:
                 for r in zxingcpp.read_barcodes(img_scan):
                     m = JX_RE.search(r.text)
                     if m:
-                        print(f"[Resi JX] zxing ({y0p},{y1p}) {scale}x: {m.group()}")
+                        print(f"[Resi JX/JY] zxing ({y0p},{y1p}) {scale}x: {m.group()}")
                         return m.group()
     except ImportError:
         pass
 
-    print("[Resi JX] Tidak ditemukan dari barcode, fallback ke OCR teks")
+    print("[Resi JX/JY] Tidak ditemukan dari barcode, fallback ke OCR teks")
     return None
 
 
@@ -648,7 +648,7 @@ def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None
                     order_id = m.group(1) if m else None
                     items    = _parse_items_tiktok_from_pdf_page(page)
                     if not resi:
-                        m2 = re.search(r'JX\d{10}', text, re.IGNORECASE)
+                        m2 = re.search(r'J[XY]\d{10}', text, re.IGNORECASE)
                         resi = m2.group() if m2 else None
                     print(f"[TikTok Page {page_num}] resi={resi} order_id={order_id} items={len(items)}")
                     return {
@@ -667,7 +667,7 @@ def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None
         gray     = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
         thresh   = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)[1]
         ocr_text = pytesseract.image_to_string(thresh)
-        m = re.search(r'JX\d{10}', ocr_text, re.IGNORECASE)
+        m = re.search(r'J[XY]\d{10}', ocr_text, re.IGNORECASE)
         if m:
             resi = m.group()
 

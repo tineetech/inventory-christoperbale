@@ -512,8 +512,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/laporan/barang/print', [ReportController::class, 'barangPrint'])->name('laporan.barang.print');
 
     Route::patch('/transaksi/penjualan/{id}/harga-cair', [PenjualanController::class, 'updateHargaCair'])
-    ->name('penjualan.update-harga-cair')
-    ->middleware('permission:edit,penjualan');
+    ->name('penjualan.update-harga-cair');
 
 
 
