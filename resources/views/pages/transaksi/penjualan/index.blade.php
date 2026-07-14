@@ -211,9 +211,21 @@ if (!function_exists('sortIcon')) {
                                                                     {!! sortIcon('scan_out') !!}
                                                                 </a>
                                                             </th>
-                                                            <th class="d-none d-sm-table-cell">Draft?</th>
-                                                            <th class="d-none d-sm-table-cell">Retur?</th>
-                                                            <th class="d-none d-sm-table-cell">Print?</th>
+                                                            <th class="d-none d-sm-table-cell">
+                                                                <a href="{{ sortUrl('is_draft') }}" style="color:inherit">
+                                                                    Draft? {!! sortIcon('is_draft') !!}
+                                                                </a>
+                                                            </th>
+                                                            <th class="d-none d-sm-table-cell">
+                                                                <a href="{{ sortUrl('is_retur') }}" style="color:inherit">
+                                                                    Retur? {!! sortIcon('is_retur') !!}
+                                                                </a>
+                                                            </th>
+                                                            <th class="d-none d-sm-table-cell">
+                                                                <a href="{{ sortUrl('strukprint_status') }}" style="color:inherit">
+                                                                    Print? {!! sortIcon('strukprint_status') !!}
+                                                                </a>
+                                                            </th>
                                                             <th style="width:90px">Action</th>
                                                         </tr>
                                                     </thead>
