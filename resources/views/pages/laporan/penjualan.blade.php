@@ -94,7 +94,7 @@
                         <i class="feather icon-file-text mr-2"></i> Data Laporan Penjualan
                     </h6>
                     <div class="d-flex align-items-center" style="gap: 12px;">
-                        <span class="badge badge-light">{{ $penjualan->count() }} transaksi</span>
+                        <span class="badge badge-light">{{ $penjualan->total() }} transaksi</span>
                         <small class="text-muted">
                             Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
                             {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }}
@@ -134,7 +134,7 @@
                                 @endphp
                                 <tr class="main-row" data-report-main="true" data-id="{{ $item->id }}"
                                     data-expanded="false">
-                                    <td>{{ $index + 1 }}</td>
+                                    <td>{{ $penjualan->firstItem() + $index }}</td>
                                     <td class="kode-click" style="white-space: nowrap;">
                                         <strong>{{ $item->kode_penjualan }}</strong></td>
                                     <td style="white-space: nowrap;">{{ $item->nomor_resi ?: '-' }}</td>
@@ -248,12 +248,89 @@
                     </table>
                 </div>
 
-                @include('pages.laporan.partials.pagination-controls', [
-                    'prefix' => 'penjualan',
-                    'perPage' => $filters['per_page'],
-                    'totalRows' => $penjualan->count(),
-                    'formId' => 'penjualanFilterForm',
-                ])
+                {{-- Pagination --}}
+                <div class="d-flex flex-wrap justify-content-between align-items-center px-1 py-2 border-top"
+                    style="gap:8px">
+                    <div class="d-flex align-items-center">
+                        <span class="mr-2 text-muted small">Show</span>
+                        <select class="form-control form-control-sm" name="per_page"
+                            form="penjualanFilterForm" style="width:72px"
+                            onchange="document.getElementById('penjualanFilterForm').submit()">
+                            <option value="10" {{ $filters['per_page'] == 10 ? 'selected' : '' }}>10</option>
+                            <option value="25" {{ $filters['per_page'] == 25 ? 'selected' : '' }}>25</option>
+                            <option value="50" {{ $filters['per_page'] == 50 ? 'selected' : '' }}>50</option>
+                            <option value="100" {{ $filters['per_page'] == 100 ? 'selected' : '' }}>100</option>
+                        </select>
+                        <span class="ml-2 text-muted small">entries</span>
+                    </div>
+                    <div class="text-muted small">
+                        @if ($penjualan->total() > 0)
+                            Showing <strong>{{ $penjualan->firstItem() }}</strong>
+                            to <strong>{{ $penjualan->lastItem() }}</strong>
+                            of <strong>{{ $penjualan->total() }}</strong> entries
+                        @else
+                            No entries found
+                        @endif
+                    </div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            @php
+                                $currentPage = $penjualan->currentPage();
+                                $lastPage = $penjualan->lastPage();
+                                $start = max(1, $currentPage - 2);
+                                $end = min($lastPage, $currentPage + 2);
+                                if ($start <= 3) $end = min($lastPage, 5);
+                                if ($end >= $lastPage - 2) $start = max(1, $lastPage - 4);
+                            @endphp
+
+                            <li class="page-item {{ $penjualan->onFirstPage() ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ $penjualan->appends(['per_page' => request('per_page')])->url(1) }}">
+                                    <i class="feather icon-chevrons-left"></i>
+                                </a>
+                            </li>
+                            <li class="page-item {{ $penjualan->onFirstPage() ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ $penjualan->previousPageUrl() }}">
+                                    <i class="feather icon-chevron-left"></i>
+                                </a>
+                            </li>
+
+                            @if ($lastPage > 7 && $start > 1)
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ $penjualan->url(1) }}">1</a>
+                                </li>
+                                @if ($start > 2)
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                @endif
+                            @endif
+
+                            @for ($i = $start; $i <= $end; $i++)
+                                <li class="page-item {{ $i == $currentPage ? 'active' : '' }}">
+                                    <a class="page-link" href="{{ $penjualan->url($i) }}">{{ $i }}</a>
+                                </li>
+                            @endfor
+
+                            @if ($lastPage > 7 && $end < $lastPage)
+                                @if ($end < $lastPage - 1)
+                                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                                @endif
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ $penjualan->url($lastPage) }}">{{ $lastPage }}</a>
+                                </li>
+                            @endif
+
+                            <li class="page-item {{ !$penjualan->hasMorePages() ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ $penjualan->nextPageUrl() }}">
+                                    <i class="feather icon-chevron-right"></i>
+                                </a>
+                            </li>
+                            <li class="page-item {{ !$penjualan->hasMorePages() ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ $penjualan->appends(['per_page' => request('per_page')])->url($lastPage) }}">
+                                    <i class="feather icon-chevrons-right"></i>
+                                </a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
             </div>
         </div>
     </div>
@@ -325,16 +402,20 @@
 @endsection
 
 @section('scripts')
-    @include('pages.laporan.partials.pagination-script')
     <script>
-        window.initReportPagination({
-            tableIds: ['penjualanTable'],
-            entriesSelectId: 'penjualanEntriesSelect',
-            paginationId: 'penjualanPagination',
-            tableInfoId: 'penjualanTableInfo',
-            formId: 'penjualanFilterForm',
-            mainRowSelector: 'tbody tr[data-report-main]',
-            detailRowSelector: 'tbody tr[data-report-detail]'
+        // ── Expand detail row ─────────────────────────────────
+        document.getElementById('penjualanTable').addEventListener('click', function(e) {
+            const mainRow = e.target.closest('tr[data-report-main]');
+            if (!mainRow) return;
+            if (e.target.closest('a, button, input, select, textarea, label')) return;
+
+            const rowId = mainRow.getAttribute('data-id');
+            const detailRow = document.getElementById('detail-' + rowId);
+            if (!detailRow) return;
+
+            const expanded = mainRow.dataset.expanded === 'true';
+            mainRow.dataset.expanded = expanded ? 'false' : 'true';
+            detailRow.style.display = expanded ? 'none' : 'table-row';
         });
 
         // ── Harga Cair Modal ──────────────────────────────────

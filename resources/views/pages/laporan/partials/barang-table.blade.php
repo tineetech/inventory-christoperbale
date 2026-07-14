@@ -30,7 +30,7 @@
                          {!! DNS2D::getBarcodeHTML($item->sku, 'QRCODE', 3, 3) !!}
                         <div class="small text-muted mt-1">{{ $item->sku }}</div>
                     </td>
-                    <td>{{ $index + 1 }}</td>
+                    <td>{{ $barang->firstItem() + $index }}</td>
                     <td>{{ $item->created_at?->format('d/m/Y') ?? '-' }}</td>
                     <td>{{ $item->sku }}</td>
                     <td><strong>{{ $item->nama_barang }}</strong></td>

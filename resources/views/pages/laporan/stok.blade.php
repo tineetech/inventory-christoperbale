@@ -14,7 +14,6 @@
 @endphp
 
 @section('content')
-div
     <div class="layout-content">
         <div class="container-fluid flex-grow-1 container-p-y">
             <h4 class="font-weight-bold py-3 mb-0">Laporan Stok</h4>
@@ -228,12 +227,28 @@ div
                             </div>
                         @endif
 
-                        @include('pages.laporan.partials.pagination-controls', [
-                            'prefix' => 'stokInput',
-                            'perPage' => $filters['input_per_page'],
-                            'totalRows' => $leftTableRows->count(),
-                            'formId' => 'stokFilterForm',
-                        ])
+                        {{-- Pagination Left Table --}}
+                        <div class="d-flex flex-wrap justify-content-between align-items-center px-1 py-2 border-top"
+                            style="gap:8px">
+                            <div class="d-flex align-items-center">
+                                <span class="mr-2 text-muted small">Show</span>
+                                <select class="form-control form-control-sm" name="input_per_page"
+                                    form="stokFilterForm" style="width:72px"
+                                    onchange="document.getElementById('stokFilterForm').submit()">
+                                    <option value="10" {{ $filters['input_per_page'] == 10 ? 'selected' : '' }}>10</option>
+                                    <option value="25" {{ $filters['input_per_page'] == 25 ? 'selected' : '' }}>25</option>
+                                    <option value="50" {{ $filters['input_per_page'] == 50 ? 'selected' : '' }}>50</option>
+                                    <option value="100" {{ $filters['input_per_page'] == 100 ? 'selected' : '' }}>100</option>
+                                </select>
+                                <span class="ml-2 text-muted small">entries</span>
+                            </div>
+                            <div class="text-muted small" id="leftTableInfo">
+                                Showing <strong>0</strong> to <strong>0</strong> of <strong>{{ $leftTableRows->count() }}</strong> entries
+                            </div>
+                            <nav>
+                                <ul class="pagination pagination-sm mb-0" id="leftPagination"></ul>
+                            </nav>
+                        </div>
                     </div>
                 </div>
 
@@ -364,12 +379,28 @@ div
                             </table>
                         </div>
 
-                        @include('pages.laporan.partials.pagination-controls', [
-                            'prefix' => 'stokSummary',
-                            'perPage' => $filters['summary_per_page'],
-                            'totalRows' => $reportRows->count(),
-                            'formId' => 'stokFilterForm',
-                        ])
+                        {{-- Pagination Right Table --}}
+                        <div class="d-flex flex-wrap justify-content-between align-items-center px-1 py-2 border-top"
+                            style="gap:8px">
+                            <div class="d-flex align-items-center">
+                                <span class="mr-2 text-muted small">Show</span>
+                                <select class="form-control form-control-sm" name="summary_per_page"
+                                    form="stokFilterForm" style="width:72px"
+                                    onchange="document.getElementById('stokFilterForm').submit()">
+                                    <option value="10" {{ $filters['summary_per_page'] == 10 ? 'selected' : '' }}>10</option>
+                                    <option value="25" {{ $filters['summary_per_page'] == 25 ? 'selected' : '' }}>25</option>
+                                    <option value="50" {{ $filters['summary_per_page'] == 50 ? 'selected' : '' }}>50</option>
+                                    <option value="100" {{ $filters['summary_per_page'] == 100 ? 'selected' : '' }}>100</option>
+                                </select>
+                                <span class="ml-2 text-muted small">entries</span>
+                            </div>
+                            <div class="text-muted small" id="rightTableInfo">
+                                Showing <strong>0</strong> to <strong>0</strong> of <strong>{{ $reportRows->count() }}</strong> entries
+                            </div>
+                            <nav>
+                                <ul class="pagination pagination-sm mb-0" id="rightPagination"></ul>
+                            </nav>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -378,24 +409,76 @@ div
 @endsection
 
 @section('scripts')
-    @include('pages.laporan.partials.pagination-script')
     <script>
-        window.initReportPagination({
-            tableIds: ['stokTableMain'],
-            entriesSelectId: 'stokInputEntriesSelect',
-            paginationId: 'stokInputPagination',
-            tableInfoId: 'stokInputTableInfo',
-            formId: 'stokFilterForm',
-            perPageInputName: 'input_per_page'
-        });
+        // ── Client-side Pagination (Left & Right tables) ─────
+        function initTablePagination(tableId, paginationId, infoId, perPage) {
+            const table = document.getElementById(tableId);
+            const pagination = document.getElementById(paginationId);
+            const info = document.getElementById(infoId);
+            if (!table || !pagination || !info) return;
 
-        window.initReportPagination({
-            tableIds: ['stokTableSummary'],
-            entriesSelectId: 'stokSummaryEntriesSelect',
-            paginationId: 'stokSummaryPagination',
-            tableInfoId: 'stokSummaryTableInfo',
-            formId: 'stokFilterForm',
-            perPageInputName: 'summary_per_page'
-        });
+            const rows = Array.from(table.querySelectorAll('tbody tr')).filter(r => !r.hasAttribute('data-empty-row'));
+            const total = rows.length;
+            let current = 1;
+            let perPageVal = perPage || 10;
+
+            function showPage() {
+                const start = (current - 1) * perPageVal;
+                const end = Math.min(start + perPageVal, total);
+                rows.forEach((r, i) => {
+                    r.style.display = (i >= start && i < end) ? '' : 'none';
+                    // hide associated detail row too
+                    const detail = document.getElementById('detail-' + r.getAttribute('data-id'));
+                    if (detail) detail.style.display = 'none';
+                });
+                info.innerHTML = 'Showing <strong>' + (total ? start + 1 : 0) + '</strong> to <strong>' + end + '</strong> of <strong>' + total + '</strong> entries';
+                renderPagination();
+            }
+
+            function renderPagination() {
+                const pageCount = Math.ceil(total / perPageVal);
+                pagination.innerHTML = '';
+                if (pageCount <= 1) return;
+
+                const add = (label, page, disabled, active) => {
+                    const li = document.createElement('li');
+                    li.className = 'page-item' + (disabled ? ' disabled' : '') + (active ? ' active' : '');
+                    const a = document.createElement('a');
+                    a.className = 'page-link';
+                    a.href = '#';
+                    a.innerHTML = label;
+                    if (!disabled) a.addEventListener('click', e => { e.preventDefault(); current = page; showPage(); });
+                    li.appendChild(a);
+                    pagination.appendChild(li);
+                };
+
+                add('<i class="feather icon-chevrons-left"></i>', 1, current === 1, false);
+                add('<i class="feather icon-chevron-left"></i>', current - 1, current === 1, false);
+
+                let start = Math.max(1, current - 2);
+                let end = Math.min(pageCount, start + 4);
+                if (end - start < 4) start = Math.max(1, end - 4);
+
+                if (pageCount > 7 && start > 1) {
+                    add('1', 1, false, false);
+                    if (start > 2) add('...', null, true, false);
+                }
+
+                for (let i = start; i <= end; i++) add(i, i, false, i === current);
+
+                if (pageCount > 7 && end < pageCount) {
+                    if (end < pageCount - 1) add('...', null, true, false);
+                    add('' + pageCount, pageCount, false, false);
+                }
+
+                add('<i class="feather icon-chevron-right"></i>', current + 1, current === pageCount, false);
+                add('<i class="feather icon-chevrons-right"></i>', pageCount, current === pageCount, false);
+            }
+
+            showPage();
+        }
+
+        initTablePagination('stokTableMain', 'leftPagination', 'leftTableInfo', {{ $filters['input_per_page'] ?? 10 }});
+        initTablePagination('stokTableSummary', 'rightPagination', 'rightTableInfo', {{ $filters['summary_per_page'] ?? 10 }});
     </script>
 @endsection

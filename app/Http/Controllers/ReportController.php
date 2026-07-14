@@ -67,7 +67,7 @@ class ReportController extends Controller
     public function penjualan(Request $request)
     {
         $filters = $this->resolvePenjualanFilters($request);
-        $penjualan = $this->getPenjualanReportQuery($filters)->get();
+        $penjualan = $this->getPenjualanReportQuery($filters)->paginate($filters['per_page'])->withQueryString();
         $dropshipperOptions = Dropshipper::orderBy('nama')->get(['id', 'nama']);
 
         return view('pages.laporan.penjualan', compact('penjualan', 'dropshipperOptions', 'filters'));
@@ -288,7 +288,7 @@ class ReportController extends Controller
     public function barang(Request $request)
     {
         $filters = $this->resolveBarangFilters($request);
-        $barang = $this->getBarangReportQuery($filters)->get();
+        $barang = $this->getBarangReportQuery($filters)->paginate($filters['per_page'])->withQueryString();
         $barangOptions = Barang::orderBy('nama_barang')->get(['id', 'nama_barang']);
 
         return view('pages.laporan.barang', compact('barang', 'barangOptions', 'filters'));
