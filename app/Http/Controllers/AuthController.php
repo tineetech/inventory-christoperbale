@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Pengguna;
+use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -12,6 +13,7 @@ use Illuminate\Support\Str;
 use App\Notifications\ResetPasswordNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class AuthController extends Controller
 {
@@ -62,11 +64,14 @@ class AuthController extends Controller
         $request->validate([
             'nama'     => 'required|string|max:100',
             'email'    => 'required|email|unique:pengguna,email',
-            'password' => ['required', 'confirmed', Password::min(6)],
+            'password' => ['required', 'confirmed', PasswordRule::min(6)],
             'full_name' => 'nullable|string|max:100',
             'phone'    => 'nullable|string|max:20',
             'gender'   => 'nullable|in:L,P',
         ]);
+
+        $role = Role::where('nama_role', 'user')->first();
+        $roleId = $role ? $role->id : 1;
 
         $pengguna = Pengguna::create([
             'nama'      => $request->nama,
@@ -75,7 +80,7 @@ class AuthController extends Controller
             'phone'     => $request->phone,
             'gender'    => $request->gender,
             'password'  => Hash::make($request->password),
-            'role_id'   => 1,
+            'role_id'   => $roleId,
         ]);
 
         $token = $pengguna->createToken('api-token')->plainTextToken;
