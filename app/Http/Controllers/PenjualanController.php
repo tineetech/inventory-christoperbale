@@ -18,16 +18,64 @@ use Illuminate\Support\Str;
 
 class PenjualanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $penjualan = Penjualan::with([
-            'dropshipper',
-            'user',
-            'detail.barang.stok'
-        ])->get();
-        // dd($penjualan);
+        $query = Penjualan::with(['dropshipper', 'user', 'detail.barang.stok']);
 
-        $dropshippers = Dropshipper::orderBy('nama')->get(); 
+        // ── Search ──────────────────────────────────────────
+        if ($search = $request->search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_penjualan', 'like', "%{$search}%")
+                  ->orWhere('nomor_resi', 'like', "%{$search}%")
+                  ->orWhere('nomor_pesanan', 'like', "%{$search}%")
+                  ->orWhere('nomor_transaksi', 'like', "%{$search}%")
+                  ->orWhere('keterangan', 'like', "%{$search}%")
+                  ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
+            });
+        }
+
+        // ── Filter Tanggal (default: hari ini) ──────────────
+        $dateFrom = $request->date_from ?? today()->format('Y-m-d');
+        $dateTo   = $request->date_to   ?? today()->format('Y-m-d');
+
+        $from = $dateFrom . ' ' . ($request->time_from ?: '00:00');
+        $to   = $dateTo   . ' ' . ($request->time_to   ?: '23:59');
+        $query->where('tanggal', '>=', $from)->where('tanggal', '<=', $to);
+
+        // ── Filter Dropshipper ──────────────────────────────
+        if ($request->filled('dropshipper')) {
+            $query->whereHas('dropshipper', fn($q) => $q->where('nama', $request->dropshipper));
+        }
+
+        // ── Filter Print Status ─────────────────────────────
+        if ($request->filled('print_status')) {
+            if ($request->print_status === 'belum') {
+                $query->where(fn($q) => $q->where('strukprint_status', '!=', 'sudah')->orWhereNull('strukprint_status'));
+            } elseif ($request->print_status === 'sudah') {
+                $query->where('strukprint_status', 'sudah');
+            }
+        }
+
+        // ── Filter Scan Out ─────────────────────────────────
+        if ($request->filled('scan_out')) {
+            $query->where('scan_out', $request->scan_out);
+        }
+
+        // ── Sort ────────────────────────────────────────────
+        $sortCol = $request->sort_col;
+        $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
+        $allowedSort = ['kode_penjualan', 'nomor_resi', 'nomor_pesanan', 'tanggal', 'total_harga', 'scan_out', 'is_draft', 'is_retur', 'strukprint_status'];
+        if ($sortCol && in_array($sortCol, $allowedSort)) {
+            $query->orderBy($sortCol, $sortDir);
+        } else {
+            $query->orderByDesc('id');
+        }
+
+        // ── Pagination ──────────────────────────────────────
+        $perPage = in_array((int) $request->per_page, [10, 25, 50, 100]) ? (int) $request->per_page : 10;
+        $penjualan = $query->paginate($perPage)->withQueryString();
+
+        $dropshippers = Dropshipper::orderBy('nama')->get();
 
         return view('pages.transaksi.penjualan.index', compact('penjualan', 'dropshippers'));
     }

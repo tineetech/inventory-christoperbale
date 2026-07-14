@@ -257,6 +257,16 @@ class BarangController extends Controller
         }
     }
 
+    public function apiIndex()
+    {
+        $barang = Barang::with(['satuan', 'stok'])->paginate(50);
+        return response()->json([
+            'message'      => 'success get barang',
+            'total_barang' => $barang->total(),
+            'data'         => $barang->items(),
+        ]);
+    }
+
     public function search(Request $req)
     {
 
