@@ -642,6 +642,7 @@ if (!function_exists('sortIcon')) {
                 console.error(e);
             } finally {
                 btn.disabled = false;
+                btn.innerHTML = '<i class="feather icon-download"></i> <span class="d-none d-sm-inline">Download Struk (<span id="selectedCount">0</span>)</span><span class="d-inline d-sm-none">DL (<span class="selectedCountMobile">0</span>)</span>';
                 updateBulkBar();
             }
         }
@@ -681,6 +682,7 @@ if (!function_exists('sortIcon')) {
                 URL.revokeObjectURL(url);
 
                 Toast.fire({ icon: 'success', title: 'Berhasil', text: ids.length + ' struk berhasil didownload.' });
+                document.querySelectorAll('.row-check').forEach(cb => cb.checked = false);
             } catch (e) {
                 Toast.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
                 console.error(e);

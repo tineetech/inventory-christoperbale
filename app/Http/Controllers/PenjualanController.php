@@ -41,6 +41,7 @@ class PenjualanController extends Controller
         $from = $dateFrom . ' ' . ($request->time_from ?: '00:00');
         $to   = $dateTo   . ' ' . ($request->time_to   ?: '23:59');
         $query->where('tanggal', '>=', $from)->where('tanggal', '<=', $to);
+        $query->orderBy('id', 'asc');
 
         // ── Filter Dropshipper ──────────────────────────────
         if ($request->filled('dropshipper')) {
