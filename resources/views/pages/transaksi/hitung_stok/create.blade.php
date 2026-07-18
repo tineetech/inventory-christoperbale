@@ -179,14 +179,6 @@
         }
 
 
-        function isDifferentProduct(product) {
-
-            let existing = Object.values(items)[0];
-
-            if (!existing) return false;
-
-            return existing.id !== product.id;
-        }
         let items = {};
 
         $('#product_select').select2({
@@ -283,21 +275,6 @@
 
         function addItem(product) {
 
-            // 🚫 BLOCK beda SKU
-            if (isDifferentProduct(product)) {
-
-                Toast.fire({
-                    icon: "error",
-                    title: "Tidak boleh scan barang berbeda!"
-                });
-
-                beepError.play();
-                vibrate([200, 100, 200]);
-
-                return;
-            }
-
-            // kalau sudah ada → tambah
             if (items[product.id]) {
 
                 items[product.id].qty_fisik += 1;
@@ -313,16 +290,12 @@
                 return;
             }
 
-            // reset (single item mode)
-            items = {};
-            $('#tableItems tbody').html('');
-
             items[product.id] = {
                 id: product.id,
                 sku: product.sku,
                 nama_barang: product.nama_barang,
                 stok_sistem: product.stok.jumlah_stok,
-                qty_fisik: 0,
+                qty_fisik: 1,
                 selisih: 0
             };
 

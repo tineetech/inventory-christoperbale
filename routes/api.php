@@ -9,27 +9,6 @@ use App\Http\Controllers\UserAddressController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/register', [AuthController::class, 'apiRegister']);
-Route::post('/login', [AuthController::class, 'apiLogin']);
-Route::post('/auth/google', [AuthController::class, 'apiLoginGoogle']);
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
-
-Route::get('/barang', [BarangController::class, 'apiIndex']);
-
-
-Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/logout', [AuthController::class, 'apiLogout']);
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
-
-
-    Route::apiResource('addresses', UserAddressController::class, [
-        'except' => ['create', 'edit'],
-    ]);
-});
-
 /*
 |--------------------------------------------------------------------------
 | API PRODUCTS PAGE

@@ -52,4 +52,14 @@ class Pengguna extends Authenticatable
     {
         return $this->hasMany(StokMovement::class,'created_by');
     }
+
+    public function vouchers()
+    {
+        return $this->hasMany(Voucher::class, 'created_by');
+    }
+
+    public function userVouchers()
+    {
+        return $this->hasMany(UserVoucher::class, 'user_id');
+    }
 }

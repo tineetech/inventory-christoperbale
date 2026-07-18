@@ -17,8 +17,14 @@ class Penjualan extends Model
         'dropshipper_id',
         'tanggal',
         'total_harga',
+        'harga_discount',
+        'shipping_cost',
+        'service_fee',
+        'subtotal_harga',
         'harga_cair',
         'keterangan',
+        'status',
+        'order_web',
         'scan_out',
         'is_draft',
         'is_retur',
@@ -33,11 +39,31 @@ class Penjualan extends Model
 
     public function user()
     {
-        return $this->belongsTo(Pengguna::class,'created_by');
+        return $this->belongsTo(Pengguna::class, 'created_by');
     }
 
     public function detail()
     {
         return $this->hasMany(PenjualanDetail::class);
+    }
+
+    public function pembayaran()
+    {
+        return $this->hasOne(Pembayaran::class, 'order_id');
+    }
+
+    public function address()
+    {
+        return $this->hasOne(OrderAddress::class, 'order_id');
+    }
+
+    public function shipment()
+    {
+        return $this->hasOne(OrderShipment::class, 'order_id');
+    }
+
+    public function userVouchers()
+    {
+        return $this->hasMany(UserVoucher::class, 'order_id');
     }
 }
