@@ -116,7 +116,7 @@
 
                                                             <th>Kode Adjustment</th>
 
-                                                            <th>Fokus Barang</th>
+                                                            {{-- <th>Fokus Barang</th> --}}
 
                                                             <th>Tanggal</th>
 
@@ -152,7 +152,7 @@
                                                                     </strong>
                                                                 </td>
 
-                                                                <td>{{ optional($adj->detail->first()->barang)->nama_barang }} - {{ optional($adj->detail->first()->barang)->sku }}</td>
+                                                                {{-- <td>{{ optional($adj->detail->first()->barang)->nama_barang }} - {{ optional($adj->detail->first()->barang)->sku }}</td> --}}
 
                                                                 <td>{{ date('d M Y', strtotime($adj->tanggal)) }}</td>
 
