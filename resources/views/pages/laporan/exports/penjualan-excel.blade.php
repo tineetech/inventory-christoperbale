@@ -25,10 +25,12 @@
     <tbody>
         @php
             $grandTotal = 0;
+            $grandTotalHargaCair = 0;
         @endphp
         @forelse ($penjualan as $index => $item)
             @php
                 $grandTotal += $item->total_harga;
+                $grandTotalHargaCair += $item->harga_cair ?? 0;
             @endphp
             @php
                 $scanOutLabel = $item->scan_out ? ucfirst($item->scan_out) : '-';
@@ -112,7 +114,7 @@
         <tr>
             <td colspan="6"><strong>Grand Total</strong></td>
             <td><strong>{{ $grandTotal }}</strong></td>
-            <td></td>
+            <td><strong>{{ $grandTotalHargaCair }}</strong></td>
         </tr>
     </tbody>
 </table>
