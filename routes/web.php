@@ -514,6 +514,8 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::patch('/transaksi/penjualan/{id}/harga-cair', [PenjualanController::class, 'updateHargaCair'])
     ->name('penjualan.update-harga-cair');
 
+    Route::patch('/transaksi/penjualan/{id}/transit', [PenjualanController::class, 'updateTransit'])
+    ->name('penjualan.update-transit');
 
 
     /*

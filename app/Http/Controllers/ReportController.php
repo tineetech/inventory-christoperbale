@@ -67,8 +67,25 @@ class ReportController extends Controller
     public function penjualan(Request $request)
     {
         $filters = $this->resolvePenjualanFilters($request);
+
+        if ($filters['search']) {
+            $filters['dari_tanggal'] = null;
+            $filters['sampai_tanggal'] = null;
+        }
+
         $penjualan = $this->getPenjualanReportQuery($filters)->paginate($filters['per_page'])->withQueryString();
         $dropshipperOptions = Dropshipper::orderBy('nama')->get(['id', 'nama']);
+
+        if ($filters['search'] && $penjualan->count()) {
+            $found = $penjualan->first();
+            $filters['dari_tanggal'] = $found->tanggal;
+            $filters['sampai_tanggal'] = $found->tanggal;
+        }
+
+        if ($filters['search'] && !$penjualan->count()) {
+            $filters['dari_tanggal'] = $request->dari_tanggal ?? now()->startOfMonth()->format('Y-m-d');
+            $filters['sampai_tanggal'] = $request->sampai_tanggal ?? now()->format('Y-m-d');
+        }
 
         return view('pages.laporan.penjualan', compact('penjualan', 'dropshipperOptions', 'filters'));
     }
@@ -400,6 +417,16 @@ class ReportController extends Controller
             $query->where('dropshipper_id', $filters['dropshipper_id']);
         }
 
+        if ($filters['search']) {
+            $s = $filters['search'];
+            $query->where(function ($q) use ($s) {
+                $q->where('kode_penjualan', 'like', "%{$s}%")
+                  ->orWhere('nomor_resi', 'like', "%{$s}%")
+                  ->orWhere('nomor_pesanan', 'like', "%{$s}%")
+                  ->orWhere('keterangan', 'like', "%{$s}%");
+            });
+        }
+
         return $query->latest('tanggal');
     }
 
@@ -435,6 +462,14 @@ class ReportController extends Controller
         if ($filters['status'] === 'aman') {
             $query->whereHas('stok', function ($stokQuery) {
                 $stokQuery->whereColumn('jumlah_stok', '>', 'barang.stok_minimum');
+            });
+        }
+
+        if ($filters['search']) {
+            $s = $filters['search'];
+            $query->where(function ($q) use ($s) {
+                $q->where('nama_barang', 'like', "%{$s}%")
+                  ->orWhere('sku', 'like', "%{$s}%");
             });
         }
 
@@ -492,6 +527,14 @@ class ReportController extends Controller
 
         if ($filters['barang_id']) {
             $movements->where('barang_id', $filters['barang_id']);
+        }
+
+        if ($filters['search']) {
+            $s = $filters['search'];
+            $movements->whereHas('barang', function ($q) use ($s) {
+                $q->where('nama_barang', 'like', "%{$s}%")
+                  ->orWhere('sku', 'like', "%{$s}%");
+            });
         }
 
         $movements = $movements
@@ -649,6 +692,7 @@ class ReportController extends Controller
             'dari_jam'       => 'nullable|date_format:H:i',
             'sampai_jam'     => 'nullable|date_format:H:i',
             'dropshipper_id' => 'nullable|exists:dropshipper,id',
+            'search'         => 'nullable|string|max:100',
             'per_page'       => 'nullable|in:10,25,50,100',
         ]);
 
@@ -664,6 +708,7 @@ class ReportController extends Controller
             'dari_jam'       => $request->dari_jam ?? null,
             'sampai_jam'     => $request->sampai_jam ?? null,
             'dropshipper_id' => $request->filled('dropshipper_id') ? (int) $request->dropshipper_id : null,
+            'search'         => $request->search ?? null,
             'per_page'       => $this->resolvePerPage($request),
         ];
     }
@@ -675,6 +720,7 @@ class ReportController extends Controller
             'sampai_tanggal' => 'nullable|date',
             'barang_id' => 'nullable|exists:barang,id',
             'status' => 'nullable|in:semua,aman,minimum,habis',
+            'search' => 'nullable|string|max:100',
             'per_page' => 'nullable|in:10,25,50,100',
             'input_per_page' => 'nullable|in:10,25,50,100',
             'summary_per_page' => 'nullable|in:10,25,50,100',
@@ -690,6 +736,7 @@ class ReportController extends Controller
             'sampai_tanggal' => $sampaiTanggal,
             'barang_id' => $request->filled('barang_id') ? (int) $request->barang_id : null,
             'status' => in_array($request->status, ['aman', 'minimum', 'habis'], true) ? $request->status : 'semua',
+            'search' => $request->search ?? null,
             'per_page' => $this->resolvePerPage($request),
             'input_per_page' => $this->resolvePerPageValue($request->input('input_per_page', $request->input('per_page'))),
             'summary_per_page' => $this->resolvePerPageValue($request->input('summary_per_page', $request->input('per_page'))),

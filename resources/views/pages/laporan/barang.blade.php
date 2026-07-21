@@ -37,14 +37,8 @@
                             </div>
                             <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Nama Barang</label>
-                                <select class="form-control" name="barang_id">
+                                <select class="form-control" name="barang_id" id="barang_select">
                                     <option value="">(Semua)</option>
-                                    @foreach ($barangOptions as $option)
-                                        <option value="{{ $option->id }}"
-                                            {{ (string) $filters['barang_id'] === (string) $option->id ? 'selected' : '' }}>
-                                            {{ $option->nama_barang }}
-                                        </option>
-                                    @endforeach
                                 </select>
                             </div>
                             <div class="form-group col-md-3">
@@ -188,4 +182,48 @@
 @endsection
 
 @section('scripts')
+    <script>
+        $(document).ready(function() {
+            let preselectedId = '{{ $filters["barang_id"] ?? "" }}';
+            let $select = $('#barang_select').select2({
+                placeholder: "Cari SKU / Nama Barang",
+                allowClear: true,
+                width: '100%',
+                ajax: {
+                    url: "/api/product/search",
+                    dataType: "json",
+                    delay: 150,
+                    cache: true,
+                    data: function(params) {
+                        return { q: params.term, page: params.page || 1 };
+                    },
+                    processResults: function(data) {
+                        let results = data.map(p => ({
+                            id: p.id,
+                            text: "#" + p.sku + " - " + p.nama_barang
+                        }));
+                        if (preselectedId && !params.term) {
+                            return { results: results };
+                        }
+                        return { results: [{ id: '', text: '(Semua)' }, ...results] };
+                    }
+                }
+            });
+
+            if (preselectedId) {
+                $.ajax({
+                    url: '/api/product/search',
+                    data: { q: '' },
+                    dataType: 'json',
+                    success: function(data) {
+                        let found = data.find(p => p.id == preselectedId);
+                        if (found) {
+                            let option = new Option("#" + found.sku + " - " + found.nama_barang, found.id, true, true);
+                            $select.append(option).trigger('change');
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 @endsection

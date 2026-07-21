@@ -13,13 +13,25 @@ use Illuminate\Support\Facades\Storage;
 
 class ReturPenjualanController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $returs = ReturPenjualan::with(['penjualan', 'createdBy'])
-            ->latest()
-            ->paginate(20);
+        $returs = ReturPenjualan::with(['penjualan.dropshipper', 'createdBy']);
 
-        return view('pages.transaksi.retur_penjualan.index', compact('returs'));
+        if ($request->filled('dari_tanggal')) {
+            $returs->whereDate('created_at', '>=', $request->dari_tanggal);
+        }
+        if ($request->filled('sampai_tanggal')) {
+            $returs->whereDate('created_at', '<=', $request->sampai_tanggal);
+        }
+
+        $returs = $returs->latest()->get();
+
+        $filters = [
+            'dari_tanggal' => $request->dari_tanggal ?? now()->startOfMonth()->format('Y-m-d'),
+            'sampai_tanggal' => $request->sampai_tanggal ?? now()->format('Y-m-d'),
+        ];
+
+        return view('pages.transaksi.retur_penjualan.index', compact('returs', 'filters'));
     }
 
     public function create($id)

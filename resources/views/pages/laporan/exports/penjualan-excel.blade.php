@@ -40,7 +40,7 @@
                     default => '-',
                 };
             @endphp
-            <tr>
+            <tr{{ $item->keterangan === 'sedang transit' ? ' style="background-color:#fff3e0"' : '' }}>
                 <td>#{{ $index + 1 }}</td>
                 <td>{{ $item->kode_penjualan }}</td>
                 <td>{{ $item->nomor_resi ?: '-' }}</td>

@@ -56,18 +56,34 @@
                         <div class="col-sm-12">
                             <div class="card mb-4">
                                 <div style="border: none !important"
-                                    class="card-header d-flex justify-content-between align-items-center">
+                                    class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
                                     <h6 class="card-header-title mb-0">
                                         <i class="feather icon-rotate-ccw mr-2"></i> Data Retur Penjualan
                                     </h6>
+                                </div>
 
-                                    <div class="d-flex gap-5">
-                                        <div class="d-flex mr-5 align-items-center">
-                                            <input type="text" class="form-control form-control-sm mr-2"
-                                                id="searchTable" placeholder="Search retur..."
-                                                style="width:150px">
+                                <div class="card-body pb-0">
+                                    <form method="GET" action="{{ route('laporan.retur') }}" id="returFilterForm">
+                                        <div class="form-row">
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Dari Tanggal</label>
+                                                <input type="date" class="form-control" name="dari_tanggal" value="{{ $filters['dari_tanggal'] }}">
+                                            </div>
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Sampai Tanggal</label>
+                                                <input type="date" class="form-control" name="sampai_tanggal" value="{{ $filters['sampai_tanggal'] }}">
+                                            </div>
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Cari</label>
+                                                <input type="text" class="form-control " id="searchTable" placeholder="Search retur...">
+                                            </div>
+                                            <div class="form-group col-md-12 d-flex justify-content-end align-items-end">
+                                                <button type="submit" class="btn btn-info mr-2">
+                                                    <i class="feather icon-refresh-cw"></i> Proses
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    </form>
                                 </div>
 
                                 <div class="nav-tabs-top">

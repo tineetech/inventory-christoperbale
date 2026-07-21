@@ -15,6 +15,10 @@
             display: none;
             background: #f9f9f9;
         }
+
+        .row-transit {
+            background-color: #fff3e0 !important;
+        }
     </style>
 @endsection
 
@@ -66,6 +70,12 @@
                                         </option>
                                     @endforeach
                                 </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-12">
+                                <label class="font-weight-bold">Cari</label>
+                                <input type="text" class="form-control" name="search" placeholder="Kode / Resi / Pesanan / Keterangan" value="{{ $filters['search'] }}">
                             </div>
                         </div>
 
@@ -132,7 +142,7 @@
 
                                     $scanOutLabel = $item->scan_out ? ucfirst($item->scan_out) : '-';
                                 @endphp
-                                <tr class="main-row" data-report-main="true" data-id="{{ $item->id }}"
+                                <tr class="main-row {{ $item->keterangan === 'sedang transit' ? 'row-transit' : '' }}" data-report-main="true" data-id="{{ $item->id }}"
                                     data-expanded="false">
                                     <td>{{ $penjualan->firstItem() + $index }}</td>
                                     <td class="kode-click" style="white-space: nowrap;">
@@ -183,6 +193,12 @@
                                                 {{ $canEditHargaCair ? 'Edit' : 'Input' }} Harga Cair
                                             </button>
                                         @endif
+                                        <button class="btn btn-xs {{ $item->keterangan === 'sedang transit' ? 'btn-success' : 'btn-secondary' }} mx-1 btn-transit"
+                                            data-id="{{ $item->id }}"
+                                            data-transit="{{ $item->keterangan === 'sedang transit' ? 'true' : 'false' }}">
+                                            <i class="feather icon-truck"></i>
+                                            {{ $item->keterangan === 'sedang transit' ? 'Sudah Transit' : 'Sedang Transit' }}
+                                        </button>
                                     </td>
                                 </tr>
                                 <tr class="detail-row" data-report-detail="true" id="detail-{{ $item->id }}"
@@ -416,6 +432,36 @@
             const expanded = mainRow.dataset.expanded === 'true';
             mainRow.dataset.expanded = expanded ? 'false' : 'true';
             detailRow.style.display = expanded ? 'none' : 'table-row';
+        });
+
+        // ── Transit Toggle ────────────────────────────────────
+        $(document).on('click', '.btn-transit', async function() {
+            const btn = $(this);
+            const id = btn.data('id');
+            const transit = btn.data('transit') === 'true';
+
+            btn.prop('disabled', true);
+            btn.html('<span class="spinner-border spinner-border-sm"></span>');
+
+            try {
+                const res = await fetch(`/transaksi/penjualan/${id}/transit`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    }
+                });
+                const json = await res.json();
+                if (json.success) {
+                    location.reload();
+                } else {
+                    Swal.fire({ icon: 'error', title: 'Gagal', text: json.message ?? 'Terjadi kesalahan.' });
+                }
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
+            } finally {
+                btn.prop('disabled', false);
+            }
         });
 
         // ── Harga Cair Modal ──────────────────────────────────

@@ -1025,4 +1025,23 @@ class PenjualanController extends Controller
             'harga_cair' => $penjualan->harga_cair,
         ]);
     }
+
+    public function updateTransit(Request $request, $id)
+    {
+        $penjualan = Penjualan::findOrFail($id);
+
+        if ($penjualan->keterangan === 'sedang transit') {
+            $penjualan->update(['keterangan' => null]);
+            $transit = false;
+        } else {
+            $penjualan->update(['keterangan' => 'sedang transit']);
+            $transit = true;
+        }
+
+        return response()->json([
+            'success' => true,
+            'transit' => $transit,
+            'message' => $transit ? 'Status transit diaktifkan.' : 'Status transit dinonaktifkan.',
+        ]);
+    }
 }
