@@ -155,6 +155,13 @@
                                         @else
                                             <span class="badge badge-secondary">-</span>
                                         @endif
+                                        @if ($item->is_retur === 'yes')
+                                            <span class="badge text-white" style="background:#00499b">Ya ret</span>
+                                        @elseif ($item->is_retur === 'no')
+                                            <span class="badge badge-danger">Ga ret</span>
+                                        @else
+                                            <span class="badge badge-secondary">-</span>
+                                        @endif
                                     </td>
                                     <td>
                                         {{ $item->keterangan ?: '-' }}

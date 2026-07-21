@@ -386,7 +386,7 @@ class ReportController extends Controller
 
     private function getPenjualanReportQuery(array $filters)
     {
-        $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok');
+        $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok')->where('is_retur', 'no');
 
         if ($filters['dari_tanggal']) {
             $dari = $filters['dari_tanggal'] . ' ' . ($filters['dari_jam'] ?? '00:00') . ':00';
