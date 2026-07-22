@@ -100,6 +100,7 @@ class ReportController extends Controller
 
     public function penjualanExcel(Request $request)
     {
+        set_time_limit(600);
         $filters = $this->resolvePenjualanFilters($request);
         $penjualan = $this->getPenjualanReportQuery($filters)->get();
 

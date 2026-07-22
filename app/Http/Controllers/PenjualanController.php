@@ -635,8 +635,11 @@ class PenjualanController extends Controller
 
             DB::commit();
 
-            return redirect()->route('penjualan.index')
-                ->with('success', 'Penjualan berhasil diupdate');
+            $penjualanDate = \Carbon\Carbon::parse($penjualan->tanggal)->format('Y-m-d');
+            return redirect()->route('penjualan.index', [
+                'date_from' => $penjualanDate,
+                'date_to'   => $penjualanDate,
+            ])->with('success', 'Penjualan berhasil diupdate');
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->with('error', 'Terjadi kesalahan : ' . $e->getMessage());
