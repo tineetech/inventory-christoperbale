@@ -22,6 +22,11 @@ use App\Http\Controllers\HitungStokController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReturPenjualanController;
+use App\Http\Controllers\ProdukController;
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\DiscountController;
+use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\UserVoucherController;
 use Illuminate\Support\Facades\Auth;
 
 /*
@@ -248,6 +253,30 @@ Route::middleware(['auth.pengguna'])->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | BRAND
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/brand', [BrandController::class, 'index'])
+        ->name('brand.index')
+        ->middleware('permission:lihat,barang');
+    Route::get('/master/brand/create', [BrandController::class, 'create'])
+        ->name('brand.create')
+        ->middleware('permission:tambah,barang');
+    Route::post('/master/brand/store', [BrandController::class, 'store'])
+        ->name('brand.store')
+        ->middleware('permission:tambah,barang');
+    Route::get('/master/brand/edit/{id}', [BrandController::class, 'edit'])
+        ->name('brand.edit')
+        ->middleware('permission:edit,barang');
+    Route::put('/master/brand/update/{id}', [BrandController::class, 'update'])
+        ->name('brand.update')
+        ->middleware('permission:edit,barang');
+    Route::delete('/master/brand/delete/{id}', [BrandController::class, 'destroy'])
+        ->name('brand.destroy')
+        ->middleware('permission:hapus,barang');
+
+    /*
+    |--------------------------------------------------------------------------
     | BARANG
     |--------------------------------------------------------------------------
     */
@@ -285,6 +314,120 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->middleware('permission:edit,barang');
     Route::post('/master/barang/bulk-update-harga-reseller', [BarangController::class, 'bulkUpdateHargaReseller'])
         ->name('barang.bulk-update-harga-reseller');
+    Route::post('/master/barang/bulk-kelompokan-produk', [BarangController::class, 'bulkKelompokanProduk'])
+        ->name('barang.bulk-kelompokan-produk');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | PRODUK
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/produk', [ProdukController::class, 'index'])
+        ->name('produk.index')
+        ->middleware('permission:lihat,barang');
+    Route::get('/master/produk/create', [ProdukController::class, 'create'])
+        ->name('produk.create')
+        ->middleware('permission:tambah,barang');
+    Route::post('/master/produk/store', [ProdukController::class, 'store'])
+        ->name('produk.store')
+        ->middleware('permission:tambah,barang');
+    Route::get('/master/produk/edit/{id}', [ProdukController::class, 'edit'])
+        ->name('produk.edit')
+        ->middleware('permission:edit,barang');
+    Route::put('/master/produk/update/{id}', [ProdukController::class, 'update'])
+        ->name('produk.update')
+        ->middleware('permission:edit,barang');
+    Route::delete('/master/produk/delete/{id}', [ProdukController::class, 'destroy'])
+        ->name('produk.destroy')
+        ->middleware('permission:hapus,barang');
+
+    /*
+    |--------------------------------------------------------------------------
+    | PRODUK VARIAN
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/produk-varian', [ProdukController::class, 'varian'])
+        ->name('produk_varian.index')
+        ->middleware('permission:lihat,barang');
+
+    /*
+    |--------------------------------------------------------------------------
+    | PRODUK FOTO
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/produk-foto', [ProdukController::class, 'foto'])
+        ->name('produk_foto.index')
+        ->middleware('permission:lihat,barang');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | DISCOUNT
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/discount', [DiscountController::class, 'index'])
+        ->name('discount.index')
+        ->middleware('permission:lihat,barang');
+    Route::get('/master/discount/create', [DiscountController::class, 'create'])
+        ->name('discount.create')
+        ->middleware('permission:tambah,barang');
+    Route::post('/master/discount/store', [DiscountController::class, 'store'])
+        ->name('discount.store')
+        ->middleware('permission:tambah,barang');
+    Route::get('/master/discount/edit/{id}', [DiscountController::class, 'edit'])
+        ->name('discount.edit')
+        ->middleware('permission:edit,barang');
+    Route::put('/master/discount/update/{id}', [DiscountController::class, 'update'])
+        ->name('discount.update')
+        ->middleware('permission:edit,barang');
+    Route::delete('/master/discount/delete/{id}', [DiscountController::class, 'destroy'])
+        ->name('discount.destroy')
+        ->middleware('permission:hapus,barang');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | VOUCHER
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/voucher', [VoucherController::class, 'index'])
+        ->name('voucher.index')
+        ->middleware('permission:lihat,barang');
+    Route::get('/master/voucher/create', [VoucherController::class, 'create'])
+        ->name('voucher.create')
+        ->middleware('permission:tambah,barang');
+    Route::post('/master/voucher/store', [VoucherController::class, 'store'])
+        ->name('voucher.store')
+        ->middleware('permission:tambah,barang');
+    Route::get('/master/voucher/edit/{id}', [VoucherController::class, 'edit'])
+        ->name('voucher.edit')
+        ->middleware('permission:edit,barang');
+    Route::put('/master/voucher/update/{id}', [VoucherController::class, 'update'])
+        ->name('voucher.update')
+        ->middleware('permission:edit,barang');
+    Route::delete('/master/voucher/delete/{id}', [VoucherController::class, 'destroy'])
+        ->name('voucher.destroy')
+        ->middleware('permission:hapus,barang');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | USER VOUCHER
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/user-voucher', [UserVoucherController::class, 'index'])
+        ->name('user_voucher.index')
+        ->middleware('permission:lihat,barang');
+    Route::get('/master/user-voucher/create', [UserVoucherController::class, 'create'])
+        ->name('user_voucher.create')
+        ->middleware('permission:tambah,barang');
+    Route::post('/master/user-voucher/store', [UserVoucherController::class, 'store'])
+        ->name('user_voucher.store')
+        ->middleware('permission:tambah,barang');
+    Route::delete('/master/user-voucher/delete/{id}', [UserVoucherController::class, 'destroy'])
+        ->name('user_voucher.destroy')
+        ->middleware('permission:hapus,barang');
 
 
     /*

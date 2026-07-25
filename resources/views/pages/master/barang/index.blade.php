@@ -9,6 +9,10 @@
         .modal-backdrop {
             z-index: 1054 !important;
         }
+
+        .swal2-container {
+            z-index: 99999 !important;
+        }
     </style>
 @endsection
 @section('content')
@@ -87,6 +91,12 @@
                                                 onclick="openHargaResellerModal()">
                                                 <i class="feather icon-tag"></i>
                                                 Bentuk Harga Reseller (<span id="selectedCountReseller">0</span>)
+                                            </button>
+
+                                            <button id="btnBulkKelompokanProduk" class="btn btn-sm btn-info text-white d-none"
+                                                onclick="openKelompokanProdukModal()">
+                                                <i class="feather icon-package"></i>
+                                                Kelompokan Produk (<span id="selectedCountKelompokan">0</span>)
                                             </button>
 
                                             <button id="btnBulkDelete" class="btn btn-sm btn-danger d-none"
@@ -169,7 +179,7 @@
                                             {{-- Mobile: Card View --}}
                                             <div class="d-block d-md-none px-3">
                                                 @forelse ($barang as $index => $sup)
-                                                    <div class="card mb-3 border" data-id="{{ $sup->id }}">
+                                                    <div class="card mb-3 border" data-id="{{ $sup->id }}" data-harga-reseller="{{ $sup->harga_2 }}">
                                                         <div class="card-body p-3">
 
                                                             <div
@@ -270,7 +280,7 @@
                                                     </thead>
                                                     <tbody>
                                                         @forelse ($barang as $index => $sup)
-                                                            <tr data-id="{{ $sup->id }}">
+                                                            <tr data-id="{{ $sup->id }}" data-harga-reseller="{{ $sup->harga_2 }}">
                                                                 <td class="checkbox-col">
                                                                     <input type="checkbox" class="row-check">
                                                                 </td>
@@ -611,6 +621,76 @@
 
         @include('components.footer')
     </div>
+
+    {{-- Modal Kelompokan Produk --}}
+    <div class="modal fade" id="modalKelompokanProduk" tabindex="-1" role="dialog"
+        aria-labelledby="modalKelompokanProdukLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalKelompokanProdukLabel">
+                        <i class="feather icon-package mr-2 text-info"></i> Kelompokan Produk
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <form id="formKelompokanProduk" enctype="multipart/form-data">
+                    @csrf
+                    <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+                        <div class="alert bg-info text-white d-flex align-items-center mb-3" style="gap: 10px;">
+                            <i class="feather icon-info" style="font-size: 1.2rem;"></i>
+                            <div>
+                                Produk akan dikelompokkan dari <strong id="kelompokanSelectedCount">0</strong> barang yang dipilih.
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="ids" id="kelompokanIds">
+
+                        <div class="form-group">
+                            <label class="font-weight-bold">Nama Produk <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="nama_produk" id="inputNamaProduk" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="font-weight-bold">Slug <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" name="slug" id="inputSlug" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="font-weight-bold">Deskripsi</label>
+                            <textarea class="form-control" name="deskripsi" rows="3"></textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
+                                <label class="font-weight-bold">Harga Normal (dari Harga Reseller) <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="harga_normal" id="inputHargaNormal" readonly required>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="font-weight-bold">Status</label>
+                                <select class="form-control" name="status">
+                                    <option value="aktif" selected>Aktif</option>
+                                    <option value="nonaktif">Nonaktif</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="font-weight-bold">Foto Produk</label>
+                            <input type="file" class="form-control-file" name="foto[]" multiple accept="image/jpeg,image/png,image/jpg,image/webp" onchange="previewFotoProduk(this)">
+                            <small class="text-muted">Bisa pilih lebih dari 1 foto. Maks 5MB per foto.</small>
+                            <div id="previewFotoProduk" class="d-flex flex-wrap mt-2" style="gap: 8px;"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-info text-white" id="btnSimpanKelompokan">
+                            <i class="feather icon-save mr-1"></i> Simpan Produk
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('scripts')
@@ -647,25 +727,136 @@
             const btn = document.getElementById('btnBulkDelete');
             const btnHpp = document.getElementById('btnBulkHpp');
             const btnReseller = document.getElementById('btnBulkHargaReseller');
+            const btnKelompokan = document.getElementById('btnBulkKelompokanProduk');
             const count = checked.length;
 
             document.getElementById('selectedCount').textContent = count;
             document.getElementById('selectedCountHpp').textContent = count;
             document.getElementById('selectedCountReseller').textContent = count;
+            document.getElementById('selectedCountKelompokan').textContent = count;
 
             if (count > 0) {
                 btn.classList.remove('d-none');
                 btnHpp.classList.remove('d-none');
                 btnReseller.classList.remove('d-none');
+                btnKelompokan.classList.remove('d-none');
             } else {
                 btn.classList.add('d-none');
                 btnHpp.classList.add('d-none');
                 btnReseller.classList.add('d-none');
+                btnKelompokan.classList.add('d-none');
             }
         }
 
         document.addEventListener('change', function(e) {
             if (e.target.classList.contains('row-check')) updateBulkBar();
+        });
+
+        // ── Kelompokan Produk ──────────────────────────────────
+        function openKelompokanProdukModal() {
+            const checked = document.querySelectorAll('.row-check:checked');
+            const ids = Array.from(checked).map(cb => {
+                const tr = cb.closest('tr');
+                const card = cb.closest('[data-id]');
+                return tr ? tr.getAttribute('data-id') : card?.getAttribute('data-id');
+            }).filter(Boolean);
+
+            if (ids.length === 0) return;
+
+            document.getElementById('kelompokanIds').value = JSON.stringify(ids);
+            document.getElementById('kelompokanSelectedCount').textContent = ids.length;
+
+            const firstEl = checked[0].closest('[data-harga-reseller]');
+            if (firstEl) {
+                document.getElementById('inputHargaNormal').value = firstEl.getAttribute('data-harga-reseller') || 0;
+            }
+
+            $('#modalKelompokanProduk').modal('show');
+        }
+
+        // Preview foto produk
+        function previewFotoProduk(input) {
+            const container = document.getElementById('previewFotoProduk');
+            container.innerHTML = '';
+
+            Array.from(input.files).forEach((file, i) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.cssText = 'position:relative;width:80px;height:80px;border-radius:6px;overflow:hidden;border:1px solid #dee2e6;flex-shrink:0;';
+                    wrapper.innerHTML =
+                        '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">' +
+                        '<span style="position:absolute;top:2px;right:2px;background:rgba(220,53,69,0.85);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="hapusPreviewFoto(this,' + i + ')">&times;</span>' +
+                        '<span style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.5);color:#fff;border-radius:3px;padding:0 4px;font-size:9px;">' + (i + 1) + '</span>';
+                    container.appendChild(wrapper);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function hapusPreviewFoto(el, index) {
+            const input = document.querySelector('input[name="foto[]"]');
+            const dt = new DataTransfer();
+            Array.from(input.files).forEach((f, i) => {
+                if (i !== index) dt.items.add(f);
+            });
+            input.files = dt.files;
+            previewFotoProduk(input);
+        }
+
+        // Auto-slug dari nama_produk
+        document.getElementById('inputNamaProduk').addEventListener('input', function() {
+            const slug = this.value.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '')
+                .replace(/\s+/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '');
+            document.getElementById('inputSlug').value = slug;
+        });
+
+        document.getElementById('formKelompokanProduk').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const btn = document.getElementById('btnSimpanKelompokan');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menyimpan...';
+
+            const formData = new FormData(this);
+            const kelompokanIds = JSON.parse(document.getElementById('kelompokanIds').value || '[]');
+            kelompokanIds.forEach(id => formData.append('ids[]', id));
+
+            try {
+                const res = await fetch('{{ route('barang.bulk-kelompokan-produk') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                const json = await res.json();
+
+                $('#modalKelompokanProduk').modal('hide');
+
+                if (json.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: json.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    setTimeout(() => {
+                        Swal.fire({ icon: 'error', title: 'Gagal', text: json.message ?? 'Terjadi kesalahan.' });
+                    }, 300);
+                }
+            } catch (e) {
+                Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="feather icon-save mr-1"></i> Simpan Produk';
+            }
         });
 
         async function bulkDelete() {

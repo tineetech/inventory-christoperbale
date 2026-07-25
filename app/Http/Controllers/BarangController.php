@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Barang;
 use App\Models\Satuan;
+use App\Models\Produk;
+use App\Models\ProdukVarian;
+use App\Models\ProdukFoto;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\StokBarang;
 use App\Models\StokMovement;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Milon\Barcode\DNS1D;
 use Milon\Barcode\DNS2D;
 
@@ -279,6 +283,24 @@ class BarangController extends Controller
             ->get();
     }
 
+    public function searchByWord(Request $req)
+    {
+        $nama = $req->nama;
+        $words = explode(' ', $nama);
+        $w1 = $words[0] ?? '';
+        $w2 = $words[1] ?? '';
+
+        $query = Barang::query();
+        if ($w1) {
+            $query->where('nama_barang', 'like', "$w1%");
+        }
+        if ($w2) {
+            $query->orWhere('nama_barang', 'like', "$w2%");
+        }
+
+        return $query->limit(50)->with('stok')->get();
+    }
+
     public function barcode($sku)
     {
 
@@ -373,6 +395,85 @@ class BarangController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => count($request->ids) . ' barang berhasil diupdate harga reseller-nya.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+    public function bulkKelompokanProduk(Request $request)
+    {
+        $request->validate([
+            'ids'         => 'required|array|min:1',
+            'ids.*'       => 'exists:barang,id',
+            'nama_produk' => 'required|string|max:255',
+            'slug'        => 'required|string|max:255|unique:produk,slug',
+            'deskripsi'   => 'nullable|string',
+            'harga_normal'=> 'required|numeric|min:0',
+            'status'      => 'required|in:aktif,nonaktif',
+            'foto.*'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
+        ]);
+
+        $alreadyGrouped = Barang::whereIn('id', $request->ids)->whereNotNull('produk_id')->get();
+        if ($alreadyGrouped->isNotEmpty()) {
+            $names = $alreadyGrouped->pluck('nama_barang')->take(5)->implode(', ');
+            return response()->json([
+                'success' => false,
+                'message' => 'Barang berikut sudah memiliki produk: ' . $names . '. Hapus kelompok produk sebelumnya jika ingin menggrup ulang.',
+            ]);
+        }
+
+        DB::beginTransaction();
+        try {
+            $produk = Produk::create([
+                'nama_produk'  => $request->nama_produk,
+                'slug'         => $request->slug,
+                'deskripsi'    => $request->deskripsi,
+                'harga_normal' => $request->harga_normal,
+                'status'       => $request->status,
+            ]);
+
+            $barangs = Barang::whereIn('id', $request->ids)->get();
+
+            foreach ($barangs as $barang) {
+                $barang->update(['produk_id' => $produk->id]);
+
+                $words = explode(' ', $barang->nama_barang);
+
+                $size = null;
+                for ($i = 2; $i <= 3; $i++) {
+                    if (isset($words[$i]) && preg_match('/\d/', $words[$i])) {
+                        $size = $words[$i];
+                        break;
+                    }
+                }
+
+                ProdukVarian::create([
+                    'produk_id' => $produk->id,
+                    'barang_id' => $barang->id,
+                    'warna'     => $words[1] ?? null,
+                    'size'      => $size,
+                ]);
+            }
+
+            if ($request->hasFile('foto')) {
+                foreach ($request->file('foto') as $i => $file) {
+                    $path = $file->store('produk/foto', 'public');
+                    ProdukFoto::create([
+                        'produk_id' => $produk->id,
+                        'foto'      => $path,
+                        'urutan'    => $i + 1,
+                        'is_utama'  => $i === 0,
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Produk "' . $produk->nama_produk . '" berhasil dibuat dengan ' . count($barangs) . ' varian.',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

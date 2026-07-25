@@ -233,7 +233,7 @@
                                                 <input type="number"
                                                     name="items[{{ $loop->index }}][qty_retur]"
                                                     class="form-control form-control-sm qty-input"
-                                                    value="1" min="1" max="{{ $detail->qty }}" disabled>
+                                                    value="1"  max="{{ $detail->qty }}" disabled>
                                                 <input type="hidden" name="items[{{ $loop->index }}][penjualan_detail_id]" value="{{ $detail->id }}" disabled>
                                                 <input type="hidden" name="items[{{ $loop->index }}][barang_id]" value="{{ $detail->barang_id }}" disabled>
                                             </td>
@@ -791,8 +791,8 @@ $('#formRetur').on('submit', function (e) {
         const qtyBeli  = parseInt(row.find('td:nth-child(5)').text());
         const qtyRetur = parseInt(row.find('.qty-input').val());
         const sku      = row.find('td:nth-child(2)').text().trim();
-        if (!qtyRetur || qtyRetur <= 0) { valid = false; errors.push('SKU ' + sku + ': qty retur harus > 0'); }
-        else if (qtyRetur > qtyBeli)    { valid = false; errors.push('SKU ' + sku + ': qty retur (' + qtyRetur + ') > qty beli (' + qtyBeli + ')'); }
+        // if (!qtyRetur || qtyRetur <= 0) { valid = false; errors.push('SKU ' + sku + ': qty retur harus > 0'); }
+         if (qtyRetur > qtyBeli)    { valid = false; errors.push('SKU ' + sku + ': qty retur (' + qtyRetur + ') > qty beli (' + qtyBeli + ')'); }
     });
 
     if (!valid) {

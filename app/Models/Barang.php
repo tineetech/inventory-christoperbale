@@ -16,7 +16,8 @@ class Barang extends Model
         'harga_1',
         'harga_2',
         'stok_minimum',
-        'keterangan'
+        'keterangan',
+        'produk_id',
     ];
 
     public function satuan()
@@ -42,5 +43,15 @@ class Barang extends Model
     public function stokMovement()
     {
         return $this->hasMany(StokMovement::class);
+    }
+
+    public function produk()
+    {
+        return $this->belongsTo(Produk::class);
+    }
+
+    public function produkVarian()
+    {
+        return $this->hasMany(ProdukVarian::class);
     }
 }

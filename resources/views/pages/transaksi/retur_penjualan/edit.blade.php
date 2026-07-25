@@ -271,7 +271,7 @@
                                                     name="items[{{ $loop->index }}][qty_retur]"
                                                     class="form-control form-control-sm qty-input"
                                                     value="{{ old('items.' . $loop->index . '.qty_retur', $existingDetail->qty_retur ?? 1) }}"
-                                                    min="1"
+                                                    {{-- min="1" --}}
                                                     max="{{ $detail->qty }}"
                                                     {{ $isChecked ? '' : 'disabled' }}>
                                                 {{-- hidden fields --}}
@@ -628,10 +628,11 @@ $('#formRetur').on('submit', function (e) {
         let qtyRetur= parseInt(row.find('.qty-input').val());
         let sku     = row.find('td:nth-child(2)').text().trim();
 
-        if (!qtyRetur || qtyRetur <= 0) {
-            valid = false;
-            errors.push('SKU ' + sku + ': qty retur harus lebih dari 0');
-        } else if (qtyRetur > qtyBeli) {
+        // if (!qtyRetur || qtyRetur <= 0) {
+        //     valid = false;
+        //     errors.push('SKU ' + sku + ': qty retur harus lebih dari 0');
+        // } else 
+        if (qtyRetur > qtyBeli) {
             valid = false;
             errors.push('SKU ' + sku + ': qty retur (' + qtyRetur + ') melebihi qty beli (' + qtyBeli + ')');
         }
