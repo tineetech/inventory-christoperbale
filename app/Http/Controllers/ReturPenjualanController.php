@@ -53,7 +53,7 @@ class ReturPenjualanController extends Controller
             'items'                       => 'required|array|min:1',
             'items.*.penjualan_detail_id' => 'required|exists:penjualan_detail,id',
             'items.*.barang_id'           => 'required|exists:barang,id',
-            'items.*.qty_retur'           => 'required|integer|min:1',
+            'items.*.qty_retur'           => 'required|integer',
             'items.*.keterangan'          => 'nullable|string',
         ]);
 
@@ -136,7 +136,7 @@ class ReturPenjualanController extends Controller
             'items'                       => 'required|array|min:1',
             'items.*.penjualan_detail_id' => 'required|exists:penjualan_detail,id',
             'items.*.barang_id'           => 'required|exists:barang,id',
-            'items.*.qty_retur'           => 'required|integer|min:1',
+            'items.*.qty_retur'           => 'required|integer',
             'items.*.keterangan'          => 'nullable|string',
         ]);
 
