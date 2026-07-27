@@ -245,7 +245,7 @@
                                                                                         <td>{{ $d->barang->stok->jumlah_stok }}
                                                                                         </td>
 
-                                                                                        <td>{{ $d->qty_sistem }}</td>
+                                                                                        <td>{{ $d->barang->stok->jumlah_stok ?? 0 }}</td>
 
                                                                                         <td>{{ $d->qty_fisik }}</td>
 
