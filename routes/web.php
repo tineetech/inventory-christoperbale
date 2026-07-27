@@ -419,6 +419,8 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/master/user-voucher', [UserVoucherController::class, 'index'])
         ->name('user_voucher.index')
         ->middleware('permission:lihat,barang');
+    Route::get('/master/user-voucher/users', [UserVoucherController::class, 'users'])
+        ->name('user_voucher.users');
     Route::get('/master/user-voucher/create', [UserVoucherController::class, 'create'])
         ->name('user_voucher.create')
         ->middleware('permission:tambah,barang');

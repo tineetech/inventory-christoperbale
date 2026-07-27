@@ -84,7 +84,7 @@
 
         <li class="sidenav-divider mb-1"></li>
         <li class="sidenav-header small font-weight-semibold">Web Management</li>
-        @if (hasPermission('lihat', 'brand'))
+        @if (hasPermission('lihat', 'p'))
             <li class="sidenav-item {{ request()->routeIs('brand.*') ? 'active' : '' }}">
                 <a href="{{ route('brand.index') }}" class="sidenav-link">
                     <i class="sidenav-icon feather icon-tag"></i>
@@ -101,9 +101,9 @@
                 </a>
                 <ul class="sidenav-menu">
                     <!-- BARANG - WEB -->
-                    @if (hasPermission('lihat', 'produk'))
+                    @if (hasPermission('lihat', 'p'))
 
-                        @if (hasPermission('lihat', 'barang'))
+                        @if (hasPermission('lihat', 'p'))
                             <li class="sidenav-item {{ request()->routeIs('produk.*') ? 'active' : '' }}">
                                 <a href="{{ route('produk.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-package"></i>
@@ -112,7 +112,7 @@
                             </li>
                         @endif
 
-                        @if (hasPermission('lihat', 'produk'))
+                        @if (hasPermission('lihat', 'p'))
                             <li class="sidenav-item {{ request()->routeIs('produk_varian.*') ? 'active' : '' }}">
                                 <a href="{{ route('produk_varian.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-layers"></i>
@@ -121,7 +121,7 @@
                             </li>
                         @endif
 
-                        @if (hasPermission('lihat', 'produk'))
+                        @if (hasPermission('lihat', 'p'))
                             <li class="sidenav-item {{ request()->routeIs('produk_foto.*') ? 'active' : '' }}">
                                 <a href="{{ route('produk_foto.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-image"></i>
@@ -130,7 +130,7 @@
                             </li>
                         @endif
 
-                        @if (hasPermission('lihat', 'produk'))
+                        @if (hasPermission('lihat', 'p'))
                             <li class="sidenav-item {{ request()->routeIs('discount.*') ? 'active' : '' }}">
                                 <a href="{{ route('discount.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-percent"></i>
@@ -139,7 +139,7 @@
                             </li>
                         @endif
 
-                        @if (hasPermission('lihat', 'produk'))
+                        @if (hasPermission('lihat', 'p'))
                             <li class="sidenav-item {{ request()->routeIs('voucher.*') ? 'active' : '' }}">
                                 <a href="{{ route('voucher.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-tag"></i>
@@ -148,7 +148,7 @@
                             </li>
                         @endif
 
-                        @if (hasPermission('lihat', 'produk'))
+                        @if (hasPermission('lihat', 'p'))
                             <li class="sidenav-item {{ request()->routeIs('user_voucher.*') ? 'active' : '' }}">
                                 <a href="{{ route('user_voucher.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-users"></i>

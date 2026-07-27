@@ -33,41 +33,66 @@ class UserVoucherController extends Controller
     public function create()
     {
         $vouchers = Voucher::where('status', 'active')->latest()->get();
-        $users = Pengguna::whereHas('role', function ($q) {
-            $q->where('nama_role', 'user');
-        })->latest()->get();
+        return view('pages.master.user_voucher.create', compact('vouchers'));
+    }
 
-        return view('pages.master.user_voucher.create', compact('vouchers', 'users'));
+    public function users(Request $request)
+    {
+        $q = $request->q;
+        $users = Pengguna::whereHas('role', function ($query) {
+            $query->where('nama_role', 'user');
+        })->when($q, function ($query, $q) {
+            $query->where('nama', 'like', "%{$q}%");
+        })->limit(50)->get(['id', 'nama']);
+
+        return response()->json($users);
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'voucher_id' => 'required|exists:vouchers,id',
-            'user_id'    => 'required|exists:pengguna,id',
+            'user_ids'   => 'required|array|min:1',
+            'user_ids.*' => 'exists:pengguna,id',
         ]);
 
         $voucher = Voucher::findOrFail($request->voucher_id);
+        $created = 0;
 
-        if ($voucher->quota && $voucher->used_count >= $voucher->quota) {
-            return redirect()->back()->withInput()->with('error', 'Kuota voucher "' . $voucher->name . '" sudah penuh.');
+        foreach ($request->user_ids as $userId) {
+            if ($voucher->quota && $voucher->used_count >= $voucher->quota) {
+                break;
+            }
+
+            $exists = UserVoucher::where('voucher_id', $voucher->id)
+                ->where('user_id', $userId)
+                ->exists();
+
+            if ($exists) continue;
+
+            UserVoucher::create([
+                'voucher_id' => $voucher->id,
+                'user_id'    => $userId,
+                'status'     => 'unused',
+            ]);
+
+            $voucher->increment('used_count');
+            $created++;
         }
 
-        UserVoucher::create([
-            'voucher_id' => $request->voucher_id,
-            'user_id'    => $request->user_id,
-            'status'     => 'unused',
-        ]);
+        if ($created === 0) {
+            return redirect()->back()->withInput()->with('error', 'Tidak ada user baru yang bisa diberikan voucher (sudah pernah diberikan atau kuota penuh).');
+        }
 
-        $voucher->increment('used_count');
-
-        return redirect()->route('user_voucher.index')->with('success', 'Voucher berhasil diberikan ke user.');
+        return redirect()->route('user_voucher.index')->with('success', "Voucher berhasil diberikan ke {$created} user.");
     }
 
     public function destroy($id)
     {
         $uv = UserVoucher::findOrFail($id);
-        $uv->voucher->decrement('used_count');
+        if ($uv->voucher) {
+            $uv->voucher->decrement('used_count');
+        }
         $uv->delete();
 
         return redirect()->route('user_voucher.index')->with('success', 'Data user voucher berhasil dihapus.');

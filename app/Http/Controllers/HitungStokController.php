@@ -139,7 +139,7 @@ class HitungStokController extends Controller
                 // =========================
                 // 2. UPDATE DETAIL (TIDAK HAPUS)
                 // =========================
-                AdjustStokDetail::where('adjust_stok_id', $adjust->id)->update([
+                AdjustStokDetail::where('adjust_stok_id', $adjust->id)->where('barang_id', $item['id'])->update([
                         'barang_id'      => $item['id'],
                         'qty_sistem' => $item['stok_sistem'],
                         'qty_fisik'  => $item['qty_fisik'],

@@ -34,14 +34,18 @@
                             </div>
 
                             <div class="form-group col-md-6">
-                                <label class="form-label">Pilih User <span class="text-danger">*</span></label>
-                                <select name="user_id" class="form-control @error('user_id') is-invalid @enderror" required>
-                                    <option value="">-- Pilih User --</option>
-                                    @foreach ($users as $u)
-                                        <option value="{{ $u->id }}" {{ old('user_id') == $u->id ? 'selected' : '' }}>{{ $u->nama }}</option>
-                                    @endforeach
-                                </select>
-                                @error('user_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <label class="form-label d-block">Pilih User <span class="text-danger">*</span></label>
+                                <div class="d-flex gap-2">
+                                    <select name="user_ids[]" id="selectUser" class="form-control @error('user_ids') is-invalid @enderror" multiple required style="width:100%"></select>
+                                    <button type="button" id="btnSelectAllUser" class="btn btn-sm btn-outline-info text-nowrap" style="flex-shrink:0;">
+                                        <i class="feather icon-check-square"></i> Semua
+                                    </button>
+                                    <button type="button" id="btnClearUser" class="btn btn-sm btn-outline-secondary text-nowrap" style="flex-shrink:0;">
+                                        <i class="feather icon-x"></i>
+                                    </button>
+                                </div>
+                                @error('user_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                <small class="text-muted">Cari & pilih user, atau klik "Semua" untuk memilih semua user.</small>
                             </div>
                         </div>
 
@@ -55,4 +59,44 @@
             </div>
         </div>
     </div>
+@endsection
+
+@section('scripts')
+    <script>
+        let allUsers = [];
+
+        $('#selectUser').select2({
+            placeholder: 'Cari & pilih user...',
+            allowClear: true,
+            ajax: {
+                url: '{{ route("user_voucher.users") }}',
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return { q: params.term };
+                },
+                processResults: function(data) {
+                    allUsers = data;
+                    return { results: data.map(function(u) { return { id: u.id, text: u.nama }; }) };
+                }
+            }
+        });
+
+        document.getElementById('btnSelectAllUser').addEventListener('click', function() {
+            if (allUsers.length === 0) {
+                $.ajax({
+                    url: '{{ route("user_voucher.users") }}',
+                    dataType: 'json',
+                    async: false,
+                    success: function(data) { allUsers = data; }
+                });
+            }
+            const ids = allUsers.map(function(u) { return u.id; });
+            $('#selectUser').val(ids).trigger('change');
+        });
+
+        document.getElementById('btnClearUser').addEventListener('click', function() {
+            $('#selectUser').val(null).trigger('change');
+        });
+    </script>
 @endsection

@@ -54,7 +54,7 @@
                                 <label class="form-label">Harga Normal <span class="text-danger">*</span></label>
                                 <input type="number" name="harga_normal" id="inputHargaNormal"
                                     class="form-control @error('harga_normal') is-invalid @enderror"
-                                    placeholder="Otomatis dari barang terpilih" readonly
+                                    placeholder="Otomatis terisi dari barang terpilih"
                                     value="{{ old('harga_normal') }}" required>
                                 @error('harga_normal')<div class="invalid-feedback">{{ $message }}</div>@enderror
                             </div>
