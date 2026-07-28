@@ -27,6 +27,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\UserVoucherController;
+use App\Http\Controllers\PengaturanWebController;
 use Illuminate\Support\Facades\Auth;
 
 /*
@@ -679,4 +680,22 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::post('/reset-database', [BackupController::class, 'resetDb'])
         ->name('reset.run')
         ->middleware('permission:buat,reset_db');
+
+    /*
+    |--------------------------------------------------------------------------
+    | PENGATURAN WEB
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/pengaturan-web', [PengaturanWebController::class, 'index'])
+        ->name('pengaturan_web.index')
+        ->middleware('permission:lihat,pengaturan_web');
+    Route::get('/pengaturan-web/create', [PengaturanWebController::class, 'create'])
+        ->name('pengaturan_web.create')
+        ->middleware('permission:tambah,pengaturan_web');
+    Route::post('/pengaturan-web/store', [PengaturanWebController::class, 'store'])
+        ->name('pengaturan_web.store')
+        ->middleware('permission:tambah,pengaturan_web');
+    Route::put('/pengaturan-web/update', [PengaturanWebController::class, 'update'])
+        ->name('pengaturan_web.update')
+        ->middleware('permission:edit,pengaturan_web');
 });

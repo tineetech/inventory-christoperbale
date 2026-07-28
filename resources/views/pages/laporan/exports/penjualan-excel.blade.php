@@ -49,7 +49,11 @@
                 <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                 <td>{{ $item->tanggal }}</td>
                 <td>{{ $item->total_harga }}</td>
-                <td>{{ $item->harga_cair }}</td>
+                {{-- <td>{{ $item->harga_cair }}</td> --}}
+                                    
+                <td style="white-space: nowrap;">
+                    {{ $item->harga_cair > 0 ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
+                </td>
                 {{-- <td>{{ $scanOutLabel }}</td>
                 <td>{{ $draftLabel }}</td> --}}
                 <td>{{ $item->keterangan ?: '-' }}</td>

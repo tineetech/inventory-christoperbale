@@ -1014,7 +1014,7 @@ class PenjualanController extends Controller
     public function updateHargaCair(Request $request, $id)
     {
         $request->validate([
-            'harga_cair' => 'required|numeric|min:0',
+            'harga_cair' => 'required|numeric',
         ]);
 
         $penjualan = Penjualan::findOrFail($id);

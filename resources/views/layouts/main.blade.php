@@ -54,6 +54,10 @@
             z-index: 0;
         }
 
+        .swal2-container {
+            z-index: 99999999999999;
+        }
+
         .table-modern {
             border: 1px solid #e4e6ef;
             border-radius: 6px;

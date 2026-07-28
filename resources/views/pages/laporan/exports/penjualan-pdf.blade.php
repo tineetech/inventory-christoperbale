@@ -115,8 +115,10 @@
                     {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                     <td>{{ $item->tanggal }}</td>
-                    <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
-                    <td>Rp {{ number_format($item->harga_cair, 0, ',', '.') }}</td>
+                    <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>                    
+                    <td style="white-space: nowrap;">
+                        {{ $item->harga_cair > 0 ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
+                    </td>
                     <td>{{ $scanOutLabel }}</td>
                     <td>{{ $draftLabel }}</td>
                     <td>{{ $item->keterangan ?: '-' }}</td>

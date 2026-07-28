@@ -154,7 +154,9 @@
                                     <td style="white-space: nowrap;">{{ $item->tanggal }}</td>
                                     <td style="white-space: nowrap;">Rp
                                         {{ number_format($item->total_harga, 0, ',', '.') }}</td>
-                                    <td style="white-space: nowrap;">Rp {{ number_format($item->harga_cair, 0, ',', '.') }}
+                                    <td style="white-space: nowrap;">
+                                        {{ $item->harga_cair > 0 ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
+                                    </td>
                                     </td>
                                     <td><span class="{{ $scanOutClass }}">{{ $scanOutLabel }}</span></td>
                                     <td>
@@ -482,7 +484,7 @@
         document.getElementById('btnSimpanHargaCair').addEventListener('click', async function() {
             const hargaCair = document.getElementById('inputHargaCair').value;
 
-            if (!hargaCair || isNaN(hargaCair) || Number(hargaCair) < 0) {
+            if (!hargaCair || isNaN(hargaCair)) {
                 Swal.fire({
                     icon: 'warning',
                     title: 'Perhatian',
