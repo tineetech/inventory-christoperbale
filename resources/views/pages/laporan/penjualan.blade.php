@@ -155,7 +155,7 @@
                                     <td style="white-space: nowrap;">Rp
                                         {{ number_format($item->total_harga, 0, ',', '.') }}</td>
                                     <td style="white-space: nowrap;">
-                                        {{ $item->harga_cair > 0 ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
+                                        {{ $item->harga_cair !== null ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
                                     </td>
                                     </td>
                                     <td><span class="{{ $scanOutClass }}">{{ $scanOutLabel }}</span></td>
