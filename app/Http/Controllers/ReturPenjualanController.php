@@ -88,6 +88,12 @@ class ReturPenjualanController extends Controller
 
             DB::commit();
 
+            $back = $request->input('back');
+            if (!empty($back) && is_string($back)) {
+                return redirect(route('penjualan.index') . '?' . ltrim($back, '?'))
+                    ->with('success', 'Retur penjualan berhasil disimpan.');
+            }
+
             return redirect()
                 ->route('penjualan.index')
                 ->with('success', 'Retur penjualan berhasil disimpan.');

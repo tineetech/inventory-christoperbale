@@ -286,7 +286,7 @@ if (!function_exists('sortIcon')) {
                                                                 </td>
                                                                 <td style="white-space:nowrap">
                                                                     @if ($pj->is_retur === 'no')
-                                                                        <a href="/transaksi/penjualan/retur/{{ $pj->id }}" class="btn btn-sm btn-danger">
+                                                                        <a href="/transaksi/penjualan/retur/{{ $pj->id }}?back={{ urlencode(request()->getQueryString()) }}" class="btn btn-sm btn-danger">
                                                                             <i class="feather icon-edit"></i> Retur
                                                                         </a>
                                                                     @endif

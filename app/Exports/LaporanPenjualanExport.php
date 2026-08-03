@@ -10,7 +10,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Events\AfterSheet;
 
-class LaporanPenjualanExport implements FromView, ShouldAutoSize, WithStyles, WithEvents
+class LaporanPenjualanExport implements FromView, WithStyles, WithEvents
 {
     public function __construct(
         private $penjualan,
@@ -74,7 +74,19 @@ class LaporanPenjualanExport implements FromView, ShouldAutoSize, WithStyles, Wi
         return [
             AfterSheet::class => function (AfterSheet $event) {
 
+                // $sheet = $event->sheet->getDelegate();
                 $sheet = $event->sheet->getDelegate();
+
+// Set lebar kolom manual
+$sheet->getColumnDimension('A')->setWidth(8);   // No
+$sheet->getColumnDimension('B')->setWidth(22);  // Kode Penjualan
+$sheet->getColumnDimension('C')->setWidth(20);  // Nomor Resi
+$sheet->getColumnDimension('D')->setWidth(22);  // No Pesanan
+$sheet->getColumnDimension('E')->setWidth(22);  // Dropshipper
+$sheet->getColumnDimension('F')->setWidth(18);  // Tanggal
+$sheet->getColumnDimension('G')->setWidth(18);  // Total Harga
+$sheet->getColumnDimension('H')->setWidth(18);  // Harga Cair
+$sheet->getColumnDimension('I')->setWidth(35);  // Keterangan
                 $highestRow = $sheet->getHighestRow();
 
                 for ($row = 1; $row <= $highestRow; $row++) {

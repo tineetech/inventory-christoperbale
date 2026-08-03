@@ -127,6 +127,8 @@
             enctype="multipart/form-data" id="formRetur">
             @csrf
 
+            <input type="hidden" name="back" value="{{ request('back') }}">
+
             {{-- SATU file input untuk semua sumber (upload, foto, video) --}}
             {{-- Kamera dan foto akan inject blob ke sini via DataTransfer --}}
             <input type="file" name="file" id="masterFileInput" style="display:none" accept="image/*,video/*">
