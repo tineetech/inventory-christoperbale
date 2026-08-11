@@ -6,6 +6,7 @@ use App\Exports\LaporanBarangExport;
 use App\Exports\LaporanPembelianExport;
 use App\Exports\LaporanPenjualanExport;
 use App\Exports\LaporanStokExport;
+use App\Exports\LaporanStokKritisExport;
 use App\Models\Barang;
 use App\Models\Dropshipper;
 use App\Models\Pembelian;
@@ -347,6 +348,107 @@ class ReportController extends Controller
             new LaporanBarangExport($barang, $filters),
             'laporan-barang-' . now()->format('YmdHis') . '.xlsx'
         );
+    }
+
+    public function stokKritis(Request $request)
+    {
+        $filters = $this->resolveStokKritisFilters($request);
+        $stokKritis = $this->getStokKritisReportQuery($filters)->paginate($filters['per_page'])->withQueryString();
+        $barangOptions = Barang::orderBy('nama_barang')->get(['id', 'nama_barang']);
+
+        return view('pages.laporan.stok-kritis', compact('stokKritis', 'barangOptions', 'filters'));
+    }
+
+    public function stokKritisPdf(Request $request)
+    {
+        ini_set('memory_limit', '1024M');
+        ini_set('max_execution_time', 300);
+        $filters = $this->resolveStokKritisFilters($request);
+        $stokKritis = $this->getStokKritisReportQuery($filters)->get();
+
+        $pdf = Pdf::loadView('pages.laporan.exports.stok-kritis-pdf', [
+            'stokKritis' => $stokKritis,
+            'filters' => $filters,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('laporan-stok-kritis-' . now()->format('YmdHis') . '.pdf');
+    }
+
+    public function stokKritisPrint(Request $request)
+    {
+        $filters = $this->resolveStokKritisFilters($request);
+        $stokKritis = $this->getStokKritisReportQuery($filters)->get();
+
+        return view('pages.laporan.exports.stok-kritis-print', [
+            'stokKritis' => $stokKritis,
+            'filters' => $filters,
+        ]);
+    }
+
+    public function stokKritisExcel(Request $request)
+    {
+        $filters = $this->resolveStokKritisFilters($request);
+        $stokKritis = $this->getStokKritisReportQuery($filters)->get();
+
+        return Excel::download(
+            new LaporanStokKritisExport($stokKritis, $filters),
+            'laporan-stok-kritis-' . now()->format('YmdHis') . '.xlsx'
+        );
+    }
+
+    private function getStokKritisReportQuery(array $filters)
+    {
+        $query = Barang::with('satuan', 'stok')
+            ->whereHas('stok', function ($stokQuery) {
+                $stokQuery->where(function ($inner) {
+                    $inner->whereColumn('jumlah_stok', '<=', 'barang.stok_minimum')
+                        ->orWhere('jumlah_stok', '<', 10);
+                });
+            });
+
+        if ($filters['barang_id']) {
+            $query->where('id', $filters['barang_id']);
+        }
+
+        if ($filters['status'] === 'habis') {
+            $query->whereHas('stok', fn($q) => $q->where('jumlah_stok', '<=', 0));
+        } elseif ($filters['status'] === 'minimum') {
+            $query->whereHas('stok', fn($q) => $q
+                ->whereColumn('jumlah_stok', '<=', 'barang.stok_minimum')
+                ->where('jumlah_stok', '>', 0));
+        } elseif ($filters['status'] === 'dibawah_10') {
+            $query->whereHas('stok', fn($q) => $q
+                ->where('jumlah_stok', '>', 0)
+                ->where('jumlah_stok', '<', 10)
+                ->whereColumn('jumlah_stok', '>', 'barang.stok_minimum'));
+        }
+
+        if ($filters['search']) {
+            $s = $filters['search'];
+            $query->where(function ($q) use ($s) {
+                $q->where('nama_barang', 'like', "%{$s}%")
+                  ->orWhere('sku', 'like', "%{$s}%");
+            });
+        }
+
+        return $query->orderBy('nama_barang');
+    }
+
+    private function resolveStokKritisFilters(Request $request): array
+    {
+        $request->validate([
+            'barang_id' => 'nullable|exists:barang,id',
+            'status' => 'nullable|in:semua,habis,minimum,dibawah_10',
+            'search' => 'nullable|string|max:100',
+            'per_page' => 'nullable|in:10,25,50,100',
+        ]);
+
+        return [
+            'barang_id' => $request->filled('barang_id') ? (int) $request->barang_id : null,
+            'status' => in_array($request->status, ['habis', 'minimum', 'dibawah_10'], true) ? $request->status : 'semua',
+            'search' => $request->search ?? null,
+            'per_page' => $this->resolvePerPage($request),
+        ];
     }
 
     private function getBarangReportQuery(array $filters)
