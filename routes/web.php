@@ -315,6 +315,9 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->middleware('permission:edit,barang');
     Route::post('/master/barang/bulk-update-harga-reseller', [BarangController::class, 'bulkUpdateHargaReseller'])
         ->name('barang.bulk-update-harga-reseller');
+    Route::post('/master/barang/bulk-update-stok-minimum', [BarangController::class, 'bulkUpdateStokMinimum'])
+        ->name('barang.bulk-update-stok-minimum')
+        ->middleware('permission:edit,barang');
     Route::post('/master/barang/bulk-kelompokan-produk', [BarangController::class, 'bulkKelompokanProduk'])
         ->name('barang.bulk-kelompokan-produk');
 
@@ -522,6 +525,18 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->name('penjualan.index')
         ->middleware('permission:lihat,penjualan');
 
+    Route::get('/transaksi/penjualan/draft', [PenjualanController::class, 'draft'])
+        ->name('penjualan.draft')
+        ->middleware('permission:lihat,penjualan');
+
+    Route::post('/transaksi/penjualan/draft/release/preview', [PenjualanController::class, 'draftReleasePreview'])
+        ->name('penjualan.draft.release-preview')
+        ->middleware('permission:buat,penjualan');
+
+    Route::post('/transaksi/penjualan/draft/release/process', [PenjualanController::class, 'draftReleaseProcess'])
+        ->name('penjualan.draft.release-process')
+        ->middleware('permission:buat,penjualan');
+
     Route::get('/transaksi/penjualan/create', [PenjualanController::class, 'create'])
         ->name('penjualan.create')
         ->middleware('permission:buat,penjualan');
@@ -656,6 +671,10 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/laporan/barang/pdf', [ReportController::class, 'barangPdf'])->name('laporan.barang.pdf');
     Route::get('/laporan/barang/excel', [ReportController::class, 'barangExcel'])->name('laporan.barang.excel');
     Route::get('/laporan/barang/print', [ReportController::class, 'barangPrint'])->name('laporan.barang.print');
+    Route::get('/laporan/stok-kritis', [ReportController::class, 'stokKritis'])->name('laporan.stok-kritis');
+    Route::get('/laporan/stok-kritis/pdf', [ReportController::class, 'stokKritisPdf'])->name('laporan.stok-kritis.pdf');
+    Route::get('/laporan/stok-kritis/excel', [ReportController::class, 'stokKritisExcel'])->name('laporan.stok-kritis.excel');
+    Route::get('/laporan/stok-kritis/print', [ReportController::class, 'stokKritisPrint'])->name('laporan.stok-kritis.print');
 
     Route::patch('/transaksi/penjualan/{id}/harga-cair', [PenjualanController::class, 'updateHargaCair'])
     ->name('penjualan.update-harga-cair');

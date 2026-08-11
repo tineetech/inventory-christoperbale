@@ -81,6 +81,267 @@ class PenjualanController extends Controller
         return view('pages.transaksi.penjualan.index', compact('penjualan', 'dropshippers'));
     }
 
+    public function draft(Request $request)
+    {
+        $query = Penjualan::with(['dropshipper', 'user', 'detail.barang.stok'])
+            ->where('is_draft', 'yes');
+
+        // ── Search ──────────────────────────────────────────
+        if ($search = $request->search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_penjualan', 'like', "%{$search}%")
+                  ->orWhere('nomor_resi', 'like', "%{$search}%")
+                  ->orWhere('nomor_pesanan', 'like', "%{$search}%")
+                  ->orWhere('nomor_transaksi', 'like', "%{$search}%")
+                  ->orWhere('keterangan', 'like', "%{$search}%")
+                  ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
+            });
+        }
+
+        // ── Filter Dropshipper ──────────────────────────────
+        if ($request->filled('dropshipper')) {
+            $query->whereHas('dropshipper', fn($q) => $q->where('nama', $request->dropshipper));
+        }
+
+        // ── Sort ────────────────────────────────────────────
+        $sortCol = $request->sort_col;
+        $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
+        $allowedSort = ['kode_penjualan', 'nomor_resi', 'nomor_pesanan', 'tanggal', 'total_harga', 'scan_out', 'created_at', 'updated_at'];
+        if ($sortCol && in_array($sortCol, $allowedSort)) {
+            $query->orderBy($sortCol, $sortDir);
+        } else {
+            $query->orderByDesc('created_at');
+        }
+
+        // ── Pagination ──────────────────────────────────────
+        $perPage = in_array((int) $request->per_page, [10, 25, 50, 100]) ? (int) $request->per_page : 10;
+        $penjualanDraft = $query->paginate($perPage)->withQueryString();
+
+        $dropshippers = Dropshipper::orderBy('nama')->get();
+
+        return view('pages.transaksi.penjualan.draft', compact('penjualanDraft', 'dropshippers'));
+    }
+
+    public function draftReleasePreview(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer',
+        ]);
+
+        $penjualans = Penjualan::with(['dropshipper', 'detail.barang.stok'])
+            ->whereIn('id', $request->ids)
+            ->where('is_draft', 'yes')
+            ->get();
+
+        $normal = [];
+        $konflik = [];
+
+        // ── Klasifikasi normal / konflik ────────────────────────────────
+        foreach ($penjualans as $pj) {
+            $items = [];
+            foreach ($pj->detail as $d) {
+                $stok = (int) ($d->barang->stok->jumlah_stok ?? 0);
+                $items[] = [
+                    'barang_id' => $d->barang_id,
+                    'sku'       => $d->barang->sku ?? '-',
+                    'nama'      => $d->barang->nama_barang ?? '-',
+                    'qty'       => (int) $d->qty,
+                    'stok'      => $stok,
+                    'conflict'  => $d->qty > $stok,
+                ];
+            }
+
+            $entry = [
+                'id'            => $pj->id,
+                'kode'          => $pj->kode_penjualan,
+                'tanggal'       => $pj->tanggal ? \Carbon\Carbon::parse($pj->tanggal)->format('d/m/Y') : '-',
+                'dropshipper'   => $pj->dropshipper->nama ?? '-',
+                'total_harga'   => $pj->total_harga ?? 0,
+                'items'         => $items,
+                'ada_konflik'   => collect($items)->contains('conflict', true),
+            ];
+
+            if ($entry['ada_konflik']) {
+                $konflik[] = $entry;
+            } else {
+                $normal[] = $entry;
+            }
+        }
+
+        // ── Ambil barang UNIK yang perlu update stok (hanya qty > stok) ──
+        // jika barang sama muncul di >1 penjualan konflik,
+        // ambil yang qty-nya PALING BESAR saja.
+        $barangMap = [];
+        foreach ($konflik as $entry) {
+            foreach ($entry['items'] as $item) {
+                if (!$item['conflict']) continue;
+                $bid = $item['barang_id'];
+                if (!isset($barangMap[$bid]) || $item['qty'] > $barangMap[$bid]['qty']) {
+                    $barangMap[$bid] = [
+                        'barang_id'  => $bid,
+                        'sku'        => $item['sku'],
+                        'nama'       => $item['nama'],
+                        'qty'        => $item['qty'],
+                        'stok'       => $item['stok'],
+                        'penjualan_id' => $entry['id'],
+                        'kode'       => $entry['kode'],
+                    ];
+                }
+            }
+        }
+
+        // Keperluan input form: tandai item di penjualan mana yang jadi "pemilik" input
+        foreach ($konflik as &$entry) {
+            foreach ($entry['items'] as &$item) {
+                $item['input_utama'] = false;
+                if ($item['conflict'] && ($barangMap[$item['barang_id']]['penjualan_id'] ?? null) === $entry['id']) {
+                    $item['input_utama'] = true;
+                }
+            }
+            unset($item);
+        }
+        unset($entry);
+
+        return response()->json([
+            'success' => true,
+            'counts'  => [
+                'normal'  => count($normal),
+                'konflik' => count($konflik),
+            ],
+            'normal'        => $normal,
+            'konflik'       => $konflik,
+            'barang_update' => array_values($barangMap),
+        ]);
+    }
+
+    public function draftReleaseProcess(Request $request)
+    {
+        $request->validate([
+            'ids'   => 'required|array|min:1',
+            'ids.*' => 'integer',
+            'items' => 'nullable|array',
+        ]);
+
+        $penyans = Penjualan::with(['detail.barang.stok'])
+            ->whereIn('id', $request->ids)
+            ->where('is_draft', 'yes')
+            ->get();
+
+        // input form: [ { penjualan_id, barang_id, qty, jumlah_stok } ]
+        $inputs = collect($request->items ?? [])->keyBy(fn($i) => $i['penjualan_id'] . '-' . $i['barang_id']);
+
+        // Barang unik yang conflict (qty > stok); jika muncul di beberapa penjualan,
+        // hanya penjualan dengan qty PALING BESAR yang menjadi "pemilik" input stok.
+        $barangMap = [];
+        foreach ($penyans as $pj) {
+            foreach ($pj->detail as $d) {
+                $stok = (int) ($d->barang->stok->jumlah_stok ?? 0);
+                if ($d->qty <= $stok) continue;
+                $bid = $d->barang_id;
+                if (!isset($barangMap[$bid]) || $d->qty > $barangMap[$bid]['qty']) {
+                    $barangMap[$bid] = [
+                        'barang_id'    => $bid,
+                        'penjualan_id' => $pj->id,
+                        'qty'          => (int) $d->qty,
+                    ];
+                }
+            }
+        }
+
+        $normalClear   = 0;
+        $konflikClear  = 0;
+        $errors = [];
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($penyans as $pj) {
+                $adaConflict = false;
+                foreach ($pj->detail as $d) {
+                    $stok = (int) ($d->barang->stok->jumlah_stok ?? 0);
+                    if ($d->qty > $stok) {
+                        $adaConflict = true;
+                        break;
+                    }
+                }
+
+                if (!$adaConflict) {
+                    // ── PENJUALAN NORMAL → langsung update dam is_draft=no
+                    $pj->update(['is_draft' => 'no']);
+                    $normalClear++;
+                    continue;
+                }
+
+                $konflikClear++;
+
+                // ── PENJUALAN KONFLIK → proses talahan stok ─────────────
+                foreach ($pj->detail as $d) {
+                    $bid = $d->barang_id;
+
+                    // Hanya proses barang yang pemiliknya penjualan ini (qty terbesar).
+                    // Duplikat di penjualan lain otomatis diabaikan.
+                    if (($barangMap[$bid]['penjualan_id'] ?? null) !== $pj->id) continue;
+
+                    $stokSaatIni = (int) ($d->barang->stok->jumlah_stok ?? 0);
+
+                    // Sisa barang yang conflict hanya karena (qty > stok)
+                    if ($d->qty <= $stokSaatIni) continue;
+
+                    $key = $pj->id . '-' . $bid;
+                    $input = $inputs->get($key);
+
+                    $qtyDipakai = (int) ($input['qty'] ?? $d->qty);
+                    $stokBaru   = isset($input['jumlah_stok']) ? (int) $input['jumlah_stok'] : 0;
+
+                    // Skip kalau input stok terbaru kosong / tidak valid
+                    if ($qtyDipakai <= 0 || $stokBaru <= 0 || $stokBaru < $qtyDipakai) {
+                        continue;
+                    }
+
+                    $stokSebelum = $stokSaatIni;
+                    $stokSesudah = $stokBaru; // stok terbaru dari input form
+                    $selisih     = $stokSesudah - $stokSebelum;
+
+                    StokBarang::updateOrCreate(
+                        ['barang_id' => $bid],
+                        ['jumlah_stok' => $stokSesudah]
+                    );
+
+                    StokMovement::create([
+                        'barang_id'      => $bid,
+                        'jenis'          => 'adjustment',
+                        'qty'            => $selisih,
+                        'stok_sebelum'   => $stokSebelum,
+                        'stok_sesudah'   => $stokSesudah,
+                        'referensi_tipe' => 'penjualan_draft_release',
+                        'referensi_id'   => $pj->id,
+                        'keterangan'     => 'Penambahan stok saat keluarkan draft ' . $pj->kode_penjualan,
+                        'created_by'     => Auth::guard('pengguna')->user()->id,
+                    ]);
+                }
+
+                $pj->update(['is_draft' => 'no']);
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success'       => true,
+            'message'       => "{$normalClear} penjualan normal dan {$konflikClear} penjualan konflik berhasil dikeluarkan dari draft.",
+            'normal_clear'  => $normalClear,
+            'konflik_clear' => $konflikClear,
+            'errors'        => $errors,
+        ]);
+    }
+
     public function create()
     {
         $dropshippers = Dropshipper::all();

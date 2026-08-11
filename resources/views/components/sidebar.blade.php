@@ -42,8 +42,7 @@
                     @if (hasPermission('lihat', 'supplier'))
                         <li class="sidenav-item {{ request()->routeIs('supplier.*') ? 'active' : '' }}">
                             <a href="{{ route('supplier.index') }}" class="sidenav-link">
-                                <i class="sidenav-icon feather icon-truck" data-feather="truck"
-                                    style="width:16px;height:18px;margin-right:12px"></i>
+                                <i class="sidenav-icon feather icon-truck" data-feather="truck" width="16" height="16"></i>
                                 <div>Supplier</div>
                             </a>
                         </li>
@@ -94,7 +93,7 @@
 
 
 
-            <li class="sidenav-item  open">
+            <li class="sidenav-item ">
                 <a href="javascript:" class="sidenav-link sidenav-toggle">
                     <i class="sidenav-icon feather icon-layers"></i>
                     <div>Barang - Web</div>
@@ -180,10 +179,19 @@
             @endif
 
             @if (hasPermission('lihat', 'penjualan'))
-                <li class="sidenav-item {{ request()->routeIs('penjualan.*') ? 'active' : '' }}">
+                <li class="sidenav-item {{ request()->routeIs('penjualan.*') && !request()->routeIs('penjualan.draft') ? 'active' : '' }}">
                     <a href="{{ route('penjualan.index') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-credit-card"></i>
                         <div>Penjualan</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'penjualan'))
+                <li class="sidenav-item {{ request()->routeIs('penjualan.draft') ? 'active' : '' }}">
+                    <a href="{{ route('penjualan.draft') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-file-text"></i>
+                        <div>Penjualan Draft</div>
                     </a>
                 </li>
             @endif
@@ -237,9 +245,17 @@
             @if (hasPermission('lihat', 'laporan_stok'))
                 <li class="sidenav-item {{ request()->routeIs('laporan-stok.*') ? 'active' : '' }}">
                     <a href="{{ route('laporan.stok') }}" class="sidenav-link">
-                        <i class="sidenav-icon feather icon-archive" data-feather="archive"
-                            style="width:16px;height:18px;margin-right:15px"></i>
+                        <i class="sidenav-icon feather icon-archive" data-feather="archive" width="16" height="16"></i>
                         <div>Lap. Stok</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'laporan_stok'))
+                <li class="sidenav-item {{ request()->routeIs('laporan-stok-kritis.*') ? 'active' : '' }}">
+                    <a href="{{ route('laporan.stok-kritis') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-alert-triangle" data-feather="alert-triangle" width="16" height="16"></i>
+                        <div>Lap. Stok Kritis</div>
                     </a>
                 </li>
             @endif
@@ -304,8 +320,7 @@
             @if (hasPermission('lihat', 'backup_database'))
                 <li class="sidenav-item {{ request()->routeIs('backup.*') ? 'active' : '' }}">
                     <a href="{{ route('backup.index') }}" class="sidenav-link">
-                        <i class="sidenav-icon feather icon-archive" data-feather="database"
-                            style="width:16px;height:18px;margin-right:15px"></i>
+                        <i class="sidenav-icon feather icon-archive" data-feather="database" width="16" height="16"></i>
                         <div>Backup Database</div>
                     </a>
                 </li>
