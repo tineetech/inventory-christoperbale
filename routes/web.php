@@ -10,10 +10,13 @@ use App\Http\Controllers\SatuanController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\DropshipperController;
 use App\Http\Controllers\BarangController;
+use App\Http\Controllers\HppRiwayatController;
 use App\Http\Controllers\StokBarangController;
 use App\Http\Controllers\StokMovementController;
 use App\Http\Controllers\PembelianController;
 use App\Http\Controllers\PenjualanController;
+use App\Http\Controllers\PembayaranController;
+use App\Http\Controllers\NotifikasiController;
 use App\Http\Controllers\AdjustStokController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BackupController;
@@ -27,6 +30,8 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\DiscountController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\UserVoucherController;
+use App\Http\Controllers\ChatbotFaqController;
+use App\Http\Controllers\BannerController;
 use App\Http\Controllers\PengaturanWebController;
 use Illuminate\Support\Facades\Auth;
 
@@ -321,6 +326,10 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::post('/master/barang/bulk-kelompokan-produk', [BarangController::class, 'bulkKelompokanProduk'])
         ->name('barang.bulk-kelompokan-produk');
 
+    Route::get('/master/hpp-riwayat', [HppRiwayatController::class, 'index'])
+        ->name('hpp-riwayat.index')
+        ->middleware('permission:lihat,barang');
+
 
     /*
     |--------------------------------------------------------------------------
@@ -434,6 +443,65 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::delete('/master/user-voucher/delete/{id}', [UserVoucherController::class, 'destroy'])
         ->name('user_voucher.destroy')
         ->middleware('permission:hapus,barang');
+    Route::get('/master/user-voucher/edit/{id}', [UserVoucherController::class, 'edit'])
+        ->name('user_voucher.edit')
+        ->middleware('permission:edit,barang');
+    Route::put('/master/user-voucher/update/{id}', [UserVoucherController::class, 'update'])
+        ->name('user_voucher.update')
+        ->middleware('permission:edit,barang');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | CHATBOT FAQ
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/chatbot-faq', [ChatbotFaqController::class, 'index'])
+        ->name('chatbot_faq.index')
+        ->middleware('permission:lihat,barang');
+    Route::get('/master/chatbot-faq/create', [ChatbotFaqController::class, 'create'])
+        ->name('chatbot_faq.create')
+        ->middleware('permission:tambah,barang');
+    Route::post('/master/chatbot-faq/store', [ChatbotFaqController::class, 'store'])
+        ->name('chatbot_faq.store')
+        ->middleware('permission:tambah,barang');
+    Route::get('/master/chatbot-faq/edit/{id}', [ChatbotFaqController::class, 'edit'])
+        ->name('chatbot_faq.edit')
+        ->middleware('permission:edit,barang');
+    Route::put('/master/chatbot-faq/update/{id}', [ChatbotFaqController::class, 'update'])
+        ->name('chatbot_faq.update')
+        ->middleware('permission:edit,barang');
+    Route::delete('/master/chatbot-faq/delete/{id}', [ChatbotFaqController::class, 'destroy'])
+        ->name('chatbot_faq.destroy')
+        ->middleware('permission:hapus,barang');
+    Route::post('/master/chatbot-faq/sync/{id}', [ChatbotFaqController::class, 'sync'])
+        ->name('chatbot_faq.sync')
+        ->middleware('permission:edit,barang');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | KELOLA BANNER
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/master/banner', [BannerController::class, 'index'])
+        ->name('banner.index')
+        ->middleware('permission:lihat,barang');
+    Route::get('/master/banner/create', [BannerController::class, 'create'])
+        ->name('banner.create')
+        ->middleware('permission:tambah,barang');
+    Route::post('/master/banner/store', [BannerController::class, 'store'])
+        ->name('banner.store')
+        ->middleware('permission:tambah,barang');
+    Route::get('/master/banner/edit/{id}', [BannerController::class, 'edit'])
+        ->name('banner.edit')
+        ->middleware('permission:edit,barang');
+    Route::put('/master/banner/update/{id}', [BannerController::class, 'update'])
+        ->name('banner.update')
+        ->middleware('permission:edit,barang');
+    Route::delete('/master/banner/delete/{id}', [BannerController::class, 'destroy'])
+        ->name('banner.destroy')
+        ->middleware('permission:hapus,barang');
 
 
     /*
@@ -529,6 +597,29 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->name('penjualan.draft')
         ->middleware('permission:lihat,penjualan');
 
+    Route::get('/transaksi/penjualan/web', [PenjualanController::class, 'webIndex'])
+        ->name('penjualan.web')
+        ->middleware('permission:lihat,penjualan');
+
+    Route::get('/transaksi/pembayaran', [PembayaranController::class, 'index'])
+        ->name('pembayaran.index')
+        ->middleware('permission:lihat,penjualan');
+
+    /*
+    |--------------------------------------------------------------------------
+    | NOTIFIKASI (bell header)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/notifikasi/data', [NotifikasiController::class, 'data'])
+        ->name('notifikasi.data');
+
+    Route::post('/notifikasi/read', [NotifikasiController::class, 'markRead'])
+        ->name('notifikasi.read');
+
+    Route::get('/konfigurasi/notifikasi', [NotifikasiController::class, 'index'])
+        ->name('notifikasi.index')
+        ->middleware('permission:lihat,pengaturan_web');
+
     Route::post('/transaksi/penjualan/draft/release/preview', [PenjualanController::class, 'draftReleasePreview'])
         ->name('penjualan.draft.release-preview')
         ->middleware('permission:buat,penjualan');
@@ -578,6 +669,7 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::post('/transaksi/penjualan/return/{id}', [ReturPenjualanController::class, 'store'])
         ->name('penjualan.retur.store');
 
+    Route::post('/laporan/penjualan/list-retur/bulk-status', [ReturPenjualanController::class, 'bulkUpdateStatus'])->name('laporan.retur.bulk-status');
     Route::get('/laporan/penjualan/list-retur', [ReturPenjualanController::class, 'index'])->name('laporan.retur');
     Route::get('/laporan/penjualan/list-retur/{id}', [ReturPenjualanController::class, 'show'])->name('laporan.retur.show');
     Route::get('/laporan/penjualan/list-retur/{id}/edit',    [ReturPenjualanController::class, 'edit'])   ->name('laporan.retur.edit');
@@ -655,6 +747,14 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::get('/laporan/penjualan/pdf', [ReportController::class, 'penjualanPdf'])->name('laporan.penjualan.pdf');
     Route::get('/laporan/penjualan/excel', [ReportController::class, 'penjualanExcel'])->name('laporan.penjualan.excel');
     Route::get('/laporan/penjualan/print', [ReportController::class, 'penjualanPrint'])->name('laporan.penjualan.print');
+    Route::get('/laporan/penjualan-web', [ReportController::class, 'penjualanWeb'])->name('laporan.penjualan-web');
+    Route::get('/laporan/penjualan-web/pdf', [ReportController::class, 'penjualanWebPdf'])->name('laporan.penjualan-web.pdf');
+    Route::get('/laporan/penjualan-web/excel', [ReportController::class, 'penjualanWebExcel'])->name('laporan.penjualan-web.excel');
+    Route::get('/laporan/penjualan-web/print', [ReportController::class, 'penjualanWebPrint'])->name('laporan.penjualan-web.print');
+    Route::get('/laporan/pembayaran', [ReportController::class, 'pembayaran'])->name('laporan.pembayaran');
+    Route::get('/laporan/pembayaran/pdf', [ReportController::class, 'pembayaranPdf'])->name('laporan.pembayaran.pdf');
+    Route::get('/laporan/pembayaran/excel', [ReportController::class, 'pembayaranExcel'])->name('laporan.pembayaran.excel');
+    Route::get('/laporan/pembayaran/print', [ReportController::class, 'pembayaranPrint'])->name('laporan.pembayaran.print');
     Route::get('/laporan/stok', [ReportController::class, 'stok'])->name('laporan.stok');
     Route::post('/laporan/stok', [ReportController::class, 'storeStokReport'])->name('laporan.stok.store');
     Route::patch('/laporan/stok/{stokReport}/confirm', [ReportController::class, 'confirmStokReport'])->name('laporan.stok.confirm');
@@ -681,6 +781,14 @@ Route::middleware(['auth.pengguna'])->group(function () {
 
     Route::patch('/transaksi/penjualan/{id}/transit', [PenjualanController::class, 'updateTransit'])
     ->name('penjualan.update-transit');
+
+    Route::post('/transaksi/penjualan/{id}/dropshipper', [PenjualanController::class, 'updateDropshipper'])
+    ->name('penjualan.update-dropshipper')
+    ->middleware('permission:edit,penjualan');
+
+    Route::post('/transaksi/penjualan/web/draft/{id}/confirm-payment', [PenjualanController::class, 'confirmDraftPayment'])
+    ->name('penjualan.web.confirm-payment')
+    ->middleware('permission:edit,penjualan');
 
 
     /*

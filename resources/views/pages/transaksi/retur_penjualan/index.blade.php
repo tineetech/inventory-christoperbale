@@ -54,38 +54,61 @@
                         </div>
 
                         <div class="col-sm-12">
+                            {{-- ===== CARD 1: FILTER ===== --}}
                             <div class="card mb-4">
-                                <div style="border: none !important"
-                                    class="card-header d-flex justify-content-between align-items-center flex-wrap" style="gap:8px">
+                                <div style="border: none !important" class="card-header d-flex justify-content-between align-items-center flex-wrap">
                                     <h6 class="card-header-title mb-0">
-                                        <i class="feather icon-rotate-ccw mr-2"></i> Data Retur Penjualan
+                                        <i class="feather icon-filter mr-2"></i> Filter Retur Penjualan
                                     </h6>
                                 </div>
-
-                                <div class="card-body pb-0">
+                                <div class="card-body">
                                     <form method="GET" action="{{ route('laporan.retur') }}" id="returFilterForm">
                                         <div class="form-row">
-                                            <div class="form-group col-md-4">
+                                            <div class="form-group col-md-3">
                                                 <label class="font-weight-bold">Dari Tanggal</label>
                                                 <input type="date" class="form-control" name="dari_tanggal" value="{{ $filters['dari_tanggal'] }}">
                                             </div>
-                                            <div class="form-group col-md-4">
+                                            <div class="form-group col-md-3">
                                                 <label class="font-weight-bold">Sampai Tanggal</label>
                                                 <input type="date" class="form-control" name="sampai_tanggal" value="{{ $filters['sampai_tanggal'] }}">
                                             </div>
-                                            <div class="form-group col-md-4">
+                                            <div class="form-group col-md-6">
                                                 <label class="font-weight-bold">Cari</label>
-                                                <input type="text" class="form-control " id="searchTable" placeholder="Search retur...">
-                                            </div>
-                                            <div class="form-group col-md-12 d-flex justify-content-end align-items-end">
-                                                <button type="submit" class="btn btn-info mr-2">
-                                                    <i class="feather icon-refresh-cw"></i> Proses
-                                                </button>
+                                                <input type="text" class="form-control" name="search" id="searchTable" placeholder="Cari kode / dropshipper / alasan / status..." value="{{ $filters['search'] }}">
                                             </div>
                                         </div>
+                                        <div class="d-flex flex-wrap justify-content-end align-items-center" style="gap:10px">
+                                            <div class="d-flex" style="gap:10px">
+                                                @if(hasPermission('edit', 'laporan_retur'))
+                                                <button type="button" id="btnBulkSelesai" class="btn btn-success btn-sm d-none" onclick="bulkUpdateStatusSelesai()">
+                                                    <i class="feather icon-check-circle"></i>
+                                                    <span class="d-none d-sm-inline">Update Status Selesai (<span id="selectedCount">0</span>)</span>
+                                                    <span class="d-inline d-sm-none">Selesai (<span class="selectedCountMobile">0</span>)</span>
+                                                </button>
+                                                @endif
+                                                <button type="submit" class="btn btn-info">
+                                                    <i class="feather icon-refresh-cw"></i> Proses
+                                                </button>
+                                                @if ($filters['search'])
+                                                    <a href="{{ route('laporan.retur', ['dari_tanggal' => $filters['dari_tanggal'], 'sampai_tanggal' => $filters['sampai_tanggal'], 'per_page' => $filters['per_page']]) }}" class="btn btn-outline-secondary">
+                                                        <i class="feather icon-rotate-ccw"></i> Reset
+                                                    </a>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <input type="hidden" name="per_page" id="perPageInput" value="{{ $filters['per_page'] }}">
                                     </form>
                                 </div>
+                            </div>
 
+                            {{-- ===== CARD 2: DATA ===== --}}
+                            <div class="card mb-4">
+                                <div style="border: none !important" class="card-header d-flex flex-wrap justify-content-between align-items-center">
+                                    <h6 class="card-header-title mb-0">
+                                        <i class="feather icon-rotate-ccw mr-2"></i> Data Retur Penjualan
+                                        <span class="badge badge-light ml-1">{{ $returs->total() }} transaksi</span>
+                                    </h6>
+                                </div>
                                 <div class="nav-tabs-top">
                                     <div class="tab-content d-flex justify-content-center" style="width: 100%">
                                         <div class="tab-pane fade show active pb-5" style="width: 95%"
@@ -129,7 +152,7 @@
                                                                     <input type="checkbox" class="row-check">
                                                                 </td>
 
-                                                                <td>{{ $index + 1 }}</td>
+                                                                <td>{{ $returs->firstItem() + $index }}</td>
 
                                                                 <td class="kode-click"
                                                                     style="color:#00499b; text-decoration:underline; cursor:pointer;">
@@ -249,30 +272,84 @@
                                             </div>
 
                                             {{-- PAGINATION CONTROLS --}}
-                                            <div
-                                                class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
-
-                                                <div class="d-flex align-items-center mr-5">
+                                            <div class="d-flex flex-wrap justify-content-between align-items-center px-1 py-2 border-top" style="gap:8px">
+                                                <div class="d-flex align-items-center">
                                                     <span class="mr-2 text-muted small">Show</span>
-                                                    <select class="form-control form-control-sm" id="entriesSelect"
-                                                        style="width:80px">
-                                                        <option value="10" selected>10</option>
-                                                        <option value="25">25</option>
-                                                        <option value="50">50</option>
-                                                        <option value="100">100</option>
+                                                    <select class="form-control form-control-sm" name="per_page" form="returFilterForm" style="width:72px" onchange="document.getElementById('returFilterForm').submit()">
+                                                        <option value="10" {{ $filters['per_page'] == 10 ? 'selected' : '' }}>10</option>
+                                                        <option value="25" {{ $filters['per_page'] == 25 ? 'selected' : '' }}>25</option>
+                                                        <option value="50" {{ $filters['per_page'] == 50 ? 'selected' : '' }}>50</option>
+                                                        <option value="100" {{ $filters['per_page'] == 100 ? 'selected' : '' }}>100</option>
                                                     </select>
                                                     <span class="ml-2 text-muted small">entries</span>
                                                 </div>
-
-                                                <div class="text-muted small" id="tableInfo">
-                                                    Showing <strong>1</strong> to <strong>10</strong> of
-                                                    <strong>0</strong> entries
+                                                <div class="text-muted small">
+                                                    @if ($returs->total() > 0)
+                                                        Showing <strong>{{ $returs->firstItem() }}</strong>
+                                                        to <strong>{{ $returs->lastItem() }}</strong>
+                                                        of <strong>{{ $returs->total() }}</strong> entries
+                                                    @else
+                                                        No entries found
+                                                    @endif
                                                 </div>
-
                                                 <nav>
-                                                    <ul class="pagination pagination-sm mb-0" id="pagination"></ul>
-                                                </nav>
+                                                    <ul class="pagination pagination-sm mb-0">
+                                                        @php
+                                                            $currentPage = $returs->currentPage();
+                                                            $lastPage = $returs->lastPage();
+                                                            $start = max(1, $currentPage - 2);
+                                                            $end = min($lastPage, $currentPage + 2);
+                                                            if ($start <= 3) $end = min($lastPage, 5);
+                                                            if ($end >= $lastPage - 2) $start = max(1, $lastPage - 4);
+                                                        @endphp
 
+                                                        <li class="page-item {{ $returs->onFirstPage() ? 'disabled' : '' }}">
+                                                            <a class="page-link" href="{{ $returs->appends(['per_page' => request('per_page')])->url(1) }}">
+                                                                <i class="feather icon-chevrons-left"></i>
+                                                            </a>
+                                                        </li>
+                                                        <li class="page-item {{ $returs->onFirstPage() ? 'disabled' : '' }}">
+                                                            <a class="page-link" href="{{ $returs->previousPageUrl() }}">
+                                                                <i class="feather icon-chevron-left"></i>
+                                                            </a>
+                                                        </li>
+
+                                                        @if ($lastPage > 7 && $start > 1)
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="{{ $returs->url(1) }}">1</a>
+                                                            </li>
+                                                            @if ($start > 2)
+                                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                            @endif
+                                                        @endif
+
+                                                        @for ($i = $start; $i <= $end; $i++)
+                                                            <li class="page-item {{ $i == $currentPage ? 'active' : '' }}">
+                                                                <a class="page-link" href="{{ $returs->url($i) }}">{{ $i }}</a>
+                                                            </li>
+                                                        @endfor
+
+                                                        @if ($lastPage > 7 && $end < $lastPage)
+                                                            @if ($end < $lastPage - 1)
+                                                                <li class="page-item disabled"><span class="page-link">...</span></li>
+                                                            @endif
+                                                            <li class="page-item">
+                                                                <a class="page-link" href="{{ $returs->url($lastPage) }}">{{ $lastPage }}</a>
+                                                            </li>
+                                                        @endif
+
+                                                        <li class="page-item {{ !$returs->hasMorePages() ? 'disabled' : '' }}">
+                                                            <a class="page-link" href="{{ $returs->nextPageUrl() }}">
+                                                                <i class="feather icon-chevron-right"></i>
+                                                            </a>
+                                                        </li>
+                                                        <li class="page-item {{ !$returs->hasMorePages() ? 'disabled' : '' }}">
+                                                            <a class="page-link" href="{{ $returs->appends(['per_page' => request('per_page')])->url($lastPage) }}">
+                                                                <i class="feather icon-chevrons-right"></i>
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </nav>
                                             </div>
                                         </div>
                                     </div>
@@ -292,97 +369,103 @@
 
 @section('scripts')
 <script>
+    const CSRF_TOKEN = '{{ csrf_token() }}';
+
     // ============================================================
-    // CHECK ALL
+    // CHECK ALL & BULK BAR
     // ============================================================
     document.getElementById('checkAll').addEventListener('click', function () {
         document.querySelectorAll('.row-check').forEach(cb => cb.checked = this.checked);
+        updateBulkBar();
     });
 
-    // ============================================================
-    // PAGINATION & SEARCH ENGINE
-    // ============================================================
-    let rows          = document.querySelectorAll("#table tbody tr.main-row");
-    let entriesSelect = document.getElementById("entriesSelect");
-    let pagination    = document.getElementById("pagination");
-    let tableInfo     = document.getElementById("tableInfo");
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('row-check')) updateBulkBar();
+    });
 
-    let currentPage  = 1;
-    let rowsPerPage  = parseInt(entriesSelect.value);
-    let filteredRows = [...rows];
-
-    function displayTable() {
-        rowsPerPage  = parseInt(entriesSelect.value);
-        let start    = (currentPage - 1) * rowsPerPage;
-        let end      = start + rowsPerPage;
-
-        // Sembunyikan semua main-row dan detail-row
-        rows.forEach(row => row.style.display = "none");
-        document.querySelectorAll(".detail-row").forEach(r => r.style.display = "none");
-
-        filteredRows.slice(start, end).forEach(row => row.style.display = "");
-
-        updateInfo();
+    function getSelectedIds() {
+        return [...document.querySelectorAll('tbody .row-check:checked')].map(cb => {
+            const tr = cb.closest('tr.main-row');
+            return tr ? parseInt(tr.getAttribute('data-id')) : null;
+        }).filter(Boolean);
     }
 
-    function setupPagination() {
-        pagination.innerHTML = "";
-        let pageCount = Math.ceil(filteredRows.length / rowsPerPage);
+    function updateBulkBar() {
+        const ids = getSelectedIds();
+        const btn = document.getElementById('btnBulkSelesai');
+        if (!btn) return;
+        document.querySelectorAll('#selectedCount, .selectedCountMobile').forEach(el => el.textContent = ids.length);
+        if (ids.length > 0) {
+            btn.classList.remove('d-none');
+        } else {
+            btn.classList.add('d-none');
+        }
+        // sync header checkbox
+        const allChecks = document.querySelectorAll('tbody .row-check');
+        const checked = document.querySelectorAll('tbody .row-check:checked');
+        document.getElementById('checkAll').checked = allChecks.length > 0 && allChecks.length === checked.length;
+        document.getElementById('checkAll').indeterminate = checked.length > 0 && checked.length < allChecks.length;
+    }
 
-        for (let i = 1; i <= pageCount; i++) {
-            let li = document.createElement("li");
-            li.classList.add("page-item");
-            if (i === currentPage) li.classList.add("active");
+    async function bulkUpdateStatusSelesai() {
+        const ids = getSelectedIds();
+        if (ids.length === 0) return;
 
-            let a = document.createElement("a");
-            a.classList.add("page-link");
-            a.href    = "#";
-            a.innerText = i;
+        const confirm = await Swal.fire({
+            title: 'Update status ke Selesai?',
+            html: `Akan mengupdate <strong>${ids.length}</strong> retur terpilih menjadi <span class="badge badge-success">Selesai</span> dan mengembalikan stok.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, update!',
+            cancelButtonText: 'Batal'
+        });
+        if (!confirm.isConfirmed) return;
 
-            a.addEventListener("click", function (e) {
-                e.preventDefault();
-                currentPage = i;
-                displayTable();
-                setupPagination();
+        const btn = document.getElementById('btnBulkSelesai');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Memproses...';
+
+        try {
+            const res = await fetch('{{ route("laporan.retur.bulk-status") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': CSRF_TOKEN
+                },
+                body: JSON.stringify({ ids, status: 'selesai' })
             });
-
-            li.appendChild(a);
-            pagination.appendChild(li);
+            const json = await res.json();
+            if (res.ok && json.success) {
+                Swal.fire({ icon: 'success', title: 'Berhasil', text: json.message, timer: 1800, showConfirmButton: false }).then(() => location.reload());
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: json.message || 'Terjadi kesalahan.' });
+            }
+        } catch (e) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal menghubungi server.' });
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            updateBulkBar();
         }
     }
-
-    function updateInfo() {
-        let start = (currentPage - 1) * rowsPerPage + 1;
-        let end   = Math.min(currentPage * rowsPerPage, filteredRows.length);
-        if (filteredRows.length === 0) start = 0;
-        tableInfo.innerHTML = `Showing ${start} to ${end} of ${filteredRows.length} entries`;
-    }
-
-    entriesSelect.addEventListener("change", function () {
-        currentPage = 1;
-        displayTable();
-        setupPagination();
-    });
 
     // Sembunyikan semua detail row saat pertama load
     document.querySelectorAll(".detail-row").forEach(row => row.style.display = "none");
 
-    displayTable();
-    setupPagination();
-
-    // ============================================================
-    // SEARCH
-    // ============================================================
-    document.getElementById('searchTable').addEventListener('keyup', function () {
-        let value    = this.value.toLowerCase();
-        filteredRows = [...rows].filter(row => row.textContent.toLowerCase().includes(value));
-        currentPage  = 1;
-        displayTable();
-        setupPagination();
+    // Search: Enter untuk submit (server-side)
+    document.getElementById('searchTable')?.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            document.getElementById('returFilterForm').submit();
+        }
     });
 
     // ============================================================
-    // SORT
+    // SORT (client-side, hanya halaman saat ini)
     // ============================================================
     let currentSortColumn    = null;
     let currentSortDirection = "asc";
@@ -395,11 +478,17 @@
             currentSortDirection = "asc";
         }
 
-        filteredRows.sort((a, b) => {
-            let aText = a.children[columnIndex].innerText.toLowerCase();
-            let bText = b.children[columnIndex].innerText.toLowerCase();
+        let tbody = document.querySelector("#table tbody");
+        let mainRows = [...tbody.querySelectorAll("tr.main-row")];
 
-            if (!isNaN(aText) && !isNaN(bText)) {
+        mainRows.sort((a, b) => {
+            let aCell = a.children[columnIndex];
+            let bCell = b.children[columnIndex];
+            if (!aCell || !bCell) return 0;
+            let aText = aCell.innerText.toLowerCase().trim();
+            let bText = bCell.innerText.toLowerCase().trim();
+
+            if (!isNaN(aText) && !isNaN(bText) && aText !== '' && bText !== '') {
                 return currentSortDirection === "asc" ? aText - bText : bText - aText;
             }
             return currentSortDirection === "asc"
@@ -407,12 +496,11 @@
                 : bText.localeCompare(aText);
         });
 
-        let tbody = document.querySelector("#table tbody");
-        filteredRows.forEach(row => tbody.appendChild(row));
-
-        currentPage = 1;
-        displayTable();
-        setupPagination();
+        mainRows.forEach(row => {
+            let detailRow = document.getElementById("detail-" + row.getAttribute("data-id"));
+            tbody.appendChild(row);
+            if (detailRow) tbody.appendChild(detailRow);
+        });
     }
 
     document.querySelectorAll(".sortable").forEach(header => {

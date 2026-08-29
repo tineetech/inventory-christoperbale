@@ -15,20 +15,34 @@ class ReturPenjualanController extends Controller
 {
     public function index(Request $request)
     {
-        $returs = ReturPenjualan::with(['penjualan.dropshipper', 'createdBy']);
+        $query = ReturPenjualan::with(['penjualan.dropshipper', 'createdBy', 'detail']);
 
         if ($request->filled('dari_tanggal')) {
-            $returs->whereDate('created_at', '>=', $request->dari_tanggal);
+            $query->whereDate('created_at', '>=', $request->dari_tanggal);
         }
         if ($request->filled('sampai_tanggal')) {
-            $returs->whereDate('created_at', '<=', $request->sampai_tanggal);
+            $query->whereDate('created_at', '<=', $request->sampai_tanggal);
         }
 
-        $returs = $returs->latest()->get();
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('alasan_retur', 'like', "%{$search}%")
+                  ->orWhere('status', 'like', "%{$search}%")
+                  ->orWhereHas('penjualan', fn($q2) => $q2->where('kode_penjualan', 'like', "%{$search}%"))
+                  ->orWhereHas('penjualan.dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"))
+                  ->orWhereHas('createdBy', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
+            });
+        }
+
+        $perPage = in_array((int) $request->per_page, [10, 25, 50, 100]) ? (int) $request->per_page : 10;
+        $returs = $query->latest()->paginate($perPage)->withQueryString();
 
         $filters = [
             'dari_tanggal' => $request->dari_tanggal ?? now()->startOfMonth()->format('Y-m-d'),
             'sampai_tanggal' => $request->sampai_tanggal ?? now()->format('Y-m-d'),
+            'search' => $request->search ?? null,
+            'per_page' => $perPage,
         ];
 
         return view('pages.transaksi.retur_penjualan.index', compact('returs', 'filters'));
@@ -239,6 +253,56 @@ class ReturPenjualanController extends Controller
         $retur->update(['status' => $request->status]);
 
         return back()->with('success', 'Status retur berhasil diperbarui.');
+    }
+
+    public function bulkUpdateStatus(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'exists:retur_penjualan,id',
+            'status' => 'nullable|in:pending,diproses,selesai,ditolak',
+        ]);
+
+        $status = $request->status ?? 'selesai';
+        $ids = $request->ids;
+        $updated = 0;
+        $skipped = 0;
+
+        DB::beginTransaction();
+        try {
+            $returs = ReturPenjualan::with('detail')->whereIn('id', $ids)->get();
+            foreach ($returs as $retur) {
+                if ($retur->status === $status) {
+                    $skipped++;
+                    continue;
+                }
+
+                // Jika status baru = selesai dan sebelumnya bukan selesai -> kembalikan stok
+                if ($status === 'selesai' && $retur->status !== 'selesai') {
+                    foreach ($retur->detail as $d) {
+                        $stok = StokBarang::where('barang_id', $d->barang_id)->first();
+                        StokBarang::updateOrCreate(
+                            ['barang_id' => $d->barang_id],
+                            ['jumlah_stok' => ($stok->jumlah_stok ?? 0) + $d->qty_retur]
+                        );
+                    }
+                }
+
+                $retur->update(['status' => $status]);
+                $updated++;
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => 'Gagal update bulk: '.$e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $updated.' retur berhasil diupdate ke status '.ucfirst($status).($skipped ? " ({$skipped} sudah {$status} dilewati)" : ''),
+            'updated' => $updated,
+            'skipped' => $skipped,
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────
