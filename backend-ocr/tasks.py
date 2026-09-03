@@ -83,33 +83,33 @@ def _merge_redis_pages(job_id: str):
         items    = page_result.get("items", [])
         mode     = page_result.get("mode")  # shopee tidak perlu merge
 
-        # Shopee tidak punya multi-halaman per order, skip merge
-        # (bisa dideteksi dari absennya order_id atau mode)
-        if not order_id:
+        if mode == "shopee":
             merged.append(page_result)
             continue
 
-        if order_id in order_id_map:
+        if order_id and order_id in order_id_map:
             # Merge ke entri yang sudah ada
             idx      = order_id_map[order_id]
             existing = merged[idx]
 
-            # Gabungkan items, hindari duplikat SKU
-            existing_skus = {i["sku"] for i in existing.get("items", [])}
-            new_items = []
-            for item in items:
-                if item.get("sku") and item["sku"] not in existing_skus:
-                    new_items.append(item)
-                    existing_skus.add(item["sku"])
-
-            existing["items"] = existing.get("items", []) + new_items
-            existing["skus"]  = [i["sku"] for i in existing["items"]]
+            # Gabungkan items
+            existing_items = existing.get("items", [])
+            existing_items.extend(items)
+            existing["items"] = existing_items
+            existing["skus"]  = [i["sku"] for i in existing_items if i.get("sku")]
 
             # Ambil resi jika halaman utama belum punya
             if not existing.get("resi") and resi:
                 existing["resi"] = resi
 
-            # Catat halaman yang terlibat (opsional, untuk debug)
+            # Kumpulkan gambar halaman lanjutan ke extra_images
+            if page_result.get("image_base64"):
+                existing.setdefault("extra_images", []).append({
+                    "page": page_result.get("page"),
+                    "base64": page_result["image_base64"],
+                })
+
+            # Catat halaman yang terlibat
             pages_involved = existing.get("pages", [existing.get("page")])
             if page_result.get("page") not in pages_involved:
                 pages_involved.append(page_result["page"])
@@ -117,12 +117,42 @@ def _merge_redis_pages(job_id: str):
 
             print(f"[Merge v5] Page {page_result.get('page')} merged → "
                   f"order_id={order_id} total_items={len(existing['items'])}")
+
+        elif not resi and merged:
+            # Fallback: Halaman tanpa resi (halaman lanjutan N+1)
+            existing = merged[-1]
+            existing_items = existing.get("items", [])
+            existing_items.extend(items)
+            existing["items"] = existing_items
+            existing["skus"]  = [i["sku"] for i in existing_items if i.get("sku")]
+
+            if not existing.get("order_id") and order_id:
+                existing["order_id"] = order_id
+                order_id_map[order_id] = len(merged) - 1
+
+            # Kumpulkan gambar halaman lanjutan ke extra_images
+            if page_result.get("image_base64"):
+                existing.setdefault("extra_images", []).append({
+                    "page": page_result.get("page"),
+                    "base64": page_result["image_base64"],
+                })
+
+            pages_involved = existing.get("pages", [existing.get("page")])
+            if page_result.get("page") not in pages_involved:
+                pages_involved.append(page_result["page"])
+            existing["pages"] = pages_involved
+
+            print(f"[Merge v5 Fallback] Page {page_result.get('page')} merged → "
+                  f"prev resi={existing.get('resi')} total_items={len(existing['items'])}")
+
         else:
-            # Entri baru
+            # Entri baru — inisialisasi extra_images kosong
             entry = dict(page_result)
             entry["pages"] = [page_result.get("page")]
+            entry.setdefault("extra_images", [])
             merged.append(entry)
-            order_id_map[order_id] = len(merged) - 1
+            if order_id:
+                order_id_map[order_id] = len(merged) - 1
 
     # Tulis balik ke Redis (hapus lama, isi baru)
     pipe = r.pipeline()

@@ -269,7 +269,7 @@ def _extract_items_tiktok(img_cv: np.ndarray) -> list[dict]:
     # Cari area tabel
     table_gray     = None
     table_y_offset = 0
-    for start_pct in [0.70, 0.72, 0.75, 0.78, 0.80, 0.82]:
+    for start_pct in [0.0, 0.15, 0.30, 0.50, 0.70, 0.72, 0.75, 0.78, 0.80, 0.82]:
         y_start = int(height * start_pct)
         crop    = gray[y_start:height, 0:width]
         _, crop_bin = cv2.threshold(crop, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -687,17 +687,14 @@ def _process_single_page(img_cv: np.ndarray, page_num: int, pdf_path: str = None
 
 def _merge_pages_by_order(results: list[dict]) -> list[dict]:
     """
-    Merge halaman-halaman yang memiliki order_id sama menjadi satu entri.
+    Merge halaman-halaman yang memiliki order_id sama atau halaman lanjutan menjadi satu entri.
     
     Kasus: Order dengan banyak item kadang terpecah ke 2 halaman:
-    - Halaman N: ada resi + order_id, tabel header ada tapi items kosong (overflow ke hal berikut)
-    - Halaman N+1: tidak ada resi baru, order_id sama, berisi items lanjutan
+    - Halaman N: ada resi + order_id
+    - Halaman N+1: tidak ada resi baru (resi is None), order_id sama / tidak terdeteksi, berisi items lanjutan
     
-    Strategy:
-    1. Group by order_id (non-None)
-    2. Untuk halaman tanpa resi tapi order_id sama dengan halaman sebelumnya → merge items
-    3. Halaman tanpa order_id sama sekali → cek apakah order_id sama dengan hasil sebelumnya
-       (fallback: jika halaman N+1 tidak punya resi DAN order_id-nya sama dengan N → merge)
+    extra_images: list of {page, base64} untuk halaman lanjutan — dipakai frontend
+    untuk menggabungkan semua gambar menjadi 1 JPEG strip vertikal.
     """
     merged = []
     order_id_map = {}  # order_id -> index di merged
@@ -712,27 +709,57 @@ def _merge_pages_by_order(results: list[dict]) -> list[dict]:
             idx = order_id_map[order_id]
             existing = merged[idx]
             
-            # Gabungkan items (hindari duplikat SKU)
-            existing_skus = {i["sku"] for i in existing["items"]}
+            # Gabungkan items
             for item in items:
-                if item["sku"] not in existing_skus:
-                    existing["items"].append(item)
-                    existing["skus"].append(item["sku"])
-                    existing_skus.add(item["sku"])
+                existing["items"].append(item)
+                if item.get("sku"):
+                    existing.setdefault("skus", []).append(item["sku"])
             
             # Ambil resi jika halaman sebelumnya belum punya
             if not existing.get("resi") and resi:
                 existing["resi"] = resi
+            
+            # Kumpulkan gambar halaman lanjutan ke extra_images
+            if page_result.get("image_base64"):
+                existing.setdefault("extra_images", []).append({
+                    "page": page_result["page"],
+                    "base64": page_result["image_base64"],
+                })
             
             # Simpan semua page numbers yang terlibat
             existing.setdefault("pages", [existing["page"]]).append(page_result["page"])
             
             print(f"[Merge] Page {page_result['page']} merged into order_id={order_id} "
                   f"(+{len(items)} items, total={len(existing['items'])})")
+
+        elif not resi and merged:
+            # Fallback: Halaman ini TIDAK punya resi (halaman lanjutan N+1).
+            # Gabungkan ke entri resi paling terakhir di merged.
+            existing = merged[-1]
+            for item in items:
+                existing["items"].append(item)
+                if item.get("sku"):
+                    existing.setdefault("skus", []).append(item["sku"])
+
+            if not existing.get("order_id") and order_id:
+                existing["order_id"] = order_id
+                order_id_map[order_id] = len(merged) - 1
+
+            # Kumpulkan gambar halaman lanjutan ke extra_images
+            if page_result.get("image_base64"):
+                existing.setdefault("extra_images", []).append({
+                    "page": page_result["page"],
+                    "base64": page_result["image_base64"],
+                })
+
+            existing.setdefault("pages", [existing["page"]]).append(page_result["page"])
+            print(f"[Merge Fallback] Page {page_result['page']} merged into previous page "
+                  f"(+{len(items)} items, total={len(existing['items'])})")
         else:
-            # Entri baru
+            # Entri baru — inisialisasi extra_images kosong
             entry = dict(page_result)
             entry["pages"] = [page_result["page"]]
+            entry.setdefault("extra_images", [])
             merged.append(entry)
             if order_id:
                 order_id_map[order_id] = len(merged) - 1
