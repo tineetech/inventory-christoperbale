@@ -20,6 +20,42 @@
             background-color: #f8d7da !important;
         }
 
+        /* FLOATING SCROLL BUTTONS */
+        .scroll-fab {
+            position: fixed;
+            right: 18px;
+            bottom: 20px;
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .scroll-fab button {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(78, 115, 223, .9);
+            color: #fff;
+            font-size: 1.15rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .18);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .15s, background .15s;
+        }
+
+        .scroll-fab button:hover {
+            transform: scale(1.08);
+            background: #4e73df;
+        }
+
+        .scroll-fab button:active {
+            transform: scale(.95);
+        }
+
         /* IMPORT ZONE */
         .import-zone {
     border: 2px dashed #c0c9d5;
@@ -236,6 +272,46 @@
             color: #fff;
             font-size: .82rem;
             font-weight: 600;
+        }
+
+        /* Thumbnail strip untuk multi-halaman */
+        .file-resi-thumbs {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+
+        .resi-thumb {
+            flex: 0 0 auto;
+            width: 72px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 2px solid transparent;
+            transition: border-color .15s, transform .15s;
+        }
+
+        .resi-thumb:hover {
+            border-color: #4e73df;
+            transform: scale(1.05);
+        }
+
+        .resi-thumb img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            background: #f8fafc;
+        }
+
+        .resi-thumb-label {
+            display: block;
+            font-size: .65rem;
+            color: #6c757d;
+            margin-top: 2px;
+            white-space: nowrap;
         }
 
         .file-resi-badge {
@@ -833,6 +909,12 @@
         <span class="lb-close" onclick="closeLightbox()">&times;</span>
         <img id="lb-img" src="" alt="Preview Resi">
     </div>
+
+    {{-- FLOATING SCROLL BUTTONS --}}
+    <div class="scroll-fab">
+        <button type="button" id="btn-scroll-top" title="Scroll ke atas"><i class="feather icon-arrow-up"></i></button>
+        <button type="button" id="btn-scroll-bottom" title="Scroll ke bawah"><i class="feather icon-arrow-down"></i></button>
+    </div>
 @endsection
 
 @section('scripts')
@@ -1030,12 +1112,42 @@
                 };
             }
 
-            // Inject gambar
+            // Inject gambar — jika ada extra_images, gabung semua halaman jadi 1 strip vertikal
             if (resiData.image_base64) {
                 const filename = `resi_page${resiData.page}_${resiVal || 'unknown'}.jpg`;
-                storeBase64ForCard(cardId, resiData.image_base64, filename);
-                showFilePreview(cardId, resiData.image_base64, filename);
-                modalLog(`↳ Gambar OK`, 'ok');
+                const extraImagesRaw = resiData.extra_images || [];
+                const extraImages = extraImagesRaw.map(e => e.base64);
+                // DEBUG: log format extra_images
+                console.log('[DEBUG injectResiPage] extra_imagesRaw:', extraImagesRaw);
+                console.log('[DEBUG injectResiPage] extraImages (base64 only):', extraImages.length);
+                modalLog(`↳ extra_images diterima: ${extraImages.length} halaman lanjutan`, 'info');
+                
+                if (extraImages.length > 0) {
+                    // Ada halaman lanjutan → merge semua jadi 1 JPEG strip
+                    modalLog(`↳ Menggabungkan ${1 + extraImages.length} halaman...`, 'info');
+                    try {
+                        const mergedBase64 = await mergeImagesVertical(
+                            [resiData.image_base64, ...extraImages]
+                        );
+                        storeBase64ForCard(cardId, mergedBase64, filename);
+                        showFilePreview(cardId, mergedBase64, filename);
+                        showMultiPageThumbnails(cardId, [resiData.image_base64, ...extraImages]);
+                        modalLog(`↳ Gambar ${1 + extraImages.length} hal. OK (digabung)`, 'ok');
+                    } catch (mergeErr) {
+                        // Fallback: simpan halaman 1 saja
+                        storeBase64ForCard(cardId, resiData.image_base64, filename);
+                        showFilePreview(cardId, resiData.image_base64, filename);
+                        modalLog(`↳ Gagal merge gambar: ${mergeErr.message}, pakai hal.1 saja`, 'skip');
+                        console.error('[DEBUG mergeImagesVertical error]', mergeErr);
+                    }
+                } else {
+                    // Resi 1 halaman — seperti biasa
+                    storeBase64ForCard(cardId, resiData.image_base64, filename);
+                    showFilePreview(cardId, resiData.image_base64, filename);
+                    modalLog(`↳ Gambar OK (1 halaman)`, 'ok');
+                }
+            } else {
+                modalLog(`↳ Tidak ada image_base64`, 'skip');
             }
 
             // Lookup & inject produk
@@ -1411,6 +1523,98 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
         // ================================================================
         // FILE RESI — HELPERS
         // ================================================================
+
+        /**
+         * Gabungkan array base64 JPEG/PNG menjadi 1 gambar JPEG strip vertikal via Canvas.
+         * Mengembalikan Promise<string> (base64 tanpa prefix "data:...").
+         */
+        function mergeImagesVertical(base64Array) {
+            return new Promise((resolve, reject) => {
+                if (!base64Array || base64Array.length === 0) {
+                    return reject(new Error('Tidak ada gambar untuk digabung'));
+                }
+                if (base64Array.length === 1) {
+                    const raw = base64Array[0].startsWith('data:')
+                        ? base64Array[0].split(',')[1]
+                        : base64Array[0];
+                    return resolve(raw);
+                }
+
+                const images = base64Array.map(b64 => {
+                    const img = new Image();
+                    img.src = b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`;
+                    return img;
+                });
+
+                let loaded = 0;
+                const onLoad = () => {
+                    loaded++;
+                    if (loaded < images.length) return;
+
+                    const maxWidth = Math.max(...images.map(i => i.naturalWidth || 800));
+                    
+                    // Hitung tinggi final per gambar SETELAH scale
+                    const scaledHeights = images.map(img => {
+                        const h = img.naturalHeight || 1000;
+                        const w = img.naturalWidth  || 800;
+                        const scale = maxWidth / w;
+                        return Math.round(h * scale);
+                    });
+                    const finalHeight = scaledHeights.reduce((s, h) => s + h, 0);
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width  = maxWidth;
+                    canvas.height = finalHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, maxWidth, finalHeight);
+
+                    let y = 0;
+                    for (let i = 0; i < images.length; i++) {
+                        const img = images[i];
+                        const drawH = scaledHeights[i];
+                        ctx.drawImage(img, 0, y, maxWidth, drawH);
+                        y += drawH;
+                    }
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+                    resolve(dataUrl.split(',')[1]);
+                };
+
+                images.forEach(img => {
+                    img.onload  = onLoad;
+                    img.onerror = () => reject(new Error('Gagal memuat salah satu gambar halaman'));
+                });
+            });
+        }
+
+        /**
+         * Tampilkan thumbnail strip kecil per halaman di bawah preview utama.
+         * base64Array = array raw base64 (tanpa prefix data:)
+         */
+        function showMultiPageThumbnails(cardId, base64Array) {
+            let container = document.getElementById(`file_resi_thumbs_${cardId}`);
+            if (!container) return; // container belum ada di card lama
+            container.innerHTML = '';
+            if (!base64Array || base64Array.length <= 1) {
+                container.style.display = 'none';
+                return;
+            }
+            container.style.display = 'flex';
+            base64Array.forEach((b64, idx) => {
+                const src = b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`;
+                const thumb = document.createElement('div');
+                thumb.className = 'resi-thumb';
+                thumb.title = `Halaman ${idx + 1}`;
+                thumb.innerHTML = `
+                    <img src="${src}" alt="Hal. ${idx + 1}">
+                    <span class="resi-thumb-label">Hal. ${idx + 1}</span>
+                `;
+                thumb.addEventListener('click', () => openLightbox(src));
+                container.appendChild(thumb);
+            });
+        }
+
         function storeBase64ForCard(cardId, base64String, filename) {
             if (!base64String) return;
             const raw = base64String.startsWith('data:') ?
@@ -1449,8 +1653,12 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
             const hiddenEl = document.getElementById(`img_base64_${cardId}`);
             if (hiddenEl) hiddenEl.value = '';
             showFilePreview(cardId, null, '');
+            // Bersihkan juga thumbnail strip halaman
+            const thumbs = document.getElementById(`file_resi_thumbs_${cardId}`);
+            if (thumbs) { thumbs.innerHTML = ''; thumbs.style.display = 'none'; }
             delete resiImageMap[cardId];
         }
+
 
         function openLightbox(src) {
             $('#lb-img').attr('src', src);
@@ -1519,21 +1727,74 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
                 `);
 
                 stockWarnings.forEach(w => {
-                    list.append(`
-                        <div class="info-item info-error">
-                            <i class="feather icon-alert-octagon text-danger"></i>
-                            <div>
-                                SKU <strong>#${w.sku}</strong> — ${w.nama}:
-                                <span class="text-danger font-weight-bold">${w.reason}</span>.
-                                Card telah otomatis diset ke mode <strong>Draft</strong>.
-                                Baris ditandai <span style="background:#f8d7da;padding:1px 6px;border-radius:3px;font-size:.8em;">merah</span>.
-                            </div>
-                        </div>
-                    `);
+                    list.append(stockWarnItemHtml(w));
                 });
             }
 
             $('#import-info-panel').addClass('has-content');
+        }
+
+        // ── Helper: item warning stok ───────────────────────────────────
+        // Menampilkan transaksi ke-X / resi ke-Y / nomor resi SKU yang konflik.
+        // Baris bisa diklik → scroll ke card resi terkait.
+        function stockWarnItemHtml(w) {
+            const state = getResiState(w.cardId);
+            const item = state?.items?.[w.productId];
+            const transNo = item?.nomor_urut ?? '-';
+            const resiNo = resiList.findIndex(r => r.uid === w.cardId) + 1;
+            const resiVal = $(`#resi_global_${w.cardId}`).val()?.trim() || '-';
+
+            return `
+                <div class="info-item info-error stock-warn-item" data-card="${w.cardId}" style="cursor:pointer;" title="Klik untuk scroll ke card resi ke-${resiNo}">
+                    <i class="feather icon-alert-octagon text-danger"></i>
+                    <div>
+                        SKU <strong>#${w.sku}</strong> — ${w.nama}:
+                        <span class="text-danger font-weight-bold">${w.reason}</span>.
+                        Card telah otomatis diset ke mode <strong>Draft</strong>.
+                        Baris ditandai <span style="background:#f8d7da;padding:1px 6px;border-radius:3px;font-size:.8em;">merah</span>.
+                        <div style="margin-top:4px;font-size:.78rem;color:#6c757d;">
+                            Resi ke-<strong>${resiNo}</strong> ·
+                            No. resi: <strong>${resiVal}</strong>
+                            <span class="ml-1" style="color:#dc3545;">&rsaquo; klik untuk lihat</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Klik item warning stok → scroll ke card resi terkait
+        $(document).on('click', '.stock-warn-item', function() {
+            highlightExistingCard($(this).data('card'));
+        });
+
+        // ── Push info baru ke panel (tampil list + selalu terlihat) ─────
+        // Dipakai saat validasi simpan gagal, agar error juga tampil
+        // di panel info (Peringatan Stok / stok danger), bukan cuma SweetAlert.
+        function showInfoPanel() {
+            $('#import-info-panel').addClass('has-content');
+            $('html, body').animate({
+                scrollTop: $('#import-info-panel').offset().top - 80
+            }, 400);
+        }
+
+        function pushInfoDanger(html) {
+            // Garis pemisah di atas blok error terbaru (hanya sekali per batch)
+            if (!$('#import-info-list .validation-error-divider').length) {
+                $('#import-info-list').append(
+                    `<hr class="validation-error-divider" style="margin:10px 0 4px;border:none;border-top:1px dashed #dc3545;opacity:.55">`
+                );
+            }
+            $('#import-info-list').append(
+                `<div class="info-item info-error validation-error-item">` +
+                    `<i class="feather icon-x-circle text-danger"></i><div>${html}</div>` +
+                `</div>`
+            );
+            $('#import-info-panel').addClass('has-content');
+        }
+
+        function clearValidationErrors() {
+            $('#import-info-list .validation-error-item').remove();
+            $('#import-info-list .validation-error-divider').remove();
         }
 
 
@@ -1602,13 +1863,13 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
 
             <div class="form-group col-md-12">
                 <label>
-                    File Resi (Image Only)
+                    File Resi (Image / PDF)
                     <span class="badge badge-secondary ml-1" style="font-size:.7rem;font-weight:400;">Opsional</span>
                 </label>
                 <div class="file-resi-wrap">
                     <input type="file" class="form-control file-resi-input"
                            id="file_resi_${id}" data-id="${id}"
-                           accept="image/jpeg,image/png,image/jpg">
+                           accept="image/jpeg,image/png,image/jpg,application/pdf,.pdf">
                     <input type="hidden" id="img_base64_${id}" name="img_base64_${id}">
                     <div class="file-resi-badge" id="file_resi_badge_${id}">
                         <i class="feather icon-image" style="font-size:14px;"></i>
@@ -1625,6 +1886,8 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
                             <span><i class="feather icon-zoom-in mr-1"></i> Perbesar</span>
                         </div>
                     </div>
+                    <div class="file-resi-thumbs" id="file_resi_thumbs_${id}"
+                         style="display:none; gap:6px; margin-top:8px; overflow-x:auto;"></div>
                 </div>
             </div>
         </div>
@@ -1760,6 +2023,22 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
                     clearFileInput(id);
                     return;
                 }
+
+                const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+                if (isPdf) {
+                    resizePdfToJpeg(file)
+                        .then(dataUrl => {
+                            showFilePreview(id, dataUrl, file.name.replace(/\.pdf$/i, '.jpg'));
+                            storeBase64ForCard(id, dataUrl, file.name);
+                        })
+                        .catch(err => {
+                            showFilePreview(id, null, '');
+                            clearFileInput(id);
+                            Swal.fire('Oops!', 'Gagal mengkonversi PDF: ' + (err.message || err), 'error');
+                        });
+                    return;
+                }
+
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const dataUrl = e.target.result;
@@ -1768,6 +2047,92 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
                 };
                 reader.readAsDataURL(file);
             });
+        }
+
+        function getPdfjs() {
+            if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+                script.onload = () => resolve(window.pdfjsLib);
+                script.onerror = () => reject(new Error('Gagal memuat library pdf.js. Cek koneksi internet.'));
+                document.head.appendChild(script);
+            });
+        }
+
+        function convertPdfToImageBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Gagal membaca file PDF.'));
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        /**
+         * Render SEMUA halaman PDF ke JPEG, lalu gabung vertikal jadi 1 strip.
+         * Return Promise<string> (base64 tanpa prefix "data:...").
+         */
+        function pdfToMergedJpeg(file) {
+            return getPdfjs().then(pdfjsLib => {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+                return convertPdfToImageBuffer(file)
+                    .then(buffer => pdfjsLib.getDocument({ data: buffer }).promise)
+                    .then(pdf => {
+                        const numPages = pdf.numPages;
+                        const targetWidth = 1200;
+                        const pagePromises = [];
+
+                        // Render semua halaman ke canvas
+                        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+                            pagePromises.push(
+                                pdf.getPage(pageNum).then(page => {
+                                    const baseViewport = page.getViewport({ scale: 1 });
+                                    const scale = Math.max(1, targetWidth / baseViewport.width);
+                                    const viewport = page.getViewport({ scale: scale });
+                                    const canvas = document.createElement('canvas');
+                                    canvas.width = viewport.width;
+                                    canvas.height = viewport.height;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.fillStyle = '#ffffff';
+                                    ctx.fillRect(0, 0, viewport.width, viewport.height);
+                                    return page.render({ canvasContext: ctx, viewport }).promise.then(() => canvas);
+                                })
+                            );
+                        }
+
+                        return Promise.all(pagePromises).then(canvases => {
+                            if (canvases.length === 1) {
+                                return canvases[0].toDataURL('image/jpeg', 0.9);
+                            }
+
+                            // Gabung vertikal
+                            const maxWidth = Math.max(...canvases.map(c => c.width));
+                            const totalHeight = canvases.reduce((s, c) => s + c.height, 0);
+                            const mergedCanvas = document.createElement('canvas');
+                            mergedCanvas.width = maxWidth;
+                            mergedCanvas.height = totalHeight;
+                            const mergedCtx = mergedCanvas.getContext('2d');
+                            mergedCtx.fillStyle = '#ffffff';
+                            mergedCtx.fillRect(0, 0, maxWidth, totalHeight);
+
+                            let y = 0;
+                            for (const canvas of canvases) {
+                                const scale = maxWidth / canvas.width;
+                                const drawH = Math.round(canvas.height * scale);
+                                mergedCtx.drawImage(canvas, 0, y, maxWidth, drawH);
+                                y += drawH;
+                            }
+                            mergedCanvas.height = y;
+                            return mergedCanvas.toDataURL('image/jpeg', 0.88);
+                        });
+                    });
+            });
+        }
+
+        // Backward compatibility: resizePdfToJpeg now uses pdfToMergedJpeg
+        function resizePdfToJpeg(file) {
+            return pdfToMergedJpeg(file);
         }
 
         // ================================================================
@@ -2263,6 +2628,7 @@ document.getElementById('mode_card_ekspedisi_auto')?.classList.add('active');
 
             let valid = true;
             let errors = [];
+            const flaggedProducts = new Set();
 
             Object.entries(stockUsageMap).forEach(([productId, entry]) => {
                 const totalUsed = getTotalUsed(productId);
@@ -2270,9 +2636,29 @@ document.getElementById('mode_card_ekspedisi_auto')?.classList.add('active');
                     // Cek apakah semua card yang memakai produk ini sudah draft
                     const allDraft = Object.keys(entry.usedByCard).every(cid => isDraftModeFor(cid));
                     if (!allDraft) {
+                        // Cari info SKU / nama barang dari item yang memakai produk ini
+                        let sku = '';
+                        let nama = '';
+                        for (const r of resiList) {
+                            const it = r.items[productId];
+                            if (it) {
+                                sku = it.sku;
+                                nama = it.nama_barang;
+                                break;
+                            }
+                        }
+                        // Rincian tiap resi yang memakai produk ini
+                        const detail = Object.keys(entry.usedByCard)
+                            .map(cid => {
+                                const idx = resiList.findIndex(r => r.uid === cid);
+                                return `Resi #${idx + 1} qty ${entry.usedByCard[cid]}`;
+                            })
+                            .join(', ');
+
+                        flaggedProducts.add(productId);
                         valid = false;
                         errors.push(
-                            `Konflik stok lintas resi: total qty <b>${totalUsed}</b> melebihi stok <b>${entry.stok}</b>. Set semua resi terkait ke <b>Draft</b> untuk tetap menyimpan.`
+                            `Konflik stok <b>SKU #${sku}</b>${nama ? ` — ${nama}` : ''}: total qty <b>${totalUsed}</b> melebihi stok <b>${entry.stok}</b>. <span style="font-size:.82rem;color:#6c757d">(${detail})</span> Set semua resi terkait ke <b>Draft</b> untuk tetap menyimpan.`
                         );
                     }
                 }
@@ -2286,21 +2672,34 @@ document.getElementById('mode_card_ekspedisi_auto')?.classList.add('active');
                     return;
                 }
                 Object.values(r.items).forEach(item => {
+                    // Lewati jika konflik produk ini sudah direport oleh cek lintas resi
+                    if (flaggedProducts.has(String(item.id))) return;
                     if (!draft && item.qty > item.stok) {
                         valid = false;
                         errors.push(
-                            `Resi #${idx + 1} SKU #${item.sku}: qty ${item.qty} melebihi stok ${item.stok}`
+                            `Resi #${idx + 1} — SKU #${item.sku}${item.nama_barang ? ` (${item.nama_barang})` : ''}: qty ${item.qty} melebihi stok ${item.stok}`
                         );
                     }
                 });
             });
 
             if (!valid) {
+                // Tampilkan di SweetAlert
                 Swal.fire({
                     icon: 'error',
                     title: 'Validasi Gagal',
                     html: errors.map(m => `<p>❌ ${m}</p>`).join('')
                 });
+
+                // ── [BARU] Push HANYA error terbaru/popup ke panel info ──
+                // Bersihkan push sebelumnya dulu agar tidak menumpuk.
+                $('#import-info-panel .stock-warn-section').remove();
+                clearValidationErrors();
+                errors.forEach(m => pushInfoDanger(m));
+                // Scroll ke panel info agar error di panel langsung terlihat
+                if (!$('#import-info-panel').is(':visible') || errors.length > 0) {
+                    showInfoPanel();
+                }
                 return;
             }
 
@@ -2515,17 +2914,7 @@ document.getElementById('mode_card_ekspedisi_auto')?.classList.add('active');
     `);
 
             stockWarnings.forEach(w => {
-                section.append(`
-            <div class="info-item info-error">
-                <i class="feather icon-alert-octagon text-danger"></i>
-                <div>
-                    SKU <strong>#${w.sku}</strong> — ${w.nama}:
-                    <span class="text-danger font-weight-bold">${w.reason}</span>.
-                    Card otomatis diset ke mode <strong>Draft</strong>.
-                    Baris ditandai <span style="background:#f8d7da;padding:1px 6px;border-radius:3px;font-size:.8em;">merah</span>.
-                </div>
-            </div>
-        `);
+                section.append(stockWarnItemHtml(w));
             });
 
             $('#import-info-list').append(section);
@@ -2585,6 +2974,14 @@ document.getElementById('mode_card_ekspedisi_auto')?.classList.add('active');
         // ── Tutup modal = stop polling ────────────────────────────────────
         $('#modal-import-progress').on('hide.bs.modal', function() {
             stopPolling();
+        });
+
+        // ── Floating scroll buttons ──────────────────────────────────────
+        $('#btn-scroll-top').on('click', function() {
+            $('html, body').animate({ scrollTop: 0 }, 400);
+        });
+        $('#btn-scroll-bottom').on('click', function() {
+            $('html, body').animate({ scrollTop: $(document).height() }, 400);
         });
     </script>
 @endsection

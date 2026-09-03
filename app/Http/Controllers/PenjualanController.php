@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Penjualan;
+use App\Models\PenjualanDraft;
+use App\Models\Notifikasi;
 use App\Models\Dropshipper;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
@@ -38,7 +40,7 @@ class PenjualanController extends Controller
         $dateFrom = $request->date_from ?? today()->format('Y-m-d');
         $dateTo   = $request->date_to   ?? today()->format('Y-m-d');
 
-        $from = $dateFrom . ' ' . ($request->time_from ?: '00:00');
+        $from = $dateFrom . ' ' . ($request->time_from ?: '06:00');
         $to   = $dateTo   . ' ' . ($request->time_to   ?: '23:59');
         $query->where('tanggal', '>=', $from)->where('tanggal', '<=', $to);
         $query->orderBy('id', 'asc');
@@ -60,6 +62,11 @@ class PenjualanController extends Controller
         // ── Filter Scan Out ─────────────────────────────────
         if ($request->filled('scan_out')) {
             $query->where('scan_out', $request->scan_out);
+        }
+
+        // ── Filter Order Web ────────────────────────────────
+        if ($request->order_web !== null && $request->order_web !== '') {
+            $query->where('order_web', (int) $request->order_web);
         }
 
         // ── Sort ────────────────────────────────────────────
@@ -120,6 +127,67 @@ class PenjualanController extends Controller
         $dropshippers = Dropshipper::orderBy('nama')->get();
 
         return view('pages.transaksi.penjualan.draft', compact('penjualanDraft', 'dropshippers'));
+    }
+
+    public function webIndex(Request $request)
+    {
+        $query = Penjualan::with(['dropshipper', 'user', 'detail.barang.stok', 'address', 'shipment', 'pembayaran'])
+            ->where('order_web', 1);
+
+        // ── Search ──────────────────────────────────────────
+        if ($search = $request->search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('kode_penjualan', 'like', "%{$search}%")
+                  ->orWhere('nomor_resi', 'like', "%{$search}%")
+                  ->orWhere('nomor_pesanan', 'like', "%{$search}%")
+                  ->orWhere('nomor_transaksi', 'like', "%{$search}%")
+                  ->orWhere('keterangan', 'like', "%{$search}%")
+                  ->orWhereHas('address', fn($q2) => $q2->where('recipient_name', 'like', "%{$search}%"))
+                  ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
+            });
+        }
+
+        // ── Filter Tanggal (default: hari ini) ──────────────
+        $dateFrom = $request->date_from ?? today()->format('Y-m-d');
+        $dateTo   = $request->date_to   ?? today()->format('Y-m-d');
+
+        $from = $dateFrom . ' ' . ($request->time_from ?: '06:00');
+        $to   = $dateTo   . ' ' . ($request->time_to   ?: '23:59');
+        $query->where('tanggal', '>=', $from)->where('tanggal', '<=', $to);
+
+        // ── Filter Status Web ───────────────────────────────
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // ── Filter Scan Out ─────────────────────────────────
+        if ($request->filled('scan_out')) {
+            $query->where('scan_out', $request->scan_out);
+        }
+
+        // ── Sort ────────────────────────────────────────────
+        $sortCol = $request->sort_col;
+        $sortDir = $request->sort_dir === 'asc' ? 'asc' : 'desc';
+        $allowedSort = ['kode_penjualan', 'nomor_resi', 'nomor_pesanan', 'tanggal', 'total_harga', 'status', 'scan_out', 'is_retur'];
+        if ($sortCol && in_array($sortCol, $allowedSort)) {
+            $query->orderBy($sortCol, $sortDir);
+        } else {
+            $query->orderByDesc('id');
+        }
+
+        // ── Pagination ──────────────────────────────────────
+        $perPage = in_array((int) $request->per_page, [10, 25, 50, 100]) ? (int) $request->per_page : 10;
+        $penjualan = $query->paginate($perPage)->withQueryString();
+
+        // Draft pesanan web yang menunggu konfirmasi pembayaran
+        $drafts = PenjualanDraft::with(['items.barang.stok', 'address', 'shipment', 'pembayaran', 'creator'])
+            ->where('order_web', 1)
+            ->orderByDesc('id')
+            ->get();
+
+        $dropshippers = Dropshipper::orderBy('nama')->get();
+
+        return view('pages.transaksi.penjualan.web', compact('penjualan', 'drafts', 'dropshippers'));
     }
 
     public function draftReleasePreview(Request $request)
@@ -696,6 +764,7 @@ class PenjualanController extends Controller
             'total_harga'    => 'required|numeric|min:0',
             'scan_out'       => 'required',
             'is_draft'       => 'required',
+            'status'         => 'nullable|in:proses,packing,dikirim,selesai',
             'items'          => 'required'
         ]);
 
@@ -730,8 +799,30 @@ class PenjualanController extends Controller
                 'total_harga'     => $request->total_harga,
                 'scan_out'        => $request->scan_out,
                 'is_draft'        => $isDraft,
+                'status'          => in_array($request->status, ['proses', 'packing', 'dikirim', 'selesai'])
+                    ? $request->status
+                    : ($penjualan->status ?? 'proses'),
                 'keterangan'      => $request->keterangan,
             ]);
+
+            // ★ Simpan/update file resi dari base64 (jika user upload file baru)
+            if (!empty($request->file_resi_base64)) {
+                try {
+                    $base64 = $request->file_resi_base64;
+                    if (str_contains($base64, ',')) {
+                        $base64 = explode(',', $base64)[1];
+                    }
+                    $imgBin   = base64_decode($base64);
+                    $filename = 'resi_' . ($nomorResi ?? uniqid()) . '_' . time() . '.jpg';
+                    $dir      = storage_path('app/public/resi');
+                    if (!is_dir($dir)) mkdir($dir, 0755, true);
+                    file_put_contents($dir . '/' . $filename, $imgBin);
+
+                    $penjualan->update(['file_resi' => 'resi/' . $filename]);
+                } catch (\Throwable $ex) {
+                    Log::warning("[update] Gagal simpan file resi: " . $ex->getMessage());
+                }
+            }
 
             $oldDetails      = $penjualan->detail->keyBy('barang_id');
             $processedBarang = [];
@@ -897,6 +988,12 @@ class PenjualanController extends Controller
             DB::commit();
 
             $penjualanDate = \Carbon\Carbon::parse($penjualan->tanggal)->format('Y-m-d');
+
+            // Jika edit dibuka dari halaman Penjualan Web → kembali ke Penjualan Web
+            if ($request->input('redirect_to') === 'web') {
+                return redirect()->route('penjualan.web')->with('success', 'Penjualan berhasil diupdate');
+            }
+
             return redirect()->route('penjualan.index', [
                 'date_from' => $penjualanDate,
                 'date_to'   => $penjualanDate,
@@ -1120,8 +1217,9 @@ class PenjualanController extends Controller
             $tanggalKey = \Carbon\Carbon::parse($penjualan->tanggal)->format('Y-m-d');
             $groupKey   = $tanggalKey . '_' . $penjualan->dropshipper_id;
             $nomorUrut  = $nomorUrutMap[$groupKey][$penjualan->id] ?? 1;
+            $resiChunks = [];
 
-            $dropshipper = strtoupper($penjualan->dropshipper->nama);
+            $dropshipper = strtoupper($penjualan->dropshipper->nama ?? '');
             $nomorStruk  = sprintf('%s-%04d-%s', $dropshipper, $nomorUrut,
                 \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY'));
 
@@ -1137,19 +1235,17 @@ class PenjualanController extends Controller
                     if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
                         // Resize/compress gambar sebelum embed ke PDF
                         $resiBase64 = $this->compressImageToBase64($resiPath, $ext);
-                        $resiMime   = match($ext) {
-                            'jpg', 'jpeg' => 'image/jpeg',
-                            'png'         => 'image/png',
-                            'webp'        => 'image/webp',
-                            default       => 'image/jpeg',
-                        };
+                        // Split gambar tinggi jadi multi-halaman A5
+                        $resiChunks = $this->splitImageToPages($resiBase64);
+                        $resiMime   = 'image/jpeg';
                     } elseif ($ext === 'pdf') {
                         $resiIsPdf = true;
+                        $resiChunks = [];
                     }
                 }
             }
 
-            return compact('penjualan', 'nomorStruk', 'resiBase64', 'resiMime', 'resiIsPdf');
+            return compact('penjualan', 'nomorStruk', 'resiChunks', 'resiMime', 'resiIsPdf');
         })->toArray();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
@@ -1219,14 +1315,78 @@ class PenjualanController extends Controller
 
         return base64_encode($data);
     }
+
+    /**
+     * Split gambar resi jadi halaman PDF.
+     * - Normal (muat 1 halaman A5): return array 1 elemen
+     * - Panjang (multi-page): split 50/50 jadi 2 halaman sama besar
+     * 
+     * @return array<string> base64 chunks (tanpa prefix data:)
+     */
+    private function splitImageToPages(string $base64Jpeg): array
+    {
+        if (!extension_loaded('gd')) {
+            return [$base64Jpeg];
+        }
+
+        $bin = base64_decode($base64Jpeg);
+        $src = imagecreatefromstring($bin);
+        if (!$src) {
+            return [$base64Jpeg];
+        }
+
+        $imgW = imagesx($src);
+        $imgH = imagesy($src);
+
+        // A5 @72 DPI dimensions
+        $paperW = 419.53;
+        $paperH = 595.28;
+
+        // Scale factor: paper width / image width
+        $scale = $paperW / $imgW;
+        // Effective page height in image pixels (leave margin for struk info footer)
+        $pageHpx = (int) floor(($paperH - 80) / $scale); // -80pt margin untuk footer struk
+
+        // Normal: muat 1 halaman
+        if ($imgH <= $pageHpx) {
+            imagedestroy($src);
+            return [$base64Jpeg];
+        }
+
+        // Panjang: split 50/50 jadi 2 halaman sama besar
+        $halfH = (int) ceil($imgH / 2);
+        $chunks = [];
+
+        for ($i = 0; $i < 2; $i++) {
+            $y = $i * $halfH;
+            $h = ($i === 1) ? ($imgH - $y) : $halfH; // chunk terakhir ambil sisa
+            
+            $dst = imagecreatetruecolor($imgW, $h);
+            imagecopyresampled($dst, $src, 0, 0, 0, $y, $imgW, $h, $imgW, $h);
+
+            ob_start();
+            imagejpeg($dst, null, 80);
+            $chunkBin = ob_get_clean();
+            $chunks[] = base64_encode($chunkBin);
+            imagedestroy($dst);
+        }
+
+        imagedestroy($src);
+        return $chunks;
+    }
+
     public function strukDownload($id)
     {
         $penjualan = Penjualan::findOrFail($id);
 
+        // Wajib ada dropshipper agar nomor struk valid
+        if (is_null($penjualan->dropshipper_id)) {
+            return redirect()->back()->with('error', 'Penjualan "' . $penjualan->kode_penjualan . '" belum memiliki dropshipper. Silakan tambahkan dropshipper terlebih dahulu.');
+        }
+
         $nomorUrut = Penjualan::where('id', '<=', $penjualan->id)->whereDate('tanggal', today())->where('dropshipper_id', $penjualan->dropshipper_id)->count();
         $dropshipper = strtoupper($penjualan->dropshipper->nama);
         $noUrutAwal = $dropshipper . "-%04d-%s";
-        // dd($nomorUrut);
 
         $nomorStruk = sprintf(
             $noUrutAwal,
@@ -1235,7 +1395,7 @@ class PenjualanController extends Controller
         );
 
         // Encode file resi ke base64 agar bisa ditampilkan di PDF
-        $resiBase64 = null;
+        $resiChunks = [];
         $resiMime   = null;
         $resiIsPdf  = false;
 
@@ -1245,13 +1405,10 @@ class PenjualanController extends Controller
 
             if (file_exists($resiPath)) {
                 if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                    $resiBase64 = base64_encode(file_get_contents($resiPath));
-                    $resiMime   = match ($ext) {
-                        'jpg', 'jpeg' => 'image/jpeg',
-                        'png'         => 'image/png',
-                        'webp'        => 'image/webp',
-                        default       => 'image/jpeg',
-                    };
+                    // Compress + split sama seperti bulk
+                    $resiBase64 = $this->compressImageToBase64($resiPath, $ext);
+                    $resiChunks = $this->splitImageToPages($resiBase64);
+                    $resiMime   = 'image/jpeg';
                 } elseif ($ext === 'pdf') {
                     $resiIsPdf = true; // PDF tidak bisa di-embed langsung di DomPDF
                 }
@@ -1261,10 +1418,15 @@ class PenjualanController extends Controller
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pages.transaksi.penjualan.struk_pdf', compact(
             'penjualan',
             'nomorStruk',
-            'resiBase64',
+            'resiChunks',
             'resiMime',
             'resiIsPdf'
-        ))->setPaper([0, 0, 419.53, 595.28]); // A5
+        ))->setPaper([0, 0, 419.53, 595.28])->setOptions([
+            'isHtml5ParserEnabled' => true,
+            'isRemoteEnabled'      => false,
+            'defaultFont'          => 'Arial',
+            'dpi'                  => 72,
+        ]);
         $penjualan->update(['strukprint_status' => 'sudah']);
 
         $filename = 'struk-' . $nomorStruk . '.pdf';
@@ -1306,6 +1468,281 @@ class PenjualanController extends Controller
             'success' => true,
             'transit' => $transit,
             'message' => $transit ? 'Status transit diaktifkan.' : 'Status transit dinonaktifkan.',
+        ]);
+    }
+
+    /**
+     * Perbarui dropshipper pada penjualan web (via popup dari halaman penjualan web).
+     * Mendukung upload file resi (image / pdf yang sudah dikonversi jadi image di client):
+     * file discan dulu via FastAPI (scan-resi-multiple-async) untuk mengambil nomor resi &
+     * nomor pesanan, divalidasi duplikatnya, baru file & data penjualan disimpan.
+     */
+    public function updateDropshipper(Request $request, $id)
+    {
+        $request->validate([
+            'dropshipper_id' => 'nullable|exists:dropshipper,id',
+            'file_resi'      => 'nullable|file|mimes:jpg,jpeg,png,webp,pdf|max:20480',
+            'mode'           => 'nullable|string|in:shopee,tiktok',
+        ]);
+
+        $penjualan = Penjualan::findOrFail($id);
+
+        if (!$request->filled('dropshipper_id') && !$request->hasFile('file_resi')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pilih dropshipper atau upload file resi terlebih dahulu.',
+            ], 422);
+        }
+
+        $update = [];
+        if ($request->filled('dropshipper_id')) {
+            $update['dropshipper_id'] = $request->dropshipper_id;
+        }
+
+        // ── File resi: scan dulu (OCR) → validasi duplikat → baru simpan ──────
+        if ($request->hasFile('file_resi') && $request->file('file_resi')->isValid()) {
+            set_time_limit(300);
+
+            $file = $request->file('file_resi');
+
+            try {
+                // Step 1 — submit job OCR async
+                $response = Http::timeout(30)
+                    ->attach(
+                        'file',
+                        file_get_contents($file->getRealPath()),
+                        $file->getClientOriginalName()
+                    )
+                    ->post($this->fastApiUrl() . '/scan-resi-multiple-async', array_filter([
+                        'mode' => $request->input('mode', 'shopee'),
+                    ]));
+
+                if ($response->failed()) {
+                    throw new \Exception('OCR service error: HTTP ' . $response->status());
+                }
+
+                $jobId = $response->json()['job_id'] ?? null;
+                if (!$jobId) {
+                    throw new \Exception('OCR service tidak mengembalikan job_id.');
+                }
+
+                // Step 2 — polling status job sampai done (maks ~120 detik)
+                $ocrData = null;
+                for ($i = 0; $i < 40; $i++) {
+                    sleep(3);
+
+                    $poll = Http::timeout(120)->get($this->fastApiUrl() . '/job-status/' . $jobId);
+                    if ($poll->failed()) {
+                        continue;
+                    }
+
+                    $payload = $poll->json();
+
+                    if (isset($payload['error'])) {
+                        throw new \Exception($payload['error']);
+                    }
+
+                    if (($payload['status'] ?? '') === 'done') {
+                        $ocrData = $payload['data'] ?? [];
+                        break;
+                    }
+                }
+
+                if ($ocrData === null) {
+                    throw new \Exception('Timeout menunggu hasil scan resi. Coba lagi.');
+                }
+
+                // Step 3 — ambil nomor resi & nomor pesanan (halaman pertama yang terbaca)
+                $nomorResi    = null;
+                $nomorPesanan = null;
+                foreach ($ocrData as $page) {
+                    if (!$nomorResi && !empty($page['resi'])) {
+                        $nomorResi = $page['resi'];
+                    }
+                    if (!$nomorPesanan && !empty($page['order_id'])) {
+                        $nomorPesanan = $page['order_id'];
+                    }
+                    if ($nomorResi && $nomorPesanan) {
+                        break;
+                    }
+                }
+
+                // Step 4 — VALIDASI DUPLIKAT: tolak & jangan proses apa pun
+                if ($nomorResi) {
+                    $duplicate = Penjualan::where('nomor_resi', $nomorResi)
+                        ->where('id', '!=', $penjualan->id)
+                        ->first();
+
+                    if ($duplicate) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Nomor resi "' . $nomorResi . '" sudah digunakan oleh penjualan "'
+                                . $duplicate->kode_penjualan . '". File tidak diproses.',
+                            'duplicate' => true,
+                        ], 422);
+                    }
+                }
+
+                // Lolos validasi → simpan/replace file resi
+                if ($penjualan->file_resi) {
+                    Storage::disk('public')->delete($penjualan->file_resi);
+                }
+                $path = $file->store('resi', 'public');
+                $update['file_resi'] = $path;
+
+                if ($nomorResi) {
+                    $update['nomor_resi'] = $nomorResi;
+                }
+                if ($nomorPesanan) {
+                    $update['nomor_pesanan'] = $nomorPesanan;
+                }
+            } catch (\Illuminate\Http\Client\ConnectionException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'OCR service tidak dapat dijangkau.',
+                ], 503);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+        }
+
+        $penjualan->update($update);
+
+        // Update juga nomor resi & nomor pesanan di penjualan_detail
+        $detailUpdate = array_intersect_key($update, array_flip(['nomor_resi', 'nomor_pesanan']));
+        if (!empty($detailUpdate)) {
+            PenjualanDetail::where('penjualan_id', $penjualan->id)->update($detailUpdate);
+        }
+
+        $pesan = [];
+        if ($request->filled('dropshipper_id')) {
+            $pesan[] = 'dropshipper';
+        }
+        if ($penjualan->file_resi) {
+            $pesan[] = 'file resi';
+        }
+        if (!empty($update['nomor_resi'])) {
+            $pesan[] = 'no. resi (' . $update['nomor_resi'] . ')';
+        }
+        if (!empty($update['nomor_pesanan'])) {
+            $pesan[] = 'no. pesanan (' . $update['nomor_pesanan'] . ')';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Penjualan "' . $penjualan->kode_penjualan . '" berhasil diperbarui: ' . implode(', ', $pesan) . '.',
+            'nomor_resi'    => $update['nomor_resi'] ?? null,
+            'nomor_pesanan' => $update['nomor_pesanan'] ?? null,
+        ]);
+    }
+
+    private function fastApiUrl(): string
+    {
+        return env('FASTAPI_URL');
+    }
+
+    /**
+     * Konfirmasi pembayaran draft web (paid_confirmation -> paid),
+     * lalu pindahkan penjualan_draft + items ke penjualan + penjualan_detail
+     * dengan status proses "packing".
+     */
+    public function confirmDraftPayment(Request $request, $id)
+    {
+        $draft = PenjualanDraft::with(['items', 'address', 'shipment', 'pembayaran'])->findOrFail($id);
+
+        if (!$draft->pembayaran || $draft->pembayaran->status !== 'paid_confirmation') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pembayaran untuk draft ini tidak sedang menunggu konfirmasi.',
+            ], 422);
+        }
+
+        // Pastikan kode penjualan unik di tabel penjualan
+        $kode = $draft->kode_penjualan;
+        if (Penjualan::where('kode_penjualan', $kode)->exists()) {
+            $kode = $kode . '-' . now()->format('His');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $penjualan = Penjualan::create([
+                'kode_penjualan' => $kode,
+                // Tanggal memakai waktu saat konfirmasi pembayaran (jam juga)
+                'tanggal'        => now(),
+                'total_harga'    => $draft->total_harga,
+                'harga_discount' => $draft->harga_discount,
+                'shipping_cost'  => $draft->shipping_cost,
+                'subtotal_harga' => $draft->subtotal_harga,
+                'keterangan'     => $draft->keterangan,
+                'status'         => 'packing',
+                'order_web'      => 1,
+                'scan_out'       => 'pending',
+                'is_draft'       => 'no',
+                'created_by'     => $draft->created_by ?? Auth::guard('pengguna')->id(),
+            ]);
+
+            foreach ($draft->items as $item) {
+                PenjualanDetail::create([
+                    'penjualan_id' => $penjualan->id,
+                    'barang_id'    => $item->barang_id,
+                    'qty'          => $item->qty,
+                    'harga'        => $item->harga,
+                    'subtotal'     => $item->subtotal,
+                ]);
+            }
+
+            // Pindahkan relasi address, shipment & pembayaran ke penjualan
+            if ($draft->address) {
+                $draft->address->update(['penjualan_id' => $penjualan->id, 'penjualan_draft_id' => null]);
+            }
+            if ($draft->shipment) {
+                $draft->shipment->update(['penjualan_id' => $penjualan->id, 'penjualan_draft_id' => null]);
+            }
+
+            $draft->pembayaran->update([
+                'status'             => 'paid',
+                'paid_at'            => now(),
+                'penjualan_id'       => $penjualan->id,
+                'penjualan_draft_id' => null,
+            ]);
+
+            // Hapus draft beserta items-nya (data sudah dipindahkan)
+            $draft->items()->delete();
+            $draft->delete();
+
+            // Notifikasi: pembayaran telah selesai dilakukan untuk penjualan ini
+            Notifikasi::create([
+                'judul'      => 'Pembayaran Dikonfirmasi',
+                'isi'        => 'Pembayaran untuk penjualan "' . $kode . '" telah selesai dilakukan. Pesanan kini berstatus packing.',
+                'tipe'       => 'pembayaran',
+                'link'       => route('penjualan.web'),
+                'payload'    => [
+                    'penjualan_id'   => $penjualan->id,
+                    'kode_penjualan' => $kode,
+                    'total_harga'    => (float) $penjualan->total_harga,
+                    'status'         => $penjualan->status,
+                ],
+                'user_id'    => null, // broadcast ke semua pengguna
+                'created_by' => Auth::guard('pengguna')->id(),
+            ]);
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Pembayaran "' . $kode . '" dikonfirmasi. Data dipindahkan ke penjualan dengan status packing.',
         ]);
     }
 }

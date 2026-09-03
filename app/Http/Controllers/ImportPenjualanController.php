@@ -289,12 +289,14 @@ class ImportPenjualanController extends Controller
             ], $r['items'] ?? []);
 
             return [
-                'page'         => $r['page']         ?? null,
-                'resi'         => $r['resi']         ?? null,
-                'order_id'     => $r['order_id']     ?? null,
-                'items'        => $items,
-                'skus'         => $r['skus']         ?? [],
-                'image_base64' => $r['image_base64'] ?? null,
+                'page'           => $r['page']           ?? null,
+                'resi'           => $r['resi']           ?? null,
+                'order_id'       => $r['order_id']       ?? null,
+                'items'          => $items,
+                'skus'           => $r['skus']           ?? [],
+                'image_base64'   => $r['image_base64']   ?? null,
+                'extra_images'   => $r['extra_images']   ?? [],   // halaman lanjutan (base64)
+                'pages'          => $r['pages']          ?? [],   // array nomor halaman yg tergabung
             ];
         }, $data);
     }

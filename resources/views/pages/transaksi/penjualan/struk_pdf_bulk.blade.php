@@ -20,29 +20,12 @@
             border: 1.5px dashed #aaa;
             border-radius: 4px;
             text-align: center;
-            height: 90%;
             display: flex;
             align-items: start;
             justify-content: center;
-            overflow: hidden;
         }
-        .resi-box img { width: 100%; height: auto; }
+        .resi-box img { width: 100%; height: auto; max-height: none; }
         .no-resi { color: #999; padding: 30px; font-size: 11px; }
-
-        .spacer { height: 20px; }
-
-        .nomor-box {
-            border: 1.5px solid #ddd;
-            border-radius: 4px;
-            padding: 10px 14px;
-            background: #f8f9fa;
-        }
-        .nomor-label { font-size: 9px; color: #888; text-transform: uppercase; letter-spacing: 1px; }
-        .nomor-value { font-size: 16px; font-weight: bold; color: #1e3a5f; margin-top: 3px; }
-
-        .info-table { width: 100%; margin-top: 12px; border-collapse: collapse; }
-        .info-table td { padding: 5px 0; font-size: 11px; border-bottom: 1px solid #f0f0f0; }
-        .info-table td:last-child { text-align: right; font-weight: bold; }
 
         .footer {
             margin-top: 16px;
@@ -52,33 +35,57 @@
             border-top: 1px dashed #ddd;
             padding-top: 10px;
         }
+
+        /* Page break antar halaman struk */
+        .struk-page { page-break-after: always; }
+        .struk-page:last-child { page-break-after: auto; }
     </style>
 </head>
 <body>
     
-
     @foreach($struks as $index => $struk)
         @php
             $penjualan  = $struk['penjualan'];
             $nomorStruk = $struk['nomorStruk'];
-            $resiBase64 = $struk['resiBase64'];
-            $resiMime   = $struk['resiMime'];
-            $resiIsPdf  = $struk['resiIsPdf'];
+            $resiChunks = $struk['resiChunks'] ?? [];
+            $resiMime   = $struk['resiMime'] ?? null;
+            $resiIsPdf  = $struk['resiIsPdf'] ?? false;
         @endphp
 
-    {{-- Resi --}}
-    <div class="resi-box">
-        @if($resiBase64 && $resiMime)
-            {{-- Setelah compress, selalu JPEG --}}
-            <img src="data:image/jpeg;base64,{{ $resiBase64 }}" alt="Resi">
+        @if(empty($resiChunks) && !$resiIsPdf)
+            {{-- Tidak ada gambar resi, render 1 halaman saja --}}
+            <div class="struk-page">
+                <div class="resi-box">
+                    <div class="no-resi"  style="max-height: 75%;">Tidak ada file resi dilampirkan</div>
+                </div>
+                <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
+            </div>
         @elseif($resiIsPdf)
-            <div class="no-resi">📄 File resi berupa PDF — lihat file asli untuk detail</div>
-        @else
-            <div class="no-resi">Tidak ada file resi dilampirkan</div>
+            {{-- File PDF asli --}}
+            <div class="struk-page">
+                <div class="resi-box">
+                    <div class="no-resi">📄 File resi berupa PDF — lihat file asli untuk detail</div>
+                </div>
+                <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
+            </div>
+@else
+            {{-- Ada resiChunks (1 = normal, 2 = panjang split 50/50) --}}
+            @foreach($resiChunks as $chunkIndex => $chunkBase64)
+                <div class="struk-page">
+                    <div class="resi-box">
+                        <img src="data:image/jpeg;base64,{{ $chunkBase64 }}" alt="Resi"
+                            @if(count($resiChunks) > 1 && $chunkIndex === count($resiChunks) - 1)
+                                style="max-height: 75%;" {{-- Halaman terakhir: kecilkan height buat ruang footer --}}
+                            @endif
+                        >
+                    </div>
+                    {{-- Footer nomor struk di halaman terakhir chunk --}}
+                    @if($chunkIndex === count($resiChunks) - 1)
+                        <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
+                    @endif
+                </div>
+            @endforeach
         @endif
-    </div>
-
-    <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
     @endforeach
 
 </body>

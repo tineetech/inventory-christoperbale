@@ -20,13 +20,11 @@
             border: 1.5px dashed #aaa;
             border-radius: 4px;
             text-align: center;
-            height: 90%;
             display: flex;
             align-items: start;
             justify-content: center;
-            overflow: hidden;
         }
-        .resi-box img { width: 100%; height: auto; }
+        .resi-box img { width: 100%; height: auto; max-height: none; }
         .no-resi { color: #999; padding: 30px; font-size: 11px; }
 
         .spacer { height: 20px; }
@@ -52,54 +50,48 @@
             border-top: 1px dashed #ddd;
             padding-top: 10px;
         }
+
+        /* Page break antar halaman struk */
+        .struk-page { page-break-after: always; }
+        .struk-page:last-child { page-break-after: auto; }
     </style>
 </head>
 <body>
-
-    {{-- <div class="header">
-        <h1>CHRISBALE</h1>
-        <p>Bukti Pengiriman</p>
-    </div> --}}
-
-    {{-- Resi --}}
-    <div class="resi-box">
-        @if($resiBase64 && $resiMime)
-            <img src="data:{{ $resiMime }};base64,{{ $resiBase64 }}" alt="Resi">
-        @elseif($resiIsPdf)
-            <div class="no-resi">📄 File resi berupa PDF — lihat file asli untuk detail</div>
-        @else
-            <div class="no-resi">Tidak ada file resi dilampirkan</div>
-        @endif
-    </div>
-
-    {{-- Spacer 20px --}}
-    {{-- <div class="spacer"></div> --}}
-
-    {{-- Nomor Struk --}}
-    {{-- <div class="nomor-box">
-        <div class="nomor-label">Nomor Struk</div>
-        <div class="nomor-value">{{ $nomorStruk }}</div>
-    </div> --}}
-
-    {{-- Info --}}
-    {{-- <table class="info-table">
-        <tr>
-            <td>Tanggal</td>
-            <td>{{ \Carbon\Carbon::parse($penjualan->tanggal)->format('d/m/Y') }}</td>
-        </tr>
-        @if($penjualan->nomor_resi)
-        <tr>
-            <td>No. Resi</td>
-            <td>{{ $penjualan->nomor_resi }}</td>
-        </tr>
-        @endif
-        <tr>
-            <td>Total</td>
-            <td>Rp {{ number_format($penjualan->total_harga, 0, ',', '.') }}</td>
-        </tr>
-    </table> --}}
-
-    <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
+    
+    @if(empty($resiChunks) && !$resiIsPdf)
+        {{-- Tidak ada gambar resi, render 1 halaman saja --}}
+        <div class="struk-page">
+            <div class="resi-box">
+                <div class="no-resi">Tidak ada file resi dilampirkan</div>
+            </div>
+            <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
+        </div>
+    @elseif($resiIsPdf)
+        {{-- File PDF asli --}}
+        <div class="struk-page">
+            <div class="resi-box">
+                <div class="no-resi">📄 File resi berupa PDF — lihat file asli untuk detail</div>
+            </div>
+            <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
+        </div>
+    @else
+        {{-- Ada resiChunks (1 = normal, 2 = panjang split 50/50) --}}
+        @foreach($resiChunks as $chunkIndex => $chunkBase64)
+            <div class="struk-page">
+                <div class="resi-box">
+                    <img src="data:image/jpeg;base64,{{ $chunkBase64 }}" alt="Resi"
+                        @if(count($resiChunks) > 1 && $chunkIndex === count($resiChunks) - 1)
+                            style="max-height: 55%;" {{-- Halaman terakhir: kecilkan height buat ruang footer --}}
+                        @endif
+                    >
+                </div>
+                {{-- Footer nomor struk di halaman terakhir chunk --}}
+                @if($chunkIndex === count($resiChunks) - 1)
+                    <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
+                @endif
+            </div>
+        @endforeach
+    @endif
 
 </body>
 </html>
