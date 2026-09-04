@@ -71,11 +71,11 @@
 @else
             {{-- Ada resiChunks (1 = normal, 2 = panjang split 50/50) --}}
             @foreach($resiChunks as $chunkIndex => $chunkBase64)
-                <div class="struk-page">
+                <div class="{{ count($resiChunks) > 1 && $chunkIndex === count($resiChunks) - 1 ? 'struk-page' : '' }}">
                     <div class="resi-box">
                         <img src="data:image/jpeg;base64,{{ $chunkBase64 }}" alt="Resi"
                             @if(count($resiChunks) > 1 && $chunkIndex === count($resiChunks) - 1)
-                                style="max-height: 75%;" {{-- Halaman terakhir: kecilkan height buat ruang footer --}}
+                                style="max-height: 75%;"
                             @endif
                         >
                     </div>
