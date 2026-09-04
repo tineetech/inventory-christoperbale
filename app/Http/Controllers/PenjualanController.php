@@ -28,11 +28,11 @@ class PenjualanController extends Controller
         if ($search = $request->search) {
             $query->where(function ($q) use ($search) {
                 $q->where('kode_penjualan', 'like', "%{$search}%")
-                  ->orWhere('nomor_resi', 'like', "%{$search}%")
-                  ->orWhere('nomor_pesanan', 'like', "%{$search}%")
-                  ->orWhere('nomor_transaksi', 'like', "%{$search}%")
-                  ->orWhere('keterangan', 'like', "%{$search}%")
-                  ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
+                    ->orWhere('nomor_resi', 'like', "%{$search}%")
+                    ->orWhere('nomor_pesanan', 'like', "%{$search}%")
+                    ->orWhere('nomor_transaksi', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%")
+                    ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
             });
         }
 
@@ -97,11 +97,11 @@ class PenjualanController extends Controller
         if ($search = $request->search) {
             $query->where(function ($q) use ($search) {
                 $q->where('kode_penjualan', 'like', "%{$search}%")
-                  ->orWhere('nomor_resi', 'like', "%{$search}%")
-                  ->orWhere('nomor_pesanan', 'like', "%{$search}%")
-                  ->orWhere('nomor_transaksi', 'like', "%{$search}%")
-                  ->orWhere('keterangan', 'like', "%{$search}%")
-                  ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
+                    ->orWhere('nomor_resi', 'like', "%{$search}%")
+                    ->orWhere('nomor_pesanan', 'like', "%{$search}%")
+                    ->orWhere('nomor_transaksi', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%")
+                    ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
             });
         }
 
@@ -138,12 +138,12 @@ class PenjualanController extends Controller
         if ($search = $request->search) {
             $query->where(function ($q) use ($search) {
                 $q->where('kode_penjualan', 'like', "%{$search}%")
-                  ->orWhere('nomor_resi', 'like', "%{$search}%")
-                  ->orWhere('nomor_pesanan', 'like', "%{$search}%")
-                  ->orWhere('nomor_transaksi', 'like', "%{$search}%")
-                  ->orWhere('keterangan', 'like', "%{$search}%")
-                  ->orWhereHas('address', fn($q2) => $q2->where('recipient_name', 'like', "%{$search}%"))
-                  ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
+                    ->orWhere('nomor_resi', 'like', "%{$search}%")
+                    ->orWhere('nomor_pesanan', 'like', "%{$search}%")
+                    ->orWhere('nomor_transaksi', 'like', "%{$search}%")
+                    ->orWhere('keterangan', 'like', "%{$search}%")
+                    ->orWhereHas('address', fn($q2) => $q2->where('recipient_name', 'like', "%{$search}%"))
+                    ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
             });
         }
 
@@ -1178,19 +1178,15 @@ class PenjualanController extends Controller
             return response()->json(['error' => 'Tidak ada ID yang dipilih.'], 422);
         }
 
-        // Naikkan limit untuk bulk besar
         ini_set('memory_limit', '512M');
         set_time_limit(120);
 
-        // Eager load dropshipper sekaligus — hindari N+1
         $penjualanList = Penjualan::with('dropshipper')
             ->whereIn('id', $ids)
             ->get()
             ->sortBy(fn($p) => array_search($p->id, $ids))
             ->values();
 
-        // Pre-fetch SEMUA nomorUrut sekaligus dalam 1-2 query
-        // Kumpulkan semua kombinasi (tanggal, dropshipper_id) dulu
         $groups = $penjualanList
             ->map(fn($p) => [
                 'tanggal'        => \Carbon\Carbon::parse($p->tanggal)->format('Y-m-d'),
@@ -1220,8 +1216,12 @@ class PenjualanController extends Controller
             $resiChunks = [];
 
             $dropshipper = strtoupper($penjualan->dropshipper->nama ?? '');
-            $nomorStruk  = sprintf('%s-%04d-%s', $dropshipper, $nomorUrut,
-                \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY'));
+            $nomorStruk  = sprintf(
+                '%s-%04d-%s',
+                $dropshipper,
+                $nomorUrut,
+                \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY')
+            );
 
             $resiBase64 = null;
             $resiMime   = null;
@@ -1233,9 +1233,7 @@ class PenjualanController extends Controller
 
                 if (file_exists($resiPath)) {
                     if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                        // Resize/compress gambar sebelum embed ke PDF
                         $resiBase64 = $this->compressImageToBase64($resiPath, $ext);
-                        // Split gambar tinggi jadi multi-halaman A5
                         $resiChunks = $this->splitImageToPages($resiBase64);
                         $resiMime   = 'image/jpeg';
                     } elseif ($ext === 'pdf') {
@@ -1252,19 +1250,247 @@ class PenjualanController extends Controller
             'pages.transaksi.penjualan.struk_pdf_bulk',
             compact('struks')
         )
-        ->setPaper([0, 0, 419.53, 595.28])
-        ->setOptions([
-            'isHtml5ParserEnabled' => true,
-            'isRemoteEnabled'      => false,  // matikan remote asset fetch
-            'defaultFont'          => 'Arial',
-            'dpi'                  => 72,     // turunkan DPI (default 96, bisa coba 72)
-        ]);
+            ->setPaper([0, 0, 419.53, 595.28])
+            ->setOptions([
+                'isHtml5ParserEnabled' => true,
+                'isRemoteEnabled'      => false,
+                'defaultFont'          => 'Arial',
+                'dpi'                  => 72,
+            ]);
 
         Penjualan::whereIn('id', $ids)->update(['strukprint_status' => 'sudah']);
 
         $filename = 'struk-bulk-' . now()->format('dmY-His') . '.pdf';
 
         return $pdf->download($filename);
+    }
+
+    /**
+     * Split gambar resi tinggi menjadi beberapa halaman A5,
+     * TANPA memotong tepat di tengah (menghindari QR/barcode kepotong).
+     *
+     * Strategi:
+     * 1. Hitung target tinggi per halaman berdasarkan rasio kertas A5 (lebar tetap 100%).
+     * 2. Kalau gambar muat dalam 1 halaman -> kembalikan 1 chunk saja (tidak displit).
+     * 3. Kalau harus displit, cari "safe zone" di sekitar titik potong ideal
+     *    dengan menganalisis baris piksel yang paling "kosong" (dominan putih/polos),
+     *    supaya potongan jatuh di celah antar elemen, bukan di tengah QR/barcode.
+     */
+    private function splitImageToPages(string $base64Image, int $safeZoneSearchPx = 150): array
+{
+    $imgData = base64_decode($base64Image);
+    $srcImg  = @imagecreatefromstring($imgData);
+
+    if (!$srcImg) {
+        return [$base64Image];
+    }
+
+    // ★ Trim whitespace kosong di bagian bawah gambar dulu,
+    //   supaya tidak salah split gara-gara margin putih dari foto/scan.
+    $srcImg = $this->trimTrailingWhitespace($srcImg);
+
+    $origWidth  = imagesx($srcImg);
+    $origHeight = imagesy($srcImg);
+
+    $paperWidthPt  = 419.53;
+    $paperHeightPt = 595.28;
+    $paddingPt     = 20 * 2;
+    $footerReserve = 60;
+
+    $usableWidthPt  = $paperWidthPt - $paddingPt;
+    $usableHeightPt = $paperHeightPt - $paddingPt - $footerReserve;
+
+    $scale = $origWidth / $usableWidthPt;
+    $maxHeightPerPagePx = (int) round($usableHeightPt * $scale);
+
+    // ★ Tambah toleransi 10% — overflow sedikit di bawah threshold
+    //   tidak perlu dipaksa split, cukup discale lebih kecil oleh browser/DomPDF.
+    $tolerance = $maxHeightPerPagePx * 0.10;
+
+    if ($origHeight <= $maxHeightPerPagePx + $tolerance) {
+        ob_start();
+        imagejpeg($srcImg, null, 90);
+        $trimmedData = ob_get_clean();
+        imagedestroy($srcImg);
+        return [base64_encode($trimmedData)];
+    }
+
+    $chunks = [];
+    $currentY = 0;
+
+    while ($currentY < $origHeight) {
+        $idealCutY = min($currentY + $maxHeightPerPagePx, $origHeight);
+
+        if ($idealCutY < $origHeight) {
+            $cutY = $this->findSafeCutLine($srcImg, $origWidth, $idealCutY, $safeZoneSearchPx, $currentY);
+        } else {
+            $cutY = $origHeight;
+        }
+
+        $chunkHeight = $cutY - $currentY;
+        if ($chunkHeight <= 0) {
+            $chunkHeight = $origHeight - $currentY;
+            $cutY = $origHeight;
+        }
+
+        $chunkImg = imagecreatetruecolor($origWidth, $chunkHeight);
+        $white = imagecolorallocate($chunkImg, 255, 255, 255);
+        imagefill($chunkImg, 0, 0, $white);
+
+        imagecopy($chunkImg, $srcImg, 0, 0, 0, $currentY, $origWidth, $chunkHeight);
+
+        ob_start();
+        imagejpeg($chunkImg, null, 90);
+        $chunkData = ob_get_clean();
+        imagedestroy($chunkImg);
+
+        $chunks[] = base64_encode($chunkData);
+
+        $currentY = $cutY;
+    }
+
+    imagedestroy($srcImg);
+
+    return $chunks;
+}
+
+/**
+ * Pangkas baris-baris kosong/putih di bagian PALING BAWAH gambar.
+ * Berguna untuk foto/scan resi yang punya margin putih ekstra di bawah,
+ * supaya tidak salah dianggap "perlu displit" padahal kontennya sudah habis.
+ *
+ * Menyisakan sedikit padding (defaultnya 15px) supaya tidak terlalu mepet.
+ */
+private function trimTrailingWhitespace($img, int $keepPaddingPx = 15)
+{
+    $width  = imagesx($img);
+    $height = imagesy($img);
+
+    $lastContentY = $height - 1;
+
+    // Scan dari bawah ke atas, cari baris pertama yang BUKAN putih polos
+    for ($y = $height - 1; $y >= 0; $y--) {
+        if (!$this->isRowBlankWhite($img, $width, $y)) {
+            $lastContentY = $y;
+            break;
+        }
+    }
+
+    $newHeight = min($height, $lastContentY + 1 + $keepPaddingPx);
+
+    // Kalau tidak ada whitespace signifikan untuk di-trim, kembalikan apa adanya
+    if ($newHeight >= $height - 5) {
+        return $img;
+    }
+
+    $trimmed = imagecreatetruecolor($width, $newHeight);
+    $white = imagecolorallocate($trimmed, 255, 255, 255);
+    imagefill($trimmed, 0, 0, $white);
+    imagecopy($trimmed, $img, 0, 0, 0, 0, $width, $newHeight);
+
+    imagedestroy($img);
+
+    return $trimmed;
+}
+
+/**
+ * Cek apakah satu baris piksel adalah putih polos (blank),
+ * bukan sekadar "variansi rendah" (yang bisa saja abu-abu/hitam polos).
+ */
+private function isRowBlankWhite($img, int $width, int $y): bool
+{
+    $step = max(1, (int) ($width / 40));
+    $sumBrightness = 0;
+    $count = 0;
+    $maxDelta = 0;
+
+    for ($x = 0; $x < $width; $x += $step) {
+        $rgb = imagecolorat($img, $x, $y);
+        $r = ($rgb >> 16) & 0xFF;
+        $g = ($rgb >> 8) & 0xFF;
+        $b = $rgb & 0xFF;
+        $brightness = ($r + $g + $b) / 3;
+
+        $sumBrightness += $brightness;
+        $count++;
+        $maxDelta = max($maxDelta, abs($r - $g), abs($g - $b), abs($r - $b));
+    }
+
+    if ($count === 0) return true;
+
+    $avgBrightness = $sumBrightness / $count;
+
+    // Dianggap "putih polos" kalau rata-rata terang (>245) dan hampir tidak ada variasi warna
+    return $avgBrightness > 245 && $maxDelta < 10;
+}
+
+    /**
+     * Cari baris (y) paling "aman" untuk dipotong di sekitar idealCutY,
+     * dengan mendeteksi baris yang paling homogen/polos (variasi warna rendah),
+     * karena QR code/barcode/teks biasanya punya variasi piksel tinggi,
+     * sementara area kosong/putih di antar section punya variasi rendah.
+     */
+    private function findSafeCutLine($img, int $width, int $idealCutY, int $searchRangePx, int $minY): int
+    {
+        $height = imagesy($img);
+        $searchStart = max($minY + 10, $idealCutY - $searchRangePx);
+        $searchEnd   = min($height - 10, $idealCutY + $searchRangePx);
+
+        if ($searchStart >= $searchEnd) {
+            return $idealCutY;
+        }
+
+        $bestY = $idealCutY;
+        $lowestVariance = PHP_INT_MAX;
+
+        // Sampling tiap baris (step 2px biar cepat) di rentang pencarian
+        for ($y = $searchStart; $y <= $searchEnd; $y += 2) {
+            $variance = $this->rowVariance($img, $width, $y);
+
+            if ($variance < $lowestVariance) {
+                $lowestVariance = $variance;
+                $bestY = $y;
+            }
+
+            // Kalau ketemu baris yang benar-benar polos (hampir putih rata),
+            // langsung pakai itu, tidak perlu cari lebih jauh.
+            if ($variance < 50) {
+                return $y;
+            }
+        }
+
+        return $bestY;
+    }
+
+    /**
+     * Hitung variansi warna piksel dalam satu baris horizontal.
+     * Baris dengan variansi rendah = polos/kosong (aman untuk dipotong).
+     * Baris dengan variansi tinggi = ada elemen visual (teks, QR, garis) di situ.
+     */
+    private function rowVariance($img, int $width, int $y): float
+    {
+        $samples = [];
+        $step = max(1, (int) ($width / 40)); // ambil ~40 sample titik per baris
+
+        for ($x = 0; $x < $width; $x += $step) {
+            $rgb = imagecolorat($img, $x, $y);
+            $r = ($rgb >> 16) & 0xFF;
+            $g = ($rgb >> 8) & 0xFF;
+            $b = $rgb & 0xFF;
+            $samples[] = ($r + $g + $b) / 3;
+        }
+
+        if (empty($samples)) {
+            return 0;
+        }
+
+        $mean = array_sum($samples) / count($samples);
+        $variance = 0;
+        foreach ($samples as $s) {
+            $variance += ($s - $mean) ** 2;
+        }
+
+        return $variance / count($samples);
     }
 
     /**
@@ -1278,7 +1504,7 @@ class PenjualanController extends Controller
             return base64_encode(file_get_contents($path));
         }
 
-        $src = match($ext) {
+        $src = match ($ext) {
             'png'  => imagecreatefrompng($path),
             'webp' => imagecreatefromwebp($path),
             default => imagecreatefromjpeg($path),
@@ -1316,64 +1542,6 @@ class PenjualanController extends Controller
         return base64_encode($data);
     }
 
-    /**
-     * Split gambar resi jadi halaman PDF.
-     * - Normal (muat 1 halaman A5): return array 1 elemen
-     * - Panjang (multi-page): split 50/50 jadi 2 halaman sama besar
-     * 
-     * @return array<string> base64 chunks (tanpa prefix data:)
-     */
-    private function splitImageToPages(string $base64Jpeg): array
-    {
-        if (!extension_loaded('gd')) {
-            return [$base64Jpeg];
-        }
-
-        $bin = base64_decode($base64Jpeg);
-        $src = imagecreatefromstring($bin);
-        if (!$src) {
-            return [$base64Jpeg];
-        }
-
-        $imgW = imagesx($src);
-        $imgH = imagesy($src);
-
-        // A5 @72 DPI dimensions
-        $paperW = 419.53;
-        $paperH = 595.28;
-
-        // Scale factor: paper width / image width
-        $scale = $paperW / $imgW;
-        // Effective page height in image pixels (leave margin for struk info footer)
-        $pageHpx = (int) floor(($paperH - 80) / $scale); // -80pt margin untuk footer struk
-
-        // Normal: muat 1 halaman
-        if ($imgH <= $pageHpx) {
-            imagedestroy($src);
-            return [$base64Jpeg];
-        }
-
-        // Panjang: split 50/50 jadi 2 halaman sama besar
-        $halfH = (int) ceil($imgH / 2);
-        $chunks = [];
-
-        for ($i = 0; $i < 2; $i++) {
-            $y = $i * $halfH;
-            $h = ($i === 1) ? ($imgH - $y) : $halfH; // chunk terakhir ambil sisa
-            
-            $dst = imagecreatetruecolor($imgW, $h);
-            imagecopyresampled($dst, $src, 0, 0, 0, $y, $imgW, $h, $imgW, $h);
-
-            ob_start();
-            imagejpeg($dst, null, 80);
-            $chunkBin = ob_get_clean();
-            $chunks[] = base64_encode($chunkBin);
-            imagedestroy($dst);
-        }
-
-        imagedestroy($src);
-        return $chunks;
-    }
 
     public function strukDownload($id)
     {
@@ -1433,7 +1601,7 @@ class PenjualanController extends Controller
 
         return $pdf->download($filename);
     }
-    
+
     public function updateHargaCair(Request $request, $id)
     {
         $request->validate([

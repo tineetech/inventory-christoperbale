@@ -75,23 +75,22 @@
             <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
         </div>
     @else
-        {{-- Ada resiChunks (1 = normal, 2 = panjang split 50/50) --}}
-        {{-- @php $isMulti = count($resiChunks) > 1; @endphp --}}
-        @foreach($resiChunks as $chunkIndex => $chunkBase64)
-            <div class="{{ count($resiChunks) > 1 && $chunkIndex === count($resiChunks) - 1 ? 'struk-page' : '' }}">
-                <div class="resi-box">
-                    <img src="data:image/jpeg;base64,{{ $chunkBase64 }}" alt="Resi"
-                        @if($isMulti && $chunkIndex === count($resiChunks) - 1)
-                            style="max-height: 55%;" {{-- Halaman terakhir: kecilkan height buat ruang footer --}}
-                        @endif
-                    >
+            {{-- Ada resiChunks (1 = normal, 2 = panjang split 50/50) --}}
+            @foreach($resiChunks as $chunkIndex => $chunkBase64)
+                <div class="{{ count($resiChunks) > 1 && $chunkIndex === count($resiChunks) - 1 ? 'struk-page' : '' }}">
+                    <div class="resi-box">
+                        <img src="data:image/jpeg;base64,{{ $chunkBase64 }}" alt="Resi"
+                            @if(count($resiChunks) > 1 && $chunkIndex === count($resiChunks) - 1)
+                                style="max-height: 75%;"
+                            @endif
+                        >
+                    </div>
+                    {{-- Footer nomor struk di halaman terakhir chunk --}}
+                    @if($chunkIndex === count($resiChunks) - 1)
+                        <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
+                    @endif
                 </div>
-                {{-- Footer nomor struk di halaman terakhir chunk --}}
-                @if($chunkIndex === count($resiChunks) - 1)
-                    <div class="footer" style="font-weight: bold">{{ $nomorStruk }}</div>
-                @endif
-            </div>
-        @endforeach
+            @endforeach
     @endif
 
 </body>
