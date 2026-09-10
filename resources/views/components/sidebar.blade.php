@@ -89,113 +89,6 @@
 
 
 
-        <li class="sidenav-divider mb-1"></li>
-        <li class="sidenav-header small font-weight-semibold">Web Management</li>
-        @if (hasPermission('lihat', 'barang'))
-            <li class="sidenav-item {{ request()->routeIs('brand.*') ? 'active' : '' }}">
-                <a href="{{ route('brand.index') }}" class="sidenav-link">
-                    <i class="sidenav-icon feather icon-tag"></i>
-                    <div>Brand Management</div>
-                </a>
-            </li>
-
-
-
-            <li class="sidenav-item ">
-                <a href="javascript:" class="sidenav-link sidenav-toggle">
-                    <i class="sidenav-icon feather icon-layers"></i>
-                    <div>Produk Management</div>
-                </a>
-                <ul class="sidenav-menu">
-                    <!-- BARANG - WEB -->
-                    @if (hasPermission('lihat', 'barang'))
-
-                        @if (hasPermission('lihat', 'barang'))
-                            <li class="sidenav-item {{ request()->routeIs('produk.*') ? 'active' : '' }}">
-                                <a href="{{ route('produk.index') }}" class="sidenav-link">
-                                    <i class="sidenav-icon feather icon-package"></i>
-                                    <div>Produk</div>
-                                </a>
-                            </li>
-                        @endif
-
-                        @if (hasPermission('lihat', 'barang'))
-                            <li class="sidenav-item {{ request()->routeIs('produk_varian.*') ? 'active' : '' }}">
-                                <a href="{{ route('produk_varian.index') }}" class="sidenav-link">
-                                    <i class="sidenav-icon feather icon-layers"></i>
-                                    <div>Produk Varian</div>
-                                </a>
-                            </li>
-                        @endif
-
-                        @if (hasPermission('lihat', 'barang'))
-                            <li class="sidenav-item {{ request()->routeIs('produk_foto.*') ? 'active' : '' }}">
-                                <a href="{{ route('produk_foto.index') }}" class="sidenav-link">
-                                    <i class="sidenav-icon feather icon-image"></i>
-                                    <div>Produk Foto</div>
-                                </a>
-                            </li>
-                        @endif
-
-                    @endif
-                </ul>
-            </li>
-
-            <li class="sidenav-item ">
-                <a href="javascript:" class="sidenav-link sidenav-toggle">
-                    <i class="sidenav-icon feather icon-layers"></i>
-                    <div>Marketing</div>
-                </a>
-                <ul class="sidenav-menu">
-                    <!-- BARANG - WEB -->
-                    @if (hasPermission('lihat', 'barang'))
-                        <li class="sidenav-item {{ request()->routeIs('discount.*') ? 'active' : '' }}">
-                            <a href="{{ route('discount.index') }}" class="sidenav-link">
-                                <i class="sidenav-icon feather icon-percent"></i>
-                                <div>Discount Management</div>
-                            </a>
-                        </li>
-                    @endif
-
-                    @if (hasPermission('lihat', 'barang'))
-                        <li class="sidenav-item {{ request()->routeIs('voucher.*') ? 'active' : '' }}">
-                            <a href="{{ route('voucher.index') }}" class="sidenav-link">
-                                <i class="sidenav-icon feather icon-tag"></i>
-                                <div>Voucher Management</div>
-                            </a>
-                        </li>
-                    @endif
-
-                    @if (hasPermission('lihat', 'barang'))
-                        <li class="sidenav-item {{ request()->routeIs('user_voucher.*') ? 'active' : '' }}">
-                            <a href="{{ route('user_voucher.index') }}" class="sidenav-link">
-                                <i class="sidenav-icon feather icon-users"></i>
-                                <div>User Voucher</div>
-                            </a>
-                        </li>
-                    @endif
-                </ul>
-            </li>
-
-            @if (hasPermission('lihat', 'barang'))
-                <li class="sidenav-item {{ request()->routeIs('chatbot_faq.*') ? 'active' : '' }}">
-                    <a href="{{ route('chatbot_faq.index') }}" class="sidenav-link">
-                        <i class="sidenav-icon feather icon-message-square"></i>
-                        <div>Chatbot</div>
-                    </a>
-                </li>
-            @endif
-
-            @if (hasPermission('lihat', 'barang'))
-                <li class="sidenav-item {{ request()->routeIs('banner.*') ? 'active' : '' }}">
-                    <a href="{{ route('banner.index') }}" class="sidenav-link">
-                        <i class="sidenav-icon feather icon-image"></i>
-                        <div>Kelola Banner</div>
-                    </a>
-                </li>
-            @endif
-
-        @endif
 
 
         <!-- TRANSAKSI -->
@@ -351,6 +244,114 @@
             @endif
         @endif
 
+        
+        @if (hasPermission('lihat', 'web-manage'))
+        <li class="sidenav-divider mb-1"></li>
+        <li class="sidenav-header small font-weight-semibold">Web Management</li>
+            <li class="sidenav-item {{ request()->routeIs('brand.*') ? 'active' : '' }}">
+                <a href="{{ route('brand.index') }}" class="sidenav-link">
+                    <i class="sidenav-icon feather icon-tag"></i>
+                    <div>Brand Management</div>
+                </a>
+            </li>
+
+
+
+            <li class="sidenav-item ">
+                <a href="javascript:" class="sidenav-link sidenav-toggle">
+                    <i class="sidenav-icon feather icon-layers"></i>
+                    <div>Produk Management</div>
+                </a>
+                <ul class="sidenav-menu">
+                    <!-- BARANG - WEB -->
+                    @if (hasPermission('lihat', 'web-manage'))
+
+                        @if (hasPermission('lihat', 'web-manage'))
+                            <li class="sidenav-item {{ request()->routeIs('produk.*') ? 'active' : '' }}">
+                                <a href="{{ route('produk.index') }}" class="sidenav-link">
+                                    <i class="sidenav-icon feather icon-package"></i>
+                                    <div>Produk</div>
+                                </a>
+                            </li>
+                        @endif
+
+                        @if (hasPermission('lihat', 'web-manage'))
+                            <li class="sidenav-item {{ request()->routeIs('produk_varian.*') ? 'active' : '' }}">
+                                <a href="{{ route('produk_varian.index') }}" class="sidenav-link">
+                                    <i class="sidenav-icon feather icon-layers"></i>
+                                    <div>Produk Varian</div>
+                                </a>
+                            </li>
+                        @endif
+
+                        @if (hasPermission('lihat', 'web-manage'))
+                            <li class="sidenav-item {{ request()->routeIs('produk_foto.*') ? 'active' : '' }}">
+                                <a href="{{ route('produk_foto.index') }}" class="sidenav-link">
+                                    <i class="sidenav-icon feather icon-image"></i>
+                                    <div>Produk Foto</div>
+                                </a>
+                            </li>
+                        @endif
+
+                    @endif
+                </ul>
+            </li>
+
+            <li class="sidenav-item ">
+                <a href="javascript:" class="sidenav-link sidenav-toggle">
+                    <i class="sidenav-icon feather icon-layers"></i>
+                    <div>Marketing</div>
+                </a>
+                <ul class="sidenav-menu">
+                    <!-- web-manage - WEB -->
+                    @if (hasPermission('lihat', 'web-manage'))
+                        <li class="sidenav-item {{ request()->routeIs('discount.*') ? 'active' : '' }}">
+                            <a href="{{ route('discount.index') }}" class="sidenav-link">
+                                <i class="sidenav-icon feather icon-percent"></i>
+                                <div>Discount Management</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if (hasPermission('lihat', 'web-manage'))
+                        <li class="sidenav-item {{ request()->routeIs('voucher.*') ? 'active' : '' }}">
+                            <a href="{{ route('voucher.index') }}" class="sidenav-link">
+                                <i class="sidenav-icon feather icon-tag"></i>
+                                <div>Voucher Management</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if (hasPermission('lihat', 'web-manage'))
+                        <li class="sidenav-item {{ request()->routeIs('user_voucher.*') ? 'active' : '' }}">
+                            <a href="{{ route('user_voucher.index') }}" class="sidenav-link">
+                                <i class="sidenav-icon feather icon-users"></i>
+                                <div>User Voucher</div>
+                            </a>
+                        </li>
+                    @endif
+                </ul>
+            </li>
+
+            @if (hasPermission('lihat', 'web-manage'))
+                <li class="sidenav-item {{ request()->routeIs('chatbot_faq.*') ? 'active' : '' }}">
+                    <a href="{{ route('chatbot_faq.index') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-message-square"></i>
+                        <div>Chatbot</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'web-manage'))
+                <li class="sidenav-item {{ request()->routeIs('banner.*') ? 'active' : '' }}">
+                    <a href="{{ route('banner.index') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-image"></i>
+                        <div>Kelola Banner</div>
+                    </a>
+                </li>
+            @endif
+
+        @endif
 
         <!-- KONFIGURASI -->
         @if (hasPermission('lihat', 'pengguna') ||
