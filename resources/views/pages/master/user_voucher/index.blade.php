@@ -102,6 +102,9 @@
                                                 <td>{{ $uv->claimed_at ? \Carbon\Carbon::parse($uv->claimed_at)->format('d/m/Y H:i') : '-' }}</td>
                                                 <td>{{ $uv->used_at ? \Carbon\Carbon::parse($uv->used_at)->format('d/m/Y H:i') : '-' }}</td>
                                                 <td>
+                                                    @if (hasPermission('edit','barang'))
+                                                        <a href="{{ route('user_voucher.edit', $uv->id) }}" class="btn btn-sm btn-warning action-btn mb-1"><i class="feather icon-edit"></i></a>
+                                                    @endif
                                                     @if (hasPermission('hapus','barang'))
                                                         <button type="button" onclick="confirmDelete({{ $uv->id }})" class="btn btn-sm btn-danger action-btn mb-1"><i class="feather icon-trash"></i></button>
                                                         <form id="delete-form-{{ $uv->id }}" action="{{ route('user_voucher.destroy', $uv->id) }}" method="POST" style="display:none">@csrf @method('DELETE')</form>

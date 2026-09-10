@@ -99,6 +99,12 @@
                                                 Kelompokan Produk (<span id="selectedCountKelompokan">0</span>)
                                             </button>
 
+                                            <button id="btnBulkUpdateStokMinimum" class="btn btn-sm btn-primary text-white d-none"
+                                                onclick="openStokMinimumModal()">
+                                                <i class="feather icon-alert-triangle"></i>
+                                                Update Stok Minimum (<span id="selectedCountStokMinimum">0</span>)
+                                            </button>
+
                                             <button id="btnBulkDelete" class="btn btn-sm btn-danger d-none"
                                                 onclick="bulkDelete()">
                                                 <i class="feather icon-trash"></i>
@@ -674,6 +680,28 @@
                             </div>
                         </div>
 
+                        <hr class="my-3">
+                        <h6 class="text-info mb-3"><i class="feather icon-box mr-1"></i> Spesifikasi Produk</h6>
+                        <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label>Berat (gram)</label>
+                                <input type="number" class="form-control" name="berat_gram" placeholder="0" min="0">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label>Panjang (cm)</label>
+                                <input type="number" class="form-control" name="panjang_cm" placeholder="0" min="0">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label>Lebar (cm)</label>
+                                <input type="number" class="form-control" name="lebar_cm" placeholder="0" min="0">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label>Tinggi (cm)</label>
+                                <input type="number" class="form-control" name="tinggi_cm" placeholder="0" min="0">
+                            </div>
+                        </div>
+                        <hr class="my-3">
+
                         <div class="form-group">
                             <label class="font-weight-bold">Foto Produk</label>
                             <input type="file" class="form-control-file" name="foto[]" multiple accept="image/jpeg,image/png,image/jpg,image/webp" onchange="previewFotoProduk(this)">
@@ -688,6 +716,47 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Update Stok Minimum --}}
+    <div class="modal fade" id="modalUpdateStokMinimum" tabindex="-1" role="dialog"
+        aria-labelledby="modalUpdateStokMinimumLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-md" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalUpdateStokMinimumLabel">
+                        <i class="feather icon-alert-triangle mr-2 text-primary"></i> Update Stok Minimum
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert bg-primary text-white d-flex align-items-center mb-3" style="gap: 10px;">
+                        <i class="feather icon-info" style="font-size: 1.2rem;"></i>
+                        <div>
+                            Stok minimum akan diterapkan ke
+                            <strong id="stokMinimumSelectedCount">0</strong> barang yang dipilih.
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label class="font-weight-bold">Stok Minimum <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="inputStokMinimum" placeholder="0" min="0" value="0">
+                            <div class="input-group-append">
+                                <span class="input-group-text">unit</span>
+                            </div>
+                        </div>
+                        <small class="text-muted">Nilai ini berlaku untuk seluruh barang yang dipilih.</small>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary text-white" id="btnSimpanStokMinimum">
+                        <i class="feather icon-save mr-1"></i> Simpan
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -728,23 +797,27 @@
             const btnHpp = document.getElementById('btnBulkHpp');
             const btnReseller = document.getElementById('btnBulkHargaReseller');
             const btnKelompokan = document.getElementById('btnBulkKelompokanProduk');
+            const btnStokMinimum = document.getElementById('btnBulkUpdateStokMinimum');
             const count = checked.length;
 
             document.getElementById('selectedCount').textContent = count;
             document.getElementById('selectedCountHpp').textContent = count;
             document.getElementById('selectedCountReseller').textContent = count;
             document.getElementById('selectedCountKelompokan').textContent = count;
+            document.getElementById('selectedCountStokMinimum').textContent = count;
 
             if (count > 0) {
                 btn.classList.remove('d-none');
                 btnHpp.classList.remove('d-none');
                 btnReseller.classList.remove('d-none');
                 btnKelompokan.classList.remove('d-none');
+                btnStokMinimum.classList.remove('d-none');
             } else {
                 btn.classList.add('d-none');
                 btnHpp.classList.add('d-none');
                 btnReseller.classList.add('d-none');
                 btnKelompokan.classList.add('d-none');
+                btnStokMinimum.classList.add('d-none');
             }
         }
 
@@ -1158,6 +1231,16 @@
                 return;
             }
 
+            // Kumpulkan detail nama biaya + harganya (abaikan baris kosong)
+            const details = [];
+            document.querySelectorAll('.hpp-item').forEach(row => {
+                const nama = row.querySelector('.hpp-nama').value.trim();
+                const harga = parseFloat(row.querySelector('.hpp-harga').value) || 0;
+                if (nama !== '') {
+                    details.push({ nama_biaya: nama, harga });
+                }
+            });
+
             const confirm = await Swal.fire({
                 icon: 'question',
                 title: 'Konfirmasi',
@@ -1184,7 +1267,8 @@
                     },
                     body: JSON.stringify({
                         ids: hppSelectedIds,
-                        harga_hpp: total
+                        harga_hpp: total,
+                        details: details
                     })
                 });
 
@@ -1364,6 +1448,102 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="feather icon-save mr-1"></i> Simpan ke Harga Reseller';
+            }
+        });
+
+        // =====================================================
+        // UPDATE STOK MINIMUM MODAL
+        // =====================================================
+        let stokMinimumSelectedIds = [];
+
+        function openStokMinimumModal() {
+            const checked = document.querySelectorAll('.row-check:checked');
+            stokMinimumSelectedIds = Array.from(checked).map(cb => {
+                const tr = cb.closest('tr');
+                const card = cb.closest('[data-id]');
+                return tr ? tr.getAttribute('data-id') : card?.getAttribute('data-id');
+            }).filter(Boolean);
+
+            if (stokMinimumSelectedIds.length === 0) return;
+
+            document.getElementById('stokMinimumSelectedCount').textContent = stokMinimumSelectedIds.length;
+            document.getElementById('inputStokMinimum').value = '';
+
+            $('#modalUpdateStokMinimum').modal('show');
+            setTimeout(() => document.getElementById('inputStokMinimum').focus(), 400);
+        }
+
+        document.getElementById('btnSimpanStokMinimum').addEventListener('click', async function() {
+            const input = document.getElementById('inputStokMinimum');
+            const stokMinimum = parseInt(input.value, 10);
+
+            if (isNaN(stokMinimum) || stokMinimum < 0) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Perhatian',
+                    text: 'Masukkan stok minimum yang valid (angka ≥ 0).'
+                });
+                input.focus();
+                return;
+            }
+
+            const confirm = await Swal.fire({
+                icon: 'question',
+                title: 'Konfirmasi',
+                html: `Update stok minimum menjadi <strong>${stokMinimum}</strong> untuk <strong>${stokMinimumSelectedIds.length} barang</strong> yang dipilih?`,
+                showCancelButton: true,
+                confirmButtonColor: '#007bff',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Ya, update!',
+                cancelButtonText: 'Batal'
+            });
+
+            if (!confirm.isConfirmed) return;
+
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Menyimpan...';
+
+            try {
+                const res = await fetch('{{ route('barang.bulk-update-stok-minimum') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        ids: stokMinimumSelectedIds,
+                        stok_minimum: stokMinimum
+                    })
+                });
+
+                const json = await res.json();
+
+                if (json.success) {
+                    $('#modalUpdateStokMinimum').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Berhasil',
+                        text: json.message,
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: json.message ?? 'Terjadi kesalahan.'
+                    });
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Gagal menghubungi server.'
+                });
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="feather icon-save mr-1"></i> Simpan';
             }
         });
     </script>

@@ -2999,7 +2999,7 @@ label.btn {
 
 .alert-warning {
   border-color: #eee3d8;
-  background-color: #fdf2e6;
+  background-color: #F4AB55;
   color: #fff;
 }
 .alert-warning hr {
@@ -3024,7 +3024,7 @@ label.btn {
 
 .alert-danger {
   border-color: #f0d6d9;
-  background-color: #ffe4e7;
+  background-color: red;
   color: #fff;
 }
 .alert-danger hr {

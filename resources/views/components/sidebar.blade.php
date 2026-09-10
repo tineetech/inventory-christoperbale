@@ -66,6 +66,14 @@
                             </a>
                         </li>
                     @endif
+                    @if (hasPermission('lihat', 'barang'))
+                        <li class="sidenav-item {{ request()->routeIs('hpp-riwayat.*') ? 'active' : '' }}">
+                            <a href="{{ route('hpp-riwayat.index') }}" class="sidenav-link">
+                                <i class="sidenav-icon feather icon-trending-up"></i>
+                                <div>Riwayat HPP</div>
+                            </a>
+                        </li>
+                    @endif
                     @if (hasPermission('lihat', 'dropshipper'))
                         <li class="sidenav-item {{ request()->routeIs('dropshipper.*') ? 'active' : '' }}">
                             <a href="{{ route('dropshipper.index') }}" class="sidenav-link">
@@ -83,7 +91,7 @@
 
         <li class="sidenav-divider mb-1"></li>
         <li class="sidenav-header small font-weight-semibold">Web Management</li>
-        @if (hasPermission('lihat', 'p'))
+        @if (hasPermission('lihat', 'barang'))
             <li class="sidenav-item {{ request()->routeIs('brand.*') ? 'active' : '' }}">
                 <a href="{{ route('brand.index') }}" class="sidenav-link">
                     <i class="sidenav-icon feather icon-tag"></i>
@@ -96,13 +104,13 @@
             <li class="sidenav-item ">
                 <a href="javascript:" class="sidenav-link sidenav-toggle">
                     <i class="sidenav-icon feather icon-layers"></i>
-                    <div>Barang - Web</div>
+                    <div>Produk Management</div>
                 </a>
                 <ul class="sidenav-menu">
                     <!-- BARANG - WEB -->
-                    @if (hasPermission('lihat', 'p'))
+                    @if (hasPermission('lihat', 'barang'))
 
-                        @if (hasPermission('lihat', 'p'))
+                        @if (hasPermission('lihat', 'barang'))
                             <li class="sidenav-item {{ request()->routeIs('produk.*') ? 'active' : '' }}">
                                 <a href="{{ route('produk.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-package"></i>
@@ -111,7 +119,7 @@
                             </li>
                         @endif
 
-                        @if (hasPermission('lihat', 'p'))
+                        @if (hasPermission('lihat', 'barang'))
                             <li class="sidenav-item {{ request()->routeIs('produk_varian.*') ? 'active' : '' }}">
                                 <a href="{{ route('produk_varian.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-layers"></i>
@@ -120,7 +128,7 @@
                             </li>
                         @endif
 
-                        @if (hasPermission('lihat', 'p'))
+                        @if (hasPermission('lihat', 'barang'))
                             <li class="sidenav-item {{ request()->routeIs('produk_foto.*') ? 'active' : '' }}">
                                 <a href="{{ route('produk_foto.index') }}" class="sidenav-link">
                                     <i class="sidenav-icon feather icon-image"></i>
@@ -129,35 +137,63 @@
                             </li>
                         @endif
 
-                        @if (hasPermission('lihat', 'p'))
-                            <li class="sidenav-item {{ request()->routeIs('discount.*') ? 'active' : '' }}">
-                                <a href="{{ route('discount.index') }}" class="sidenav-link">
-                                    <i class="sidenav-icon feather icon-percent"></i>
-                                    <div>Discount Management</div>
-                                </a>
-                            </li>
-                        @endif
-
-                        @if (hasPermission('lihat', 'p'))
-                            <li class="sidenav-item {{ request()->routeIs('voucher.*') ? 'active' : '' }}">
-                                <a href="{{ route('voucher.index') }}" class="sidenav-link">
-                                    <i class="sidenav-icon feather icon-tag"></i>
-                                    <div>Voucher Management</div>
-                                </a>
-                            </li>
-                        @endif
-
-                        @if (hasPermission('lihat', 'p'))
-                            <li class="sidenav-item {{ request()->routeIs('user_voucher.*') ? 'active' : '' }}">
-                                <a href="{{ route('user_voucher.index') }}" class="sidenav-link">
-                                    <i class="sidenav-icon feather icon-users"></i>
-                                    <div>User Voucher</div>
-                                </a>
-                            </li>
-                        @endif
                     @endif
                 </ul>
+            </li>
 
+            <li class="sidenav-item ">
+                <a href="javascript:" class="sidenav-link sidenav-toggle">
+                    <i class="sidenav-icon feather icon-layers"></i>
+                    <div>Marketing</div>
+                </a>
+                <ul class="sidenav-menu">
+                    <!-- BARANG - WEB -->
+                    @if (hasPermission('lihat', 'barang'))
+                        <li class="sidenav-item {{ request()->routeIs('discount.*') ? 'active' : '' }}">
+                            <a href="{{ route('discount.index') }}" class="sidenav-link">
+                                <i class="sidenav-icon feather icon-percent"></i>
+                                <div>Discount Management</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if (hasPermission('lihat', 'barang'))
+                        <li class="sidenav-item {{ request()->routeIs('voucher.*') ? 'active' : '' }}">
+                            <a href="{{ route('voucher.index') }}" class="sidenav-link">
+                                <i class="sidenav-icon feather icon-tag"></i>
+                                <div>Voucher Management</div>
+                            </a>
+                        </li>
+                    @endif
+
+                    @if (hasPermission('lihat', 'barang'))
+                        <li class="sidenav-item {{ request()->routeIs('user_voucher.*') ? 'active' : '' }}">
+                            <a href="{{ route('user_voucher.index') }}" class="sidenav-link">
+                                <i class="sidenav-icon feather icon-users"></i>
+                                <div>User Voucher</div>
+                            </a>
+                        </li>
+                    @endif
+                </ul>
+            </li>
+
+            @if (hasPermission('lihat', 'barang'))
+                <li class="sidenav-item {{ request()->routeIs('chatbot_faq.*') ? 'active' : '' }}">
+                    <a href="{{ route('chatbot_faq.index') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-message-square"></i>
+                        <div>Chatbot</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'barang'))
+                <li class="sidenav-item {{ request()->routeIs('banner.*') ? 'active' : '' }}">
+                    <a href="{{ route('banner.index') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-image"></i>
+                        <div>Kelola Banner</div>
+                    </a>
+                </li>
+            @endif
 
         @endif
 
@@ -192,6 +228,24 @@
                     <a href="{{ route('penjualan.draft') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-file-text"></i>
                         <div>Penjualan Draft</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'penjualan'))
+                <li class="sidenav-item {{ request()->routeIs('penjualan.web') ? 'active' : '' }}">
+                    <a href="{{ route('penjualan.web') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-globe"></i>
+                        <div>Penjualan Web</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'penjualan'))
+                <li class="sidenav-item {{ request()->routeIs('pembayaran.*') ? 'active' : '' }}">
+                    <a href="{{ route('pembayaran.index') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-credit-card"></i>
+                        <div>Riwayat Pembayaran</div>
                     </a>
                 </li>
             @endif
@@ -238,6 +292,24 @@
                     <a href="{{ route('laporan.penjualan') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-file-text"></i>
                         <div>Lap. Penjualan</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'laporan_penjualan'))
+                <li class="sidenav-item {{ request()->routeIs('laporan-penjualan-web.*') ? 'active' : '' }}">
+                    <a href="{{ route('laporan.penjualan-web') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-globe"></i>
+                        <div>Lap. Penjualan Web</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'laporan_penjualan'))
+                <li class="sidenav-item {{ request()->routeIs('laporan-pembayaran.*') ? 'active' : '' }}">
+                    <a href="{{ route('laporan.pembayaran') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-credit-card"></i>
+                        <div>Lap. Pembayaran</div>
                     </a>
                 </li>
             @endif
@@ -322,6 +394,15 @@
                     <a href="{{ route('backup.index') }}" class="sidenav-link">
                         <i class="sidenav-icon feather icon-archive" data-feather="database" width="16" height="16"></i>
                         <div>Backup Database</div>
+                    </a>
+                </li>
+            @endif
+
+            @if (hasPermission('lihat', 'pengaturan_web'))
+                <li class="sidenav-item {{ request()->routeIs('notifikasi.*') ? 'active' : '' }}">
+                    <a href="{{ route('notifikasi.index') }}" class="sidenav-link">
+                        <i class="sidenav-icon feather icon-bell" data-feather="bell" width="16" height="16"></i>
+                        <div>Notifikasi</div>
                     </a>
                 </li>
             @endif

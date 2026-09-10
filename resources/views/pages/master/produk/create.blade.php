@@ -80,6 +80,43 @@
                             </div>
                         </div>
 
+
+                        <div class="form-group">
+                            <label class="form-label">Foto Produk</label>
+                            <input type="file" class="form-control-file" name="foto[]" multiple accept="image/jpeg,image/png,image/jpg,image/webp" onchange="previewFoto(this)">
+                            <small class="text-muted">Bisa pilih lebih dari 1 foto. Maks 5MB per foto.</small>
+                            <div id="previewFotoBaru" class="d-flex flex-wrap mt-2" style="gap:8px;"></div>
+                        </div>
+                        <hr class="my-3">
+                        <h6 class="text-info mb-3"><i class="feather icon-box mr-1"></i> Spesifikasi Produk</h6>
+                        <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label class="form-label">Berat (gram)</label>
+                                <input type="number" name="berat_gram" class="form-control @error('berat_gram') is-invalid @enderror"
+                                    placeholder="0" min="0" value="{{ old('berat_gram') }}">
+                                @error('berat_gram')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label class="form-label">Panjang (cm)</label>
+                                <input type="number" name="panjang_cm" class="form-control @error('panjang_cm') is-invalid @enderror"
+                                    placeholder="0" min="0" value="{{ old('panjang_cm') }}">
+                                @error('panjang_cm')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label class="form-label">Lebar (cm)</label>
+                                <input type="number" name="lebar_cm" class="form-control @error('lebar_cm') is-invalid @enderror"
+                                    placeholder="0" min="0" value="{{ old('lebar_cm') }}">
+                                @error('lebar_cm')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label class="form-label">Tinggi (cm)</label>
+                                <input type="number" name="tinggi_cm" class="form-control @error('tinggi_cm') is-invalid @enderror"
+                                    placeholder="0" min="0" value="{{ old('tinggi_cm') }}">
+                                @error('tinggi_cm')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                            </div>
+                        </div>
+                        <hr class="my-3">
+
                         <div class="form-group">
                             <label class="form-label">Pilih Barang <span class="text-danger">*</span></label>
                             <select class="form-control" id="selectBarang" style="width:100%"></select>
@@ -89,13 +126,6 @@
 
                         <div class="form-group">
                             <div id="selectedBarangList"></div>
-                        </div>
-
-                        <div class="form-group">
-                            <label class="form-label">Foto Produk</label>
-                            <input type="file" class="form-control-file" name="foto[]" multiple accept="image/jpeg,image/png,image/jpg,image/webp" onchange="previewFoto(this)">
-                            <small class="text-muted">Bisa pilih lebih dari 1 foto. Maks 5MB per foto.</small>
-                            <div id="previewFotoBaru" class="d-flex flex-wrap mt-2" style="gap:8px;"></div>
                         </div>
 
                         <hr>
@@ -176,8 +206,9 @@
         $('#selectBarang').select2({
             placeholder: 'Cari barang...',
             allowClear: true,
+            minimumInputLength: 0,
             ajax: {
-                url: '/api/product/search',
+                url: '/api/product/search-grouped',
                 dataType: 'json',
                 delay: 300,
                 data: function(params) {
@@ -190,17 +221,23 @@
                         }).map(function(item) {
                             return {
                                 id: item.id,
-                                text: item.nama_barang + ' (' + (item.stok ? item.stok.jumlah_stok : 0) + ')',
+                                text: item.nama_barang,
                                 harga_reseller: item.harga_2 || 0
                             };
                         })
                     };
                 }
             }
+        }).on('select2:open', function() {
+            const $search = $(this).data('select2').$dropdown.find('.select2-search__field');
+            if ($search.length && !$search.val()) {
+                $search.trigger('input');
+            }
         }).on('select2:select', function(e) {
             const data = e.params.data;
+            const nama = data.text.split(' (')[0];
 
-            fetch('/api/product/search-by-word?nama=' + encodeURIComponent(data.text.split(' (')[0]))
+            fetch('/api/product/search-by-word?nama=' + encodeURIComponent(nama))
                 .then(function(res) { return res.json(); })
                 .then(function(items) {
                     items.forEach(function(item) {

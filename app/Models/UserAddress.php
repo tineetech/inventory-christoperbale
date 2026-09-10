@@ -17,8 +17,12 @@ class UserAddress extends Model
         'district',
         'postal_code',
         'address',
+        'catatan',
+        'latitude',
+        'longitude',
         'label',
         'is_default',
+        'area_id',
     ];
 
     protected function casts(): array

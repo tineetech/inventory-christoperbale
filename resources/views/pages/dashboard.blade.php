@@ -94,10 +94,31 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- PENJUALAN WEB HARI INI -->
+                        <a href="{{ route('penjualan.web') }}" class="col-md-12 text-decoration-none">
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <div class="d-flex align-items-center justify-content-between">
+                                        <div>
+                                            <h2 class="mb-2">{{ $penjualanWebHariIni }}</h2>
+                                            <p class="text-muted mb-0">
+                                                <span class="badge badge-info">Penjualan Web</span> Hari Ini
+                                                <br>
+                                                <small>Rp {{ number_format($omzetWebHariIni, 0, ',', '.') }}</small>
+                                                &bull;
+                                                <small>{{ $penjualanWebTotal }} total transaksi</small>
+                                            </p>
+                                        </div>
+                                        <div class="lnr lnr-earth display-4 text-info"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </a>
                     @endif
 
                     <!-- INFO TAMBAHAN -->
-                    <div class="col-sm-12">
+                    <div class="col-sm-12 ">
                         <div class="card d-flex w-100 mb-4">
                             <div class="row no-gutters row-bordered row-border-light h-100">
 

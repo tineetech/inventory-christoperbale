@@ -65,101 +65,140 @@ if (!function_exists('sortIcon')) {
                         </div>
 
                         <div class="col-sm-12">
+
+                            {{-- ===== CARD 1: FILTER ===== --}}
                             <div class="card mb-4">
-
-                                {{-- CARD HEADER --}}
-                                <div style="border:none !important" class="card-header">
-
-                                    {{-- Row 1: Title + Tambah button --}}
-                                    <div class="d-flex justify-content-between align-items-center mb-2 flex-row sm-flex-col">
-                                        <h6 class="card-header-title mb-0">
-                                            <i class="feather icon-truck mr-2"></i> Data Penjualan
-                                        </h6>
-                                        @if(hasPermission('tambah', 'penjualan'))
-                                        <div class="d-flex g-5">
-
-                                            <button id="btnBulkDownload"
-                                                    class="btn btn-secondary btn-sm d-none"
-                                                    onclick="bulkDownloadStruk()">
-                                                <i class="feather icon-download"></i>
-                                                <span class="d-none d-sm-inline">Download Struk (<span id="selectedCount">0</span>)</span>
-                                                <span class="d-inline d-sm-none">DL (<span class="selectedCountMobile">0</span>)</span>
-                                            </button>
-                                            <button id="btnBulkDelete"
-                                                    class="btn btn-danger btn-sm d-none"
-                                                    onclick="bulkDelete()">
-                                                <i class="feather icon-trash"></i>
-                                                <span class="d-none d-sm-inline">Hapus (<span id="selectedCountDelete">0</span>)</span>
-                                                <span class="d-inline d-sm-none">Del (<span class="selectedCountDeleteMobile">0</span>)</span>
-                                            </button>
-                                            <a href="{{ route('penjualan.create.multiple') }}" class="btn btn-info btn-sm">
-                                                <i class="feather icon-plus"></i>
-                                                <span class="d-none d-sm-inline">Buat Penjualan</span>
-                                                <span class="d-inline d-sm-none">Tambah</span>
-                                            </a>
-                                        </div>
-                                        @endif
-                                    </div>
-
-                                    {{-- Filter Form --}}
-                                    <form method="GET" id="filterForm" class="d-flex flex-wrap align-items-center" style="gap:6px">
-
-                                        {{-- Baris 1: Tanggal & Waktu --}}
-                                        <div class="d-flex flex-wrap align-items-center w-100" style="gap:6px">
-                                            <input type="date" name="date_from" class="form-control form-control-sm"
-                                                style="min-width:130px;flex:1 1 130px" value="{{ request('date_from', today()->format('Y-m-d')) }}">
-                                            <input type="time" name="time_from" class="form-control form-control-sm"
-                                                style="min-width:100px;flex:1 1 100px" value="{{ request('time_from') }}">
-                                            <span class="text-muted small">s/d</span>
-                                            <input type="date" name="date_to" class="form-control form-control-sm"
-                                                style="min-width:130px;flex:1 1 130px" value="{{ request('date_to', today()->format('Y-m-d')) }}">
-                                            <input type="time" name="time_to" class="form-control form-control-sm"
-                                                style="min-width:100px;flex:1 1 100px" value="{{ request('time_to') }}">
-                                        </div>
-
-                                        {{-- Baris 2: Search fullwidth --}}
-                                        <div class="input-group input-group-sm w-100">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text"><i class="feather icon-search"></i></span>
+                                <div style="border:none !important" class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                                    <h6 class="card-header-title mb-0">
+                                        <i class="feather icon-filter mr-2"></i> Filter Penjualan
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <form method="GET" id="filterForm">
+                                        <div class="form-row">
+                                            <div class="form-group col-md-2">
+                                                <label class="font-weight-bold">Dari Tanggal</label>
+                                                <input type="date" name="date_from" class="form-control"
+                                                    value="{{ request('date_from', today()->format('Y-m-d')) }}">
                                             </div>
-                                            <input type="text" name="search" class="form-control" id="searchTable"
-                                                placeholder="Cari kode penjualan, nomor resi, dropshipper..."
-                                                value="{{ request('search') }}">
+                                            <div class="form-group col-md-1">
+                                                <label class="font-weight-bold">Jam</label>
+                                                <input type="time" name="time_from" class="form-control"
+                                                    value="{{ request('time_from', '06:00') }}">
+                                            </div>
+                                            <div class="form-group col-md-2">
+                                                <label class="font-weight-bold">Sampai Tanggal</label>
+                                                <input type="date" name="date_to" class="form-control"
+                                                    value="{{ request('date_to', today()->format('Y-m-d')) }}">
+                                            </div>
+                                            <div class="form-group col-md-1">
+                                                <label class="font-weight-bold">Jam</label>
+                                                <input type="time" name="time_to" class="form-control"
+                                                    value="{{ request('time_to') }}">
+                                            </div>
+                                            <div class="form-group col-md-6">
+                                                <label class="font-weight-bold">Cari</label>
+                                                <input type="text" name="search" id="searchTable" class="form-control"
+                                                    placeholder="Cari kode penjualan, nomor resi, dropshipper..."
+                                                    value="{{ request('search') }}">
+                                            </div>
                                         </div>
 
-                                        {{-- Baris 3: Dropdown filter --}}
-                                        <div class="d-flex flex-wrap w-100" style="gap:6px">
-                                            <select name="dropshipper" class="form-control form-control-sm auto-submit"
-                                                style="min-width:140px;flex:2 1 160px">
-                                                <option value="">-- Semua Dropshipper --</option>
-                                                @foreach($dropshippers as $ds)
-                                                    <option value="{{ $ds->nama }}" {{ request('dropshipper') == $ds->nama ? 'selected' : '' }}>{{ $ds->nama }}</option>
-                                                @endforeach
-                                            </select>
-                                            <select name="print_status" class="form-control form-control-sm auto-submit"
-                                                style="min-width:130px;flex:1 1 130px">
-                                                <option value="">-- Semua Status Print --</option>
-                                                <option value="belum" {{ request('print_status') == 'belum' ? 'selected' : '' }}>Belum Print</option>
-                                                <option value="sudah" {{ request('print_status') == 'sudah' ? 'selected' : '' }}>Sudah Print</option>
-                                            </select>
-                                            <select name="scan_out" class="form-control form-control-sm auto-submit"
-                                                style="min-width:130px;flex:1 1 130px">
-                                                <option value="">-- Semua Scan Out --</option>
-                                                <option value="pending" {{ request('scan_out') == 'pending' ? 'selected' : '' }}>Pending</option>
-                                                <option value="done" {{ request('scan_out') == 'done' ? 'selected' : '' }}>Done</option>
-                                            </select>
+                                        <div class="form-row">
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Dropshipper</label>
+                                                <select name="dropshipper" class="form-control">
+                                                    <option value="">-- Semua Dropshipper --</option>
+                                                    @foreach($dropshippers as $ds)
+                                                        <option value="{{ $ds->nama }}" {{ request('dropshipper') == $ds->nama ? 'selected' : '' }}>{{ $ds->nama }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Status Print</label>
+                                                <select name="print_status" class="form-control">
+                                                    <option value="">-- Semua Status Print --</option>
+                                                    <option value="belum" {{ request('print_status') == 'belum' ? 'selected' : '' }}>Belum Print</option>
+                                                    <option value="sudah" {{ request('print_status') == 'sudah' ? 'selected' : '' }}>Sudah Print</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Scan Out</label>
+                                                <select name="scan_out" class="form-control">
+                                                    <option value="">-- Semua Scan Out --</option>
+                                                    <option value="pending" {{ request('scan_out') == 'pending' ? 'selected' : '' }}>Pending</option>
+                                                    <option value="done" {{ request('scan_out') == 'done' ? 'selected' : '' }}>Done</option>
+                                                </select>
+                                            </div>
+                                        </div>
 
-                                            <input type="text" class="form-control" id="scanOutPenjualan"
-                                                placeholder="(SCAN OUT) Arahkan scanner ke nomor resi..."
-                                                style="min-width:130px;flex:1 1 130px"
-                                                autocomplete="off" inputmode="none">
+                                        <div class="form-row">
+                                            <div class="form-group col-md-6">
+                                                <label class="font-weight-bold">Order Web</label>
+                                                <select name="order_web" class="form-control">
+                                                    <option value="">-- Semua Order Web --</option>
+                                                    <option value="1" {{ request('order_web') === '1' ? 'selected' : '' }}>Ya (Web)</option>
+                                                    <option value="0" {{ request('order_web') === '0' ? 'selected' : '' }}>Bukan (Non-Web)</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group col-md-6">
+                                                <label class="font-weight-bold">Scan Out Resi</label>
+                                                <input type="text" class="form-control" id="scanOutPenjualan"
+                                                    placeholder="(SCAN OUT) Arahkan scanner ke nomor resi..."
+                                                    autocomplete="off" inputmode="none">
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex flex-wrap justify-content-end" style="gap:10px">
+                                            <button type="submit" class="btn btn-info">
+                                                <i class="feather icon-refresh-cw"></i> Proses
+                                            </button>
+                                            @if (request('search') || request('dropshipper') || request('print_status') || request('scan_out') || (request('order_web') !== null && request('order_web') !== '') || request('date_from') != today()->format('Y-m-d') || request('date_to') != today()->format('Y-m-d') || request('time_from') || request('time_to'))
+                                                <a href="{{ route('penjualan.index', ['per_page' => request('per_page', 10)]) }}"
+                                                    class="btn btn-outline-secondary">
+                                                    <i class="feather icon-rotate-ccw"></i> Reset
+                                                </a>
+                                            @endif
                                         </div>
 
                                         <input type="hidden" name="sort_col" value="{{ request('sort_col') }}">
                                         <input type="hidden" name="sort_dir" value="{{ request('sort_dir') }}">
                                         <input type="hidden" name="per_page" id="perPageInput" value="{{ request('per_page', 10) }}">
                                     </form>
+                                </div>
+                            </div>
 
+                            {{-- ===== CARD 2: DATA ===== --}}
+                            <div class="card mb-4">
+                                <div style="border:none !important" class="card-header d-flex flex-wrap justify-content-between align-items-center">
+                                    <h6 class="card-header-title mb-0">
+                                        <i class="feather icon-truck mr-2"></i> Data Penjualan
+                                        <span class="badge badge-light ml-1">{{ $penjualan->total() }} transaksi</span>
+                                    </h6>
+                                    @if(hasPermission('tambah', 'penjualan'))
+                                    <div class="d-flex flex-wrap" style="gap:6px">
+
+                                        <button id="btnBulkDownload"
+                                                class="btn btn-secondary btn-sm d-none"
+                                                onclick="bulkDownloadStruk()">
+                                            <i class="feather icon-download"></i>
+                                            <span class="d-none d-sm-inline">Download Struk (<span id="selectedCount">0</span>)</span>
+                                            <span class="d-inline d-sm-none">DL (<span class="selectedCountMobile">0</span>)</span>
+                                        </button>
+                                        <button id="btnBulkDelete"
+                                                class="btn btn-danger btn-sm d-none"
+                                                onclick="bulkDelete()">
+                                            <i class="feather icon-trash"></i>
+                                            <span class="d-none d-sm-inline">Hapus (<span id="selectedCountDelete">0</span>)</span>
+                                            <span class="d-inline d-sm-none">Del (<span class="selectedCountDeleteMobile">0</span>)</span>
+                                        </button>
+                                        <a href="{{ route('penjualan.create.multiple') }}" class="btn btn-info btn-sm">
+                                            <i class="feather icon-plus"></i>
+                                            <span class="d-none d-sm-inline">Buat Penjualan</span>
+                                            <span class="d-inline d-sm-none">Tambah</span>
+                                        </a>
+                                    </div>
+                                    @endif
                                 </div>
 
                                 <div class="nav-tabs-top">
@@ -454,12 +493,12 @@ if (!function_exists('sortIcon')) {
             });
         });
 
-        let searchTimeout;
-        document.getElementById('searchTable').addEventListener('keyup', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                document.getElementById('filterForm').submit();
-            }, 500);
+        // Cari via tombol/Enter (form submit), bukan otomatis saat mengetik
+        document.getElementById('searchTable').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.form.submit();
+            }
         });
 
         document.getElementById('entriesSelect').addEventListener('change', function() {

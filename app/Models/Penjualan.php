@@ -49,17 +49,17 @@ class Penjualan extends Model
 
     public function pembayaran()
     {
-        return $this->hasOne(Pembayaran::class, 'order_id');
+        return $this->hasOne(Pembayaran::class, 'penjualan_id');
     }
 
     public function address()
     {
-        return $this->hasOne(OrderAddress::class, 'order_id');
+        return $this->hasOne(PenjualanAddress::class, 'penjualan_id');
     }
 
     public function shipment()
     {
-        return $this->hasOne(OrderShipment::class, 'order_id');
+        return $this->hasOne(PenjualanShipment::class, 'penjualan_id');
     }
 
     public function userVouchers()

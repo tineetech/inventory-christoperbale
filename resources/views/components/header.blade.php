@@ -34,66 +34,24 @@
         </div>
 
         <div class="navbar-nav align-items-lg-center ml-auto">
-            {{-- <div class="demo-navbar-notifications nav-item dropdown mr-lg-3">
-                <a class="nav-link dropdown-toggle hide-arrow" href="#" data-toggle="dropdown">
+            <!-- Notifikasi -->
+            <div class="demo-navbar-notifications nav-item dropdown mr-lg-3" id="notif-wrapper">
+                <a class="nav-link hide-arrow" href="javascript:" id="notif-bell-link">
                     <i class="feather icon-bell navbar-icon align-middle"></i>
-                    <span class="badge badge-danger badge-dot indicator"></span>
-                    <span class="d-lg-none align-middle">&nbsp; Notifications</span>
+                    <span class="badge badge-danger badge-dot indicator" id="notif-indicator" style="display:none;"></span>
+                    <span class="badge badge-danger notif-count" id="notif-count" style="display:none;">0</span>
+                    <span class="d-lg-none align-middle">&nbsp; Notifikasi</span>
                 </a>
-                <div class="dropdown-menu dropdown-menu-right">
-                    <div class="bg-primary text-center text-white font-weight-bold p-3">
-                        4 New Notifications
+                <div class="dropdown-menu dropdown-menu-right notif-dropdown-menu" id="notif-dropdown">
+                    <div class="bg-warning text-center text-white font-weight-bold p-3 d-flex justify-content-between align-items-center">
+                        <span>Notifikasi</span>
+                        <a href="javascript:" id="notif-mark-all" class="text-white small" style="opacity:.9;">Tandai semua dibaca</a>
                     </div>
-                    <div class="list-group list-group-flush">
-                        <a href="javascript:" class="list-group-item list-group-item-action media d-flex align-items-center">
-                            <div class="ui-icon ui-icon-sm feather icon-home bg-secondary border-0 text-white"></div>
-                            <div class="media-body line-height-condenced ml-3">
-                                <div class="text-dark">Login from 192.168.1.1</div>
-                                <div class="text-light small mt-1">
-                                    Aliquam ex eros, imperdiet vulputate hendrerit et.
-                                </div>
-                                <div class="text-light small mt-1">12h ago</div>
-                            </div>
-                        </a>
-
-                        <a href="javascript:" class="list-group-item list-group-item-action media d-flex align-items-center">
-                            <div class="ui-icon ui-icon-sm feather icon-user-plus bg-info border-0 text-white"></div>
-                            <div class="media-body line-height-condenced ml-3">
-                                <div class="text-dark">You have
-                                    <strong>4</strong> new followers
-                                </div>
-                                <div class="text-light small mt-1">
-                                    Phasellus nunc nisl, posuere cursus pretium nec, dictum vehicula tellus.
-                                </div>
-                            </div>
-                        </a>
-
-                        <a href="javascript:" class="list-group-item list-group-item-action media d-flex align-items-center">
-                            <div class="ui-icon ui-icon-sm feather icon-power bg-danger border-0 text-white"></div>
-                            <div class="media-body line-height-condenced ml-3">
-                                <div class="text-dark">Server restarted</div>
-                                <div class="text-light small mt-1">
-                                    19h ago
-                                </div>
-                            </div>
-                        </a>
-
-                        <a href="javascript:" class="list-group-item list-group-item-action media d-flex align-items-center">
-                            <div class="ui-icon ui-icon-sm feather icon-alert-triangle bg-warning border-0 text-dark"></div>
-                            <div class="media-body line-height-condenced ml-3">
-                                <div class="text-dark">99% server load</div>
-                                <div class="text-light small mt-1">
-                                    Etiam nec fringilla magna. Donec mi metus.
-                                </div>
-                                <div class="text-light small mt-1">
-                                    20h ago
-                                </div>
-                            </div>
-                        </a>
+                    <div class="notif-list list-group list-group-flush" id="notif-list">
+                        <div class="notif-empty text-center text-light p-4">Tidak ada notifikasi.</div>
                     </div>
-                    <a href="javascript:" class="d-block text-center text-light small p-2 my-1">Show all notifications</a>
                 </div>
-            </div> --}}
+            </div>
 
             <!-- Divider -->
             <div class="nav-item d-none d-lg-block text-big font-weight-light line-height-1 opacity-25 mr-3 ml-1">|</div>
@@ -121,3 +79,387 @@
         </div>
     </div>
 </nav>
+
+<style>
+    #layout-navbar {
+        z-index: 1080;
+    }
+
+    #notif-wrapper {
+        position: relative;
+        z-index: 1085;
+    }
+
+    #notif-wrapper .nav-link {
+        position: relative;
+    }
+
+    #notif-count {
+        position: absolute;
+        top: 0;
+        left: 20px;
+        font-size: 10px;
+        padding: 2px 5px;
+        border-radius: 10px;
+        line-height: 1.2;
+        min-width: 16px;
+        text-align: center;
+        z-index: 5;
+    }
+
+    #notif-indicator {
+        position: absolute;
+        top: 4px;
+        left: 26px;
+    }
+
+    .notif-dropdown-menu {
+        width: 360px;
+        max-width: 92vw;
+        padding: 0;
+        max-height: 75vh;
+        display: none;
+        overflow: hidden;
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 12px 36px rgba(20, 24, 60, 0.18), 0 2px 8px rgba(20, 24, 60, 0.08);
+        position: absolute;
+        top: calc(100% + 12px);
+        right: 0;
+        left: auto;
+        z-index: 1090; /* di atas navbar & komponen lain agar tidak tertimpa */
+        animation: notifFadeIn .15s ease-out;
+    }
+
+    @keyframes notifFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .notif-dropdown-menu.show {
+        display: block;
+    }
+
+    /* Anak panah kecil penunjuk arah dropdown */
+    .notif-dropdown-menu::before {
+        content: '';
+        position: absolute;
+        top: -6px;
+        right: 18px;
+        width: 12px;
+        height: 12px;
+        background: #1454a3;
+        transform: rotate(45deg);
+        border-radius: 2px;
+        z-index: -1;
+    }
+
+    .notif-dropdown-menu .bg-primary {
+        background: linear-gradient(135deg, #1e70cd, #1454a3) !important;
+        padding: 14px 16px !important;
+        font-size: 14px;
+        letter-spacing: .2px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .notif-dropdown-menu .bg-primary a {
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 12px;
+        color: #fff;
+        transition: opacity .15s ease;
+    }
+
+    .notif-dropdown-menu .bg-primary a:hover {
+        opacity: 1 !important;
+        text-decoration: underline;
+    }
+
+    .notif-list {
+        max-height: 56vh;
+        overflow-y: auto;
+        background: #fff;
+    }
+
+    .notif-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .notif-list::-webkit-scrollbar-thumb {
+        background: #d7dae8;
+        border-radius: 10px;
+    }
+
+    .notif-list::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .notif-empty {
+        font-size: 13px;
+        color: #a9adc2;
+    }
+
+    .notif-item {
+        position: relative;
+        border-left: 3px solid transparent;
+        border-bottom: 1px solid #f0f1f6;
+        cursor: pointer;
+        display: flex;
+        align-items: flex-start;
+        padding: 12px 14px;
+        transition: background .15s ease;
+        text-decoration: none;
+    }
+
+    .notif-item:last-child {
+        border-bottom: none;
+    }
+
+    .notif-item:hover {
+        background: #f6f8fd;
+        text-decoration: none;
+    }
+
+    .notif-item.unread {
+        background: #eef4ff;
+        border-left-color: #1e70cd;
+    }
+
+    .notif-item.unread:hover {
+        background: #e5eeff;
+    }
+
+    .notif-item .notif-icon {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        margin-right: 12px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+
+    .notif-item .notif-title {
+        font-weight: 600;
+        font-size: 13px;
+        color: #23263b;
+    }
+
+    .notif-item .notif-body {
+        font-size: 12.5px;
+        color: #7a7e99;
+        margin-top: 2px;
+        line-height: 1.5;
+        word-break: break-word;
+    }
+
+    .notif-item .notif-time {
+        font-size: 11px;
+        color: #b0b3c4;
+        margin-top: 5px;
+    }
+
+    .notif-item .notif-dot {
+        width: 8px;
+        height: 8px;
+        min-width: 8px;
+        border-radius: 50%;
+        background: #1e70cd;
+        box-shadow: 0 0 0 3px rgba(30, 112, 205, .15);
+        margin-top: 6px;
+        margin-left: 8px;
+        align-self: flex-start;
+    }
+</style>
+
+<script>
+    (function () {
+        var notifUrl = "{{ route('notifikasi.data') }}";
+        var readUrl = "{{ route('notifikasi.read') }}";
+        var notifIndexUrl = "{{ route('notifikasi.index') }}";
+        var csrf = "{{ csrf_token() }}";
+        var pollMs = 5000;
+        var notifItemIcons = {
+            'penjualan_web': { icon: 'icon-shopping-cart', color: '#1e70cd' },
+            'pembayaran': { icon: 'icon-credit-card', color: '#28a745' },
+            'default': { icon: 'icon-bell', color: '#6f42c1' }
+        };
+
+        function getIconCfg(tipe) {
+            return notifItemIcons[tipe] || notifItemIcons['default'];
+        }
+
+        function renderList(items) {
+            var listEl = document.getElementById('notif-list');
+            if (!listEl) return;
+
+            if (!items || !items.length) {
+                listEl.innerHTML = '<div class="notif-empty text-center text-light p-4">Tidak ada notifikasi.</div>';
+                return;
+            }
+
+            var html = '';
+            items.forEach(function (n) {
+                var cfg = getIconCfg(n.tipe);
+                var cls = n.is_read ? '' : ' unread';
+                var link = n.link ? 'href="' + n.link + '"' : 'href="javascript:"';
+                html += '<a ' + link + ' class="notif-item list-group-item-action list-group-item' + cls + '" data-id="' + n.id + '">' +
+                    '<div class="notif-icon" style="background:' + cfg.color + ';">' +
+                    '<i class="feather ' + cfg.icon + '" style="width:16px;height:16px;"></i></div>' +
+                    '<div class="media-body" style="min-width:0;">' +
+                    '<div class="notif-title">' + escapeHtml(n.judul) + '</div>' +
+                    '<div class="notif-body">' + escapeHtml(n.isi) + '</div>' +
+                    '<div class="notif-time">' + (n.created_diff || '') + '</div></div>' +
+                    (n.is_read ? '' : '<span class="notif-dot"></span>') +
+                    '</a>';
+            });
+            listEl.innerHTML = html;
+        }
+
+        function escapeHtml(str) {
+            return String(str == null ? '' : str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function updateBadge(count) {
+            var countEl = document.getElementById('notif-count');
+            var indEl = document.getElementById('notif-indicator');
+            if (!countEl) return;
+
+            if (count > 0) {
+                countEl.style.display = 'inline-block';
+                countEl.textContent = count > 99 ? '99+' : count;
+                if (indEl) indEl.style.display = 'inline-block';
+                document.title = '(' + count + ') POS Inventory';
+            } else {
+                countEl.style.display = 'none';
+                if (indEl) indEl.style.display = 'none';
+                document.title = 'POS Inventory';
+            }
+        }
+
+        function loadNotifikasi() {
+            fetch(notifUrl, {
+                headers: { 'Accept': 'application/json' }
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res && res.success) {
+                        updateBadge(res.unread_count || 0);
+                        renderList(res.data || []);
+                    }
+                })
+                .catch(function () { /* silent */ });
+        }
+
+        function markAllRead() {
+            fetch(readUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrf
+                },
+                body: JSON.stringify({})
+            })
+                .then(function (r) { return r.json(); })
+                .then(function () { loadNotifikasi(); });
+        }
+
+        function markOneRead(id) {
+            fetch(readUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrf
+                },
+                body: JSON.stringify({ id: id })
+            })
+                .then(function (r) { return r.json(); })
+                .then(function () {
+                    loadNotifikasi();
+                    window.location.href = notifIndexUrl;
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var listEl = document.getElementById('notif-list');
+            var bellLink = document.getElementById('notif-bell-link');
+            var dropdown = document.getElementById('notif-dropdown');
+
+            bellLink.addEventListener('click', function (e) {
+                e.preventDefault();
+                var isOpen = dropdown.classList.contains('show');
+                closeNotifDropdown();
+                if (!isOpen) {
+                    dropdown.classList.add('show');
+                }
+            });
+
+            document.addEventListener('click', function (e) {
+                if (!e.target.closest('#notif-wrapper')) {
+                    closeNotifDropdown();
+                }
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    closeNotifDropdown();
+                }
+            });
+
+            function closeNotifDropdown() {
+                var dd = document.getElementById('notif-dropdown');
+                if (dd) dd.classList.remove('show');
+            }
+
+            document.getElementById('notif-mark-all').addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                markAllRead();
+            });
+
+            listEl.addEventListener('click', function (e) {
+                var item = e.target.closest('.notif-item');
+                if (!item) return;
+
+                e.preventDefault();
+
+                var id = item.getAttribute('data-id');
+                if (item.classList.contains('unread')) {
+                    markOneRead(id);
+                } else {
+                    window.location.href = notifIndexUrl;
+                }
+            });
+
+            // Fetch data notifikasi sekali saja saat halaman dibuka
+            loadNotifikasi();
+
+            // Feather icon refresh setelah render
+            if (window.feather) {
+                setInterval(function () {
+                    if (document.querySelector('.notif-dropdown-menu.show')) {
+                        feather.replace();
+                    }
+                }, 300);
+            }
+        });
+    })();
+</script>

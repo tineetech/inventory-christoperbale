@@ -49,6 +49,10 @@ class ProdukController extends Controller
             'harga_normal'=> 'required|numeric|min:0',
             'status'      => 'required|in:aktif,nonaktif',
             'brand_id'    => 'nullable|exists:brand,id',
+            'berat_gram'  => 'nullable|integer|min:0',
+            'panjang_cm'  => 'nullable|integer|min:0',
+            'lebar_cm'    => 'nullable|integer|min:0',
+            'tinggi_cm'   => 'nullable|integer|min:0',
             'foto.*'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
@@ -67,6 +71,10 @@ class ProdukController extends Controller
                 'harga_normal' => $request->harga_normal,
                 'status'       => $request->status,
                 'brand_id'     => $request->brand_id,
+                'berat_gram'   => $request->berat_gram,
+                'panjang_cm'   => $request->panjang_cm,
+                'lebar_cm'     => $request->lebar_cm,
+                'tinggi_cm'    => $request->tinggi_cm,
             ]);
 
             $barangs = Barang::whereIn('id', $request->barang_ids)->get();
@@ -133,6 +141,10 @@ class ProdukController extends Controller
             'harga_normal'=> 'required|numeric|min:0',
             'status'      => 'required|in:aktif,nonaktif',
             'brand_id'    => 'nullable|exists:brand,id',
+            'berat_gram'  => 'nullable|integer|min:0',
+            'panjang_cm'  => 'nullable|integer|min:0',
+            'lebar_cm'    => 'nullable|integer|min:0',
+            'tinggi_cm'   => 'nullable|integer|min:0',
             'foto.*'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
@@ -154,6 +166,10 @@ class ProdukController extends Controller
                 'harga_normal' => $request->harga_normal,
                 'status'       => $request->status,
                 'brand_id'     => $request->brand_id,
+                'berat_gram'   => $request->berat_gram,
+                'panjang_cm'   => $request->panjang_cm,
+                'lebar_cm'     => $request->lebar_cm,
+                'tinggi_cm'    => $request->tinggi_cm,
             ]);
 
             $oldBarangIds = $produk->barang()->pluck('id')->toArray();

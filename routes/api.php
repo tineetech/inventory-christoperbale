@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 */
 Route::get('/product/search', [BarangController::class, 'search']);
 Route::get('/product/search-by-word', [BarangController::class, 'searchByWord']);
+Route::get('/product/search-grouped', [BarangController::class, 'searchGrouped']);
 Route::get('/product/barcode/{id}', [BarangController::class, 'barcode']);
 Route::get('/discount/search-products', [DiscountController::class, 'searchProducts']);
 Route::post('/barang/import', [BarangImportController::class, 'import']);

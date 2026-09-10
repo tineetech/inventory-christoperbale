@@ -19,6 +19,153 @@
         .table-danger td {
             background-color: #f8d7da !important;
         }
+
+        /* FLOATING SCROLL BUTTONS */
+        .scroll-fab {
+            position: fixed;
+            right: 18px;
+            bottom: 100px;
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .scroll-fab button {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: none;
+            background: rgba(78, 115, 223, .9);
+            color: #fff;
+            font-size: 1.15rem;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, .18);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform .15s, background .15s;
+        }
+
+        .scroll-fab button:hover {
+            transform: scale(1.08);
+            background: #4e73df;
+        }
+
+        .scroll-fab button:active {
+            transform: scale(.95);
+        }
+
+        /* FILE RESI PREVIEW */
+        .file-resi-wrap {
+            position: relative;
+        }
+
+        .file-resi-wrap input[type="file"] {
+            line-height: 1;
+        }
+
+        .file-resi-preview {
+            display: none;
+            margin-top: 8px;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            overflow: hidden;
+            max-height: 220px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .file-resi-preview.has-file {
+            display: block;
+        }
+
+        .file-resi-preview img {
+            width: 100%;
+            object-fit: contain;
+            max-height: 220px;
+            display: block;
+            background: #f8fafc;
+        }
+
+        .file-resi-preview .preview-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, .45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity .15s;
+        }
+
+        .file-resi-preview:hover .preview-overlay {
+            opacity: 1;
+        }
+
+        .file-resi-preview .preview-overlay span {
+            color: #fff;
+            font-size: .82rem;
+            font-weight: 600;
+        }
+
+        .file-resi-badge {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            margin-top: 6px;
+            padding: 4px 10px;
+            background: #e8f5e9;
+            border-radius: 6px;
+            font-size: .78rem;
+            color: #28a745;
+        }
+
+        .file-resi-badge.has-file {
+            display: flex;
+        }
+
+        .btn-clear-file {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            padding: 0;
+            font-size: .78rem;
+            margin-left: auto;
+        }
+
+        /* LIGHTBOX */
+        #file-lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: rgba(0, 0, 0, .8);
+            align-items: center;
+            justify-content: center;
+        }
+
+        #file-lightbox.active {
+            display: flex;
+        }
+
+        #file-lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 8px 40px rgba(0, 0, 0, .5);
+        }
+
+        #file-lightbox .lb-close {
+            position: absolute;
+            top: 20px;
+            right: 24px;
+            color: #fff;
+            font-size: 2rem;
+            cursor: pointer;
+            line-height: 1;
+        }
     </style>
 @endsection
 @section('content')
@@ -80,6 +227,7 @@
 
                         <form action="{{ route('penjualan.update', $penjualan->id) }}" method="POST">
                             @csrf
+                            <input type="hidden" name="redirect_to" value="{{ request('from') === 'web' ? 'web' : '' }}">
 
                             <div class="form-row">
 
@@ -138,6 +286,7 @@
 
                                 </div>
 
+
                                 <div class="form-group col-md-6">
                                     <label class="form-label">Scan Out</label>
                                     <select name="scan_out" class="form-control">
@@ -161,6 +310,54 @@
                                     </select>
                                     <span class="text-muted">Penjualan draft disini jika YA dapat membuat penjualan namun
                                         tidak mengurangi stok.</span>
+                                </div>
+
+                                {{-- STATUS --}}
+                                <div class="form-group col-md-6">
+                                    <label class="form-label">Status Proses</label>
+                                    <select name="status" class="form-control">
+                                        <option value="proses" {{ $penjualan->status == 'proses' ? 'selected' : '' }}>Proses</option>
+                                        <option value="packing" {{ $penjualan->status == 'packing' ? 'selected' : '' }}>Packing</option>
+                                        <option value="dikirim" {{ $penjualan->status == 'dikirim' ? 'selected' : '' }}>Dikirim</option>
+                                        <option value="selesai" {{ $penjualan->status == 'selesai' ? 'selected' : '' }}>Selesai</option>
+                                    </select>
+                                </div>
+
+                                
+                                {{-- FILE RESI --}}
+                                <div class="form-group col-md-12">
+                                    <label class="form-label">
+                                        File Resi
+                                        <span class="badge badge-secondary ml-1" style="font-size:.7rem;font-weight:400;">Opsional</span>
+                                        <span class="text-muted small font-weight-normal">(Image / PDF, otomatis jadi preview)</span>
+                                    </label>
+                                    <div class="file-resi-wrap">
+                                        <input type="file" class="form-control" id="file_resi_edit"
+                                            accept="image/jpeg,image/png,image/jpg,application/pdf,.pdf">
+                                        <input type="hidden" name="file_resi_base64" id="file_resi_base64_edit">
+                                        <input type="hidden" name="file_resi_name" id="file_resi_name_edit"
+                                            value="{{ $penjualan->file_resi ? basename($penjualan->file_resi) : '' }}">
+                                        <div class="file-resi-badge {{ $penjualan->file_resi ? 'has-file' : '' }}" id="file_resi_badge_edit">
+                                            <i class="feather icon-image" style="font-size:14px;"></i>
+                                            <span id="file_resi_name_span">{{ $penjualan->file_resi ? basename($penjualan->file_resi) : '' }}</span>
+                                            <button type="button" class="btn-clear-file" onclick="clearFileResiEdit()" title="Hapus file">
+                                                <i class="feather icon-x"></i>
+                                            </button>
+                                        </div>
+                                        <div class="file-resi-preview {{ $penjualan->file_resi ? 'has-file' : '' }}" id="file_resi_preview_edit"
+                                             onclick="openLightboxEdit()">
+                                            @if($penjualan->file_resi)
+                                                <img id="file_resi_img_edit"
+                                                    src="{{ asset('storage/' . $penjualan->file_resi) }}"
+                                                    alt="Preview Resi">
+                                            @else
+                                                <img id="file_resi_img_edit" src="" alt="Preview Resi">
+                                            @endif
+                                            <div class="preview-overlay">
+                                                <span><i class="feather icon-zoom-in mr-1"></i> Perbesar</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -372,7 +569,7 @@
 
                             <div class="d-flex justify-content-between">
 
-                                <a href="{{ route('penjualan.index') }}" class="btn btn-secondary">
+                                <a href="{{ request('from') === 'web' ? route('penjualan.web') : route('penjualan.index') }}" class="btn btn-secondary">
 
                                     <i class="feather icon-arrow-left"></i>
                                     Kembali
@@ -394,6 +591,18 @@
                 </div>
             </div>
 
+        </div>
+
+        {{-- FLOATING SCROLL BUTTONS --}}
+        <div class="scroll-fab">
+            <button type="button" id="btn-scroll-top" title="Scroll ke atas"><i class="feather icon-arrow-up"></i></button>
+            <button type="button" id="btn-scroll-bottom" title="Scroll ke bawah"><i class="feather icon-arrow-down"></i></button>
+        </div>
+
+        {{-- FILE RESI LIGHTBOX --}}
+        <div id="file-lightbox" onclick="closeLightboxEdit()">
+            <span class="lb-close" onclick="closeLightboxEdit()">&times;</span>
+            <img id="lb-img-edit" src="" alt="Preview Resi">
         </div>
 
         @include('components.footer')
@@ -1101,6 +1310,124 @@
                 }
             }
 
+        });
+
+        // ── Floating scroll buttons ──────────────────────────────────────
+        $('#btn-scroll-top').on('click', function() {
+            $('html, body').animate({ scrollTop: 0 }, 400);
+        });
+        $('#btn-scroll-bottom').on('click', function() {
+            $('html, body').animate({ scrollTop: $(document).height() }, 400);
+        });
+
+        // ================================================================
+        // FILE RESI — preview + lightbox + PDF → image
+        // ================================================================
+        function getPdfjsEdit() {
+            if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js';
+                script.onload = () => resolve(window.pdfjsLib);
+                script.onerror = () => reject(new Error('Gagal memuat library pdf.js. Cek koneksi internet.'));
+                document.head.appendChild(script);
+            });
+        }
+
+        function resizePdfToJpegEdit(file) {
+            return getPdfjsEdit().then(pdfjsLib => {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = () => reject(new Error('Gagal membaca file PDF.'));
+                    reader.readAsArrayBuffer(file);
+                })
+                .then(buffer => pdfjsLib.getDocument({ data: buffer }).promise)
+                .then(pdf => pdf.getPage(1))
+                .then(page => {
+                    const baseViewport = page.getViewport({ scale: 1 });
+                    const targetWidth = 1200;
+                    const scale = Math.max(1, targetWidth / baseViewport.width);
+                    const viewport = page.getViewport({ scale: scale });
+                    const canvas = document.createElement('canvas');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    const ctx = canvas.getContext('2d');
+                    return page.render({ canvasContext: ctx, viewport }).promise.then(() => canvas.toDataURL('image/jpeg', 0.9));
+                });
+            });
+        }
+
+        function showFilePreviewEdit(src, filename) {
+            const wrap = $('#file_resi_preview_edit');
+            const badge = $('#file_resi_badge_edit');
+            const imgEl = $('#file_resi_img_edit');
+            const nameEl = $('#file_resi_name_span');
+            if (src) {
+                const imgSrc = src.startsWith('data:') ? src : `data:image/jpeg;base64,${src}`;
+                imgEl.attr('src', imgSrc);
+                wrap.addClass('has-file');
+                nameEl.text(filename || 'resi.jpg');
+                badge.addClass('has-file');
+            } else {
+                imgEl.attr('src', '');
+                wrap.removeClass('has-file');
+                badge.removeClass('has-file');
+                nameEl.text('');
+            }
+        }
+
+        function clearFileResiEdit() {
+            $('#file_resi_edit').val('');
+            $('#file_resi_base64_edit').val('');
+            $('#file_resi_name_edit').val('');
+            showFilePreviewEdit(null, '');
+        }
+
+        function openLightboxEdit() {
+            const src = $('#file_resi_img_edit').attr('src');
+            if (!src) return;
+            $('#lb-img-edit').attr('src', src);
+            $('#file-lightbox').addClass('active');
+        }
+
+        function closeLightboxEdit() {
+            $('#file-lightbox').removeClass('active');
+            $('#lb-img-edit').attr('src', '');
+        }
+
+        $('#file_resi_edit').on('change', function() {
+            const file = this.files[0];
+            if (!file) {
+                clearFileResiEdit();
+                return;
+            }
+
+            const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+            if (isPdf) {
+                resizePdfToJpegEdit(file)
+                    .then(dataUrl => {
+                        const filename = file.name.replace(/\.pdf$/i, '.jpg');
+                        showFilePreviewEdit(dataUrl, filename);
+                        $('#file_resi_base64_edit').val(dataUrl.split(',')[1]);
+                        $('#file_resi_name_edit').val(filename);
+                    })
+                    .catch(err => {
+                        clearFileResiEdit();
+                        Swal.fire('Oops!', 'Gagal mengkonversi PDF: ' + (err.message || err), 'error');
+                    });
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                showFilePreviewEdit(dataUrl, file.name);
+                $('#file_resi_base64_edit').val(dataUrl.split(',')[1]);
+                $('#file_resi_name_edit').val(file.name);
+            };
+            reader.readAsDataURL(file);
         });
     </script>
 @endsection

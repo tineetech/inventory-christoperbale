@@ -35,6 +35,15 @@ class DashboardController extends Controller
         $adjustHariIni       = AdjustStok::whereDate('created_at', today())->count();
         $stokMovementHariIni = StokMovement::whereDate('created_at', today())->count();
 
+        // ── PENJUALAN WEB ─────────────────────────────
+        $penjualanWebHariIni = Penjualan::where('order_web', 1)
+            ->whereDate('tanggal', today())
+            ->count();
+        $omzetWebHariIni = (float) Penjualan::where('order_web', 1)
+            ->whereDate('tanggal', today())
+            ->sum('total_harga');
+        $penjualanWebTotal = Penjualan::where('order_web', 1)->count();
+
         $perPageKritis = in_array($request->get('kritis_per_page'), [10, 25, 50, 100])
             ? $request->get('kritis_per_page')
             : 10;
@@ -135,6 +144,9 @@ class DashboardController extends Controller
             'penjualanHariIni',
             'pembelianHariIni',
             'adjustHariIni',
+            'penjualanWebHariIni',
+            'omzetWebHariIni',
+            'penjualanWebTotal',
             'stokKritis',
             'stokMovementHariIni',
             // statistik chart

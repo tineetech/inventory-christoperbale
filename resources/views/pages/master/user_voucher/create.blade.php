@@ -13,6 +13,19 @@
                 </ol>
             </div>
 
+            @if (session('error'))
+                <div class="alert alert-danger"><i class="feather icon-alert-circle"></i> {{ session('error') }}</div>
+            @endif
+            @if ($errors->any())
+                <div class="alert alert-danger">
+                    <ul class="mb-0 pl-3">
+                        @foreach ($errors->all() as $err)
+                            <li>{{ $err }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
+
             <div class="card col-lg-12 mb-4">
                 <h6 class="card-header">Beri Voucher ke User</h6>
                 <div class="card-body">
@@ -22,7 +35,7 @@
                         <div class="form-row">
                             <div class="form-group col-md-6">
                                 <label class="form-label">Pilih Voucher <span class="text-danger">*</span></label>
-                                <select name="voucher_id" class="form-control @error('voucher_id') is-invalid @enderror" required>
+                                <select name="voucher_id" id="selectVoucher" class="form-control @error('voucher_id') is-invalid @enderror" required>
                                     <option value="">-- Pilih Voucher --</option>
                                     @foreach ($vouchers as $v)
                                         <option value="{{ $v->id }}" {{ old('voucher_id') == $v->id ? 'selected' : '' }}>
@@ -30,13 +43,13 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('voucher_id')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                                @error('voucher_id')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                             </div>
 
                             <div class="form-group col-md-6">
                                 <label class="form-label d-block">Pilih User <span class="text-danger">*</span></label>
                                 <div class="d-flex gap-2">
-                                    <select name="user_ids[]" id="selectUser" class="form-control @error('user_ids') is-invalid @enderror" multiple required style="width:100%"></select>
+                                    <select name="user_ids[]" id="selectUser" class="form-control @error('user_ids') is-invalid @enderror @error('user_ids.*') is-invalid @enderror" multiple required style="width:100%"></select>
                                     <button type="button" id="btnSelectAllUser" class="btn btn-sm btn-outline-info text-nowrap" style="flex-shrink:0;">
                                         <i class="feather icon-check-square"></i> Semua
                                     </button>
@@ -44,8 +57,10 @@
                                         <i class="feather icon-x"></i>
                                     </button>
                                 </div>
-                                @error('user_ids')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                                <small class="text-muted">Cari & pilih user, atau klik "Semua" untuk memilih semua user.</small>
+                                @error('user_ids')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                @error('user_ids.*')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+                                <small class="text-muted">User yang sudah memiliki voucher terpilih otomatis disembunyikan. Jika memilih user duplikat, validasi akan menolak.</small>
+                                <div id="duplicateInfo" class="small text-warning mt-1" style="display:none;"></div>
                             </div>
                         </div>
 
@@ -65,6 +80,10 @@
     <script>
         let allUsers = [];
 
+        function getSelectedVoucherId() {
+            return document.getElementById('selectVoucher').value;
+        }
+
         $('#selectUser').select2({
             placeholder: 'Cari & pilih user...',
             allowClear: true,
@@ -73,7 +92,7 @@
                 dataType: 'json',
                 delay: 300,
                 data: function(params) {
-                    return { q: params.term };
+                    return { q: params.term, voucher_id: getSelectedVoucherId() };
                 },
                 processResults: function(data) {
                     allUsers = data;
@@ -82,17 +101,55 @@
             }
         });
 
+        document.getElementById('selectVoucher').addEventListener('change', function() {
+            // reset user selection when voucher changes
+            $('#selectUser').val(null).trigger('change');
+            allUsers = [];
+            const info = document.getElementById('duplicateInfo');
+            if (this.value) {
+                info.style.display = 'block';
+                info.textContent = 'Menampilkan hanya user yang belum memiliki voucher ini.';
+            } else {
+                info.style.display = 'none';
+            }
+        });
+
+        // init info if voucher pre-selected (old value)
+        if (getSelectedVoucherId()) {
+            document.getElementById('duplicateInfo').style.display = 'block';
+            document.getElementById('duplicateInfo').textContent = 'Menampilkan hanya user yang belum memiliki voucher ini.';
+        }
+
         document.getElementById('btnSelectAllUser').addEventListener('click', function() {
+            const voucherId = getSelectedVoucherId();
+            if (!voucherId) {
+                Swal.fire('Pilih voucher dulu', 'Silakan pilih voucher terlebih dahulu sebelum memilih semua user.', 'warning');
+                return;
+            }
             if (allUsers.length === 0) {
                 $.ajax({
                     url: '{{ route("user_voucher.users") }}',
+                    data: { voucher_id: voucherId },
                     dataType: 'json',
                     async: false,
                     success: function(data) { allUsers = data; }
                 });
             }
+            // fetch fresh list filtered by voucher to ensure no duplicates
+            $.ajax({
+                url: '{{ route("user_voucher.users") }}',
+                data: { voucher_id: voucherId },
+                dataType: 'json',
+                async: false,
+                success: function(data) { allUsers = data; }
+            });
             const ids = allUsers.map(function(u) { return u.id; });
-            $('#selectUser').val(ids).trigger('change');
+            const select = $('#selectUser');
+            select.empty();
+            allUsers.forEach(function(u) {
+                select.append(new Option(u.nama, u.id, true, true));
+            });
+            select.val(ids).trigger('change');
         });
 
         document.getElementById('btnClearUser').addEventListener('click', function() {

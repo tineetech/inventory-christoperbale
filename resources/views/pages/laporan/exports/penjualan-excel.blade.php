@@ -26,6 +26,7 @@
         @php
             $grandTotal = 0;
             $grandTotalHargaCair = 0;
+            $totalQty = 0;
         @endphp
         @forelse ($penjualan as $index => $item)
             @php
@@ -79,6 +80,7 @@
             @forelse ($item->detail as $detail)
                 @php
                     $totalDetail += $detail->subtotal;
+                    $totalQty += $detail->qty;
                 @endphp
                 <tr>
                     <td></td>
@@ -115,10 +117,15 @@
         <tr><td colspan="7"></td></tr>
 
         {{-- GRAND TOTAL --}}
-        <tr>
+        <tr style="background-color:#c6efce;">
             <td colspan="6"><strong>Grand Total</strong></td>
             <td><strong>{{ $grandTotal }}</strong></td>
             <td><strong>{{ $grandTotalHargaCair }}</strong></td>
+        </tr>
+        <tr style="background-color:#c6efce;">
+            <td colspan="4"><strong>Total Qty Terjual</strong></td>
+            <td><strong>{{ $totalQty }}</strong></td>
+            <td colspan="3"></td>
         </tr>
     </tbody>
 </table>

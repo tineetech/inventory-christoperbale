@@ -4,12 +4,15 @@ namespace App\Http\Controllers;
 
 use App\Exports\LaporanBarangExport;
 use App\Exports\LaporanPembelianExport;
+use App\Exports\LaporanPembayaranExport;
 use App\Exports\LaporanPenjualanExport;
 use App\Exports\LaporanStokExport;
 use App\Exports\LaporanStokKritisExport;
+use App\Exports\LaporanPenjualanWebExport;
 use App\Models\Barang;
 use App\Models\Dropshipper;
 use App\Models\Pembelian;
+use App\Models\Pembayaran;
 use App\Models\Penjualan;
 use App\Models\StokMovement;
 use App\Models\StokReport;
@@ -122,6 +125,90 @@ class ReportController extends Controller
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('laporan-penjualan-' . now()->format('YmdHis') . '.pdf');
+    }
+
+    public function penjualanWeb(Request $request)
+    {
+        $filters = $this->resolvePenjualanWebFilters($request);
+
+        $penjualan = $this->getPenjualanWebReportQuery($filters)->paginate($filters['per_page'])->withQueryString();
+
+        return view('pages.laporan.penjualan-web', compact('penjualan', 'filters'));
+    }
+
+    public function penjualanWebPrint(Request $request)
+    {
+        $filters = $this->resolvePenjualanWebFilters($request);
+        $penjualan = $this->getPenjualanWebReportQuery($filters)->get();
+
+        return view('pages.laporan.exports.penjualan-web-print', compact('penjualan', 'filters'));
+    }
+
+    public function penjualanWebExcel(Request $request)
+    {
+        set_time_limit(600);
+        $filters = $this->resolvePenjualanWebFilters($request);
+        $penjualan = $this->getPenjualanWebReportQuery($filters)->get();
+
+        return Excel::download(
+            new LaporanPenjualanWebExport($penjualan, $filters),
+            'laporan-penjualan-web-' . now()->format('YmdHis') . '.xlsx'
+        );
+    }
+
+    public function penjualanWebPdf(Request $request)
+    {
+        $filters = $this->resolvePenjualanWebFilters($request);
+        $penjualan = $this->getPenjualanWebReportQuery($filters)->get();
+
+        $pdf = Pdf::loadView('pages.laporan.exports.penjualan-web-pdf', [
+            'penjualan' => $penjualan,
+            'filters' => $filters,
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download('laporan-penjualan-web-' . now()->format('YmdHis') . '.pdf');
+    }
+
+    public function pembayaran(Request $request)
+    {
+        $filters = $this->resolvePembayaranFilters($request);
+
+        $pembayaran = $this->getPembayaranReportQuery($filters)->paginate($filters['per_page'])->withQueryString();
+
+        return view('pages.laporan.pembayaran', compact('pembayaran', 'filters'));
+    }
+
+    public function pembayaranPrint(Request $request)
+    {
+        $filters = $this->resolvePembayaranFilters($request);
+        $pembayaran = $this->getPembayaranReportQuery($filters)->get();
+
+        return view('pages.laporan.exports.pembayaran-print', compact('pembayaran', 'filters'));
+    }
+
+    public function pembayaranExcel(Request $request)
+    {
+        set_time_limit(600);
+        $filters = $this->resolvePembayaranFilters($request);
+        $pembayaran = $this->getPembayaranReportQuery($filters)->get();
+
+        return Excel::download(
+            new LaporanPembayaranExport($pembayaran, $filters),
+            'laporan-pembayaran-' . now()->format('YmdHis') . '.xlsx'
+        );
+    }
+
+    public function pembayaranPdf(Request $request)
+    {
+        $filters = $this->resolvePembayaranFilters($request);
+        $pembayaran = $this->getPembayaranReportQuery($filters)->get();
+
+        $pdf = Pdf::loadView('pages.laporan.exports.pembayaran-pdf', [
+            'pembayaran' => $pembayaran,
+            'filters' => $filters,
+        ])->setPaper('a4', 'landscape');
+
+        return $pdf->download('laporan-pembayaran-' . now()->format('YmdHis') . '.pdf');
     }
 
     public function stok(Request $request)
@@ -774,7 +861,7 @@ class ReportController extends Controller
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
             $request->dari_tanggal,
             $request->sampai_tanggal,
-            'today'
+            'month'
         );
 
         return [
@@ -802,7 +889,7 @@ class ReportController extends Controller
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
             $request->dari_tanggal,
             $request->sampai_tanggal,
-            'today'
+            'month'
         );
 
         return [
@@ -812,6 +899,136 @@ class ReportController extends Controller
             'sampai_jam'     => $request->sampai_jam ?? null,
             'dropshipper_id' => $request->filled('dropshipper_id') ? (int) $request->dropshipper_id : null,
             'search'         => $request->search ?? null,
+            'per_page'       => $this->resolvePerPage($request),
+        ];
+    }
+
+    private function getPenjualanWebReportQuery(array $filters)
+    {
+        $query = Penjualan::with(['dropshipper', 'user', 'detail.barang.stok', 'address', 'shipment', 'pembayaran'])
+            ->where('order_web', 1);
+
+        if ($filters['dari_tanggal']) {
+            $dari = $filters['dari_tanggal'] . ' ' . ($filters['dari_jam'] ?? '00:00') . ':00';
+            $query->where('tanggal', '>=', $dari);
+        }
+        if ($filters['sampai_tanggal']) {
+            $sampai = $filters['sampai_tanggal'] . ' ' . ($filters['sampai_jam'] ?? '23:59') . ':59';
+            $query->where('tanggal', '<=', $sampai);
+        }
+
+        if ($filters['status']) {
+            $query->where('status', $filters['status']);
+        }
+
+        if ($filters['scan_out']) {
+            $query->where('scan_out', $filters['scan_out']);
+        }
+
+        if ($filters['search']) {
+            $s = $filters['search'];
+            $query->where(function ($q) use ($s) {
+                $q->where('kode_penjualan', 'like', "%{$s}%")
+                  ->orWhere('nomor_resi', 'like', "%{$s}%")
+                  ->orWhere('nomor_pesanan', 'like', "%{$s}%")
+                  ->orWhere('nomor_transaksi', 'like', "%{$s}%")
+                  ->orWhere('keterangan', 'like', "%{$s}%")
+                  ->orWhereHas('address', fn($q2) => $q2->where('recipient_name', 'like', "%{$s}%"))
+                  ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$s}%"));
+            });
+        }
+
+        return $query->latest('tanggal');
+    }
+
+    private function resolvePenjualanWebFilters(Request $request): array
+    {
+        $request->validate([
+            'dari_tanggal'   => 'nullable|date',
+            'sampai_tanggal' => 'nullable|date',
+            'dari_jam'       => 'nullable|date_format:H:i',
+            'sampai_jam'     => 'nullable|date_format:H:i',
+            'search'         => 'nullable|string|max:100',
+            'status'         => 'nullable|in:proses,packing,dikirim,selesai',
+            'scan_out'       => 'nullable|in:pending,done,failed',
+            'per_page'       => 'nullable|in:10,25,50,100',
+        ]);
+
+        [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
+            $request->dari_tanggal,
+            $request->sampai_tanggal,
+            'month'
+        );
+
+        return [
+            'dari_tanggal'   => $dariTanggal,
+            'sampai_tanggal' => $sampaiTanggal,
+            'dari_jam'       => $request->dari_jam ?? null,
+            'sampai_jam'     => $request->sampai_jam ?? null,
+            'search'         => $request->search ?? null,
+            'status'         => $request->status ?? null,
+            'scan_out'       => $request->scan_out ?? null,
+            'per_page'       => $this->resolvePerPage($request),
+        ];
+    }
+
+    private function getPembayaranReportQuery(array $filters)
+    {
+        $query = Pembayaran::with(['penjualan.detail.barang.stok', 'penjualan.address', 'penjualan.user', 'penjualanDraft']);
+
+        if ($filters['dari_tanggal']) {
+            $dari = $filters['dari_tanggal'] . ' ' . ($filters['dari_jam'] ?? '00:00') . ':00';
+            $query->where('created_at', '>=', $dari);
+        }
+        if ($filters['sampai_tanggal']) {
+            $sampai = $filters['sampai_tanggal'] . ' ' . ($filters['sampai_jam'] ?? '23:59') . ':59';
+            $query->where('created_at', '<=', $sampai);
+        }
+
+        if ($filters['status']) {
+            $query->where('status', $filters['status']);
+        }
+
+        if ($filters['search']) {
+            $s = $filters['search'];
+            $query->where(function ($q) use ($s) {
+                $q->where('order_id_midtrans', 'like', "%{$s}%")
+                  ->orWhere('transaction_id', 'like', "%{$s}%")
+                  ->orWhere('payment_method', 'like', "%{$s}%")
+                  ->orWhere('payment_type', 'like', "%{$s}%")
+                  ->orWhereHas('penjualan', fn($q2) => $q2->where('kode_penjualan', 'like', "%{$s}%"))
+                  ->orWhereHas('penjualanDraft', fn($q2) => $q2->where('kode_penjualan', 'like', "%{$s}%"));
+            });
+        }
+
+        return $query->latest('created_at');
+    }
+
+    private function resolvePembayaranFilters(Request $request): array
+    {
+        $request->validate([
+            'dari_tanggal'   => 'nullable|date',
+            'sampai_tanggal' => 'nullable|date',
+            'dari_jam'       => 'nullable|date_format:H:i',
+            'sampai_jam'     => 'nullable|date_format:H:i',
+            'search'         => 'nullable|string|max:100',
+            'status'         => 'nullable|string|max:50',
+            'per_page'       => 'nullable|in:10,25,50,100',
+        ]);
+
+        [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
+            $request->dari_tanggal,
+            $request->sampai_tanggal,
+            'month'
+        );
+
+        return [
+            'dari_tanggal'   => $dariTanggal,
+            'sampai_tanggal' => $sampaiTanggal,
+            'dari_jam'       => $request->dari_jam ?? null,
+            'sampai_jam'     => $request->sampai_jam ?? null,
+            'search'         => $request->search ?? null,
+            'status'         => $request->status ?? null,
             'per_page'       => $this->resolvePerPage($request),
         ];
     }

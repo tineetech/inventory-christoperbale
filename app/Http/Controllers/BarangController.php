@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\StokBarang;
 use App\Models\StokMovement;
+use App\Models\HppRiwayat;
+use App\Models\HppRiwayatDetail;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -111,6 +113,15 @@ class BarangController extends Controller
                 'created_by'     => Auth::guard('pengguna')->user()->id
             ]);
 
+            // 4. Catat riwayat HPP awal
+            HppRiwayat::create([
+                'barang_id'  => $barang->id,
+                'hpp_lama'   => 0,
+                'hpp_baru'   => $request->harga_1,
+                'tanggal'    => now(),
+                'created_by' => Auth::guard('pengguna')->user()->id,
+            ]);
+
             DB::commit();
 
             return redirect()->route('barang.index')
@@ -154,6 +165,9 @@ class BarangController extends Controller
         $data = $request->all();
 
         $barang = Barang::findOrFail($id);
+
+        $hppLama = (float) $barang->harga_1;
+
         $barang->update([
             'sku'          => $data['sku'],
             'nama_barang'  => $data['nama_barang'],
@@ -164,6 +178,18 @@ class BarangController extends Controller
             'stok_minimum' => $data['stok_minimum'] ?? 0,
             'keterangan'   => $data['keterangan'] ?? null,
         ]);
+
+        // Catat riwayat HPP jika nilai harga HPP berubah
+        $hppBaru = (float) $data['harga_1'];
+        if ($hppBaru != $hppLama) {
+            HppRiwayat::create([
+                'barang_id'  => $barang->id,
+                'hpp_lama'   => $hppLama,
+                'hpp_baru'   => $hppBaru,
+                'tanggal'    => now(),
+                'created_by' => Auth::guard('pengguna')->user()->id,
+            ]);
+        }
 
         return redirect()->route('barang.index')->with('success', 'Barang berhasil diperbarui.');
     }
@@ -291,14 +317,89 @@ class BarangController extends Controller
         $w2 = $words[1] ?? '';
 
         $query = Barang::query();
-        if ($w1) {
-            $query->where('nama_barang', 'like', "$w1%");
-        }
-        if ($w2) {
-            $query->orWhere('nama_barang', 'like', "$w2%");
+        if ($w1 || $w2) {
+            $query->where(function ($q) use ($w1, $w2) {
+                $has = false;
+                if ($w1) {
+                    $q->where('nama_barang', 'like', "$w1%");
+                    $has = true;
+                }
+                if ($w2) {
+                    if ($has) {
+                        $q->orWhere('nama_barang', 'like', "$w2%");
+                    } else {
+                        $q->where('nama_barang', 'like', "$w2%");
+                    }
+                }
+            });
         }
 
+        $query->where(function ($q) use ($req) {
+            $q->whereNull('produk_id');
+            if ($req->filled('produk_id')) {
+                $q->orWhere('produk_id', $req->produk_id);
+            }
+        });
+
         return $query->limit(50)->with('stok')->get();
+    }
+
+    public function searchGrouped(Request $req)
+    {
+        $q = $req->q;
+
+        $query = Barang::query()->with('stok');
+
+        if ($q) {
+            $query->where(function ($qq) use ($q) {
+                $qq->where('nama_barang', 'like', "%$q%")
+                    ->orWhere('sku', 'like', "%$q%");
+            });
+        }
+
+        $query->where(function ($qq) use ($req) {
+            $qq->whereNull('produk_id');
+            if ($req->filled('produk_id')) {
+                $qq->orWhere('produk_id', $req->produk_id);
+            }
+        });
+
+        $barang = $query->get();
+
+        $groups = [];
+        foreach ($barang as $item) {
+            $words = explode(' ', $item->nama_barang);
+            $key = strtolower($words[0] ?? '');
+            if ($key === '') continue;
+
+            if (!isset($groups[$key])) {
+                $groups[$key] = [
+                    'first_item' => $item,
+                    'count' => 1,
+                ];
+            } else {
+                $groups[$key]['count']++;
+            }
+        }
+
+        $result = [];
+        foreach ($groups as $group) {
+            $item = $group['first_item'];
+            $words = explode(' ', $item->nama_barang);
+            $prefix = $words[0];
+            if (isset($words[1])) {
+                $prefix .= ' ' . $words[1];
+            }
+
+            $result[] = [
+                'id' => $item->id,
+                'nama_barang' => $prefix . ' (' . $group['count'] . ' varian)',
+                'harga_2' => $item->harga_2,
+                'stok' => $item->stok,
+            ];
+        }
+
+        return response()->json($result);
     }
 
     public function barcode($sku)
@@ -358,18 +459,61 @@ class BarangController extends Controller
             'ids'       => 'required|array|min:1',
             'ids.*'     => 'exists:barang,id',
             'harga_hpp' => 'required|numeric|min:0',
+            'details'   => 'nullable|array',
+            'details.*.nama_biaya' => 'nullable|string|max:255',
+            'details.*.harga'      => 'nullable|numeric|min:0',
         ]);
+
+        $hppBaru = (float) $request->harga_hpp;
+        $userId  = Auth::guard('pengguna')->user()->id;
+
+        // Detail biaya yang valid (nama terisi)
+        $details = collect($request->details ?? [])
+            ->filter(fn($d) => isset($d['nama_biaya']) && trim($d['nama_biaya']) !== '')
+            ->map(function ($d) {
+                return [
+                    'nama_biaya' => trim($d['nama_biaya']),
+                    'harga'      => (float) ($d['harga'] ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
 
         DB::beginTransaction();
         try {
-            Barang::whereIn('id', $request->ids)
-                ->update(['harga_1' => $request->harga_hpp]);
+            $barangList = Barang::whereIn('id', $request->ids)->get();
+
+            foreach ($barangList as $barang) {
+                $hppLama = (float) $barang->harga_1;
+
+                $barang->update(['harga_1' => $hppBaru]);
+
+                // Catat riwayat HPP per barang
+                $riwayat = HppRiwayat::create([
+                    'barang_id'  => $barang->id,
+                    'hpp_lama'   => $hppLama,
+                    'hpp_baru'   => $hppBaru,
+                    'tanggal'    => now(),
+                    'created_by' => $userId,
+                ]);
+
+                // Catat detail biaya pembentuk HPP
+                foreach ($details as $detail) {
+                    HppRiwayatDetail::create([
+                        'hpp_riwayat_id' => $riwayat->id,
+                        'nama_biaya'     => $detail['nama_biaya'],
+                        'harga'          => $detail['harga'],
+                        'tanggal'        => now(),
+                        'created_by'     => $userId,
+                    ]);
+                }
+            }
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => count($request->ids) . ' barang berhasil diupdate harga HPP-nya.',
+                'message' => count($barangList) . ' barang berhasil diupdate harga HPP-nya.',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -402,6 +546,31 @@ class BarangController extends Controller
         }
     }
 
+    public function bulkUpdateStokMinimum(Request $request)
+    {
+        $request->validate([
+            'ids'          => 'required|array|min:1',
+            'ids.*'        => 'exists:barang,id',
+            'stok_minimum' => 'required|integer|min:0',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            Barang::whereIn('id', $request->ids)
+                ->update(['stok_minimum' => $request->stok_minimum]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => count($request->ids) . ' barang berhasil diupdate stok minimum-nya menjadi ' . $request->stok_minimum . '.',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
     public function bulkKelompokanProduk(Request $request)
     {
         $request->validate([
@@ -412,6 +581,10 @@ class BarangController extends Controller
             'deskripsi'   => 'nullable|string',
             'harga_normal'=> 'required|numeric|min:0',
             'status'      => 'required|in:aktif,nonaktif',
+            'berat_gram'  => 'nullable|integer|min:0',
+            'panjang_cm'  => 'nullable|integer|min:0',
+            'lebar_cm'    => 'nullable|integer|min:0',
+            'tinggi_cm'   => 'nullable|integer|min:0',
             'foto.*'      => 'nullable|image|mimes:jpeg,png,jpg,webp|max:5120',
         ]);
 
@@ -432,6 +605,10 @@ class BarangController extends Controller
                 'deskripsi'    => $request->deskripsi,
                 'harga_normal' => $request->harga_normal,
                 'status'       => $request->status,
+                'berat_gram'   => $request->berat_gram,
+                'panjang_cm'   => $request->panjang_cm,
+                'lebar_cm'     => $request->lebar_cm,
+                'tinggi_cm'    => $request->tinggi_cm,
             ]);
 
             $barangs = Barang::whereIn('id', $request->ids)->get();

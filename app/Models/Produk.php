@@ -17,7 +17,25 @@ class Produk extends Model
         'harga_normal',
         'harga_diskon',
         'status',
+        'is_popular',
+        'is_newproduct',
+        'berat_gram',
+        'panjang_cm',
+        'lebar_cm',
+        'tinggi_cm',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_popular'    => 'boolean',
+            'is_newproduct' => 'boolean',
+            'berat_gram'    => 'integer',
+            'panjang_cm'    => 'integer',
+            'lebar_cm'      => 'integer',
+            'tinggi_cm'     => 'integer',
+        ];
+    }
 
     public function barang()
     {

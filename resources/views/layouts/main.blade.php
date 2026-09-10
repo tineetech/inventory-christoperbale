@@ -113,6 +113,8 @@
         .layout-collapsed:not(.layout-offcanvas):not(.layout-fixed-offcanvas) .layout-sidenav.sidenav-vertical:not(:hover) .sidenav-inner > .sidenav-item > .sidenav-link > div {
             display: none !important;
         }
+
+        
     </style>
 
 </head>
