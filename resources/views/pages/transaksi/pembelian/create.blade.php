@@ -81,6 +81,9 @@
 
                                 <input type="hidden" name="items" id="items_input">
                                 <input type="hidden" name="total_harga" id="total_harga_input">
+                                @if(!empty($isCepat))
+                                <input type="hidden" name="is_cepat" value="1">
+                                @endif
                                 {{-- Supplier --}}
                                 <div class="form-group col-md-6">
 
@@ -91,7 +94,7 @@
                                         <option value="">-- Pilih Supplier --</option>
 
                                         @foreach ($supplier as $sup)
-                                            <option value="{{ $sup->id }}">
+                                            <option value="{{ $sup->id }}" {{ $sup->nama_supplier === 'PABRIK' ? 'selected' : '' }}>
                                                 {{ $sup->nama_supplier }}
                                             </option>
                                         @endforeach
@@ -134,8 +137,7 @@
 
                                     <label class="form-label">Keterangan</label>
 
-                                    <textarea name="keterangan" class="form-control" rows="2" placeholder="Catatan tambahan (opsional)">
-</textarea>
+                                    <textarea name="keterangan" class="form-control" rows="2" placeholder="Catatan tambahan (opsional)">{{ old('keterangan', $defaultKeterangan ?? '') }}</textarea>
 
                                 </div>
 
@@ -538,15 +540,32 @@ data-id="${id}">X</button>
 
                 e.preventDefault(); // mencegah form submit
 
-                let sku = $(this).val();
+                let sku = $(this).val().trim();
 
                 if (!sku) return;
 
-                $.get('/api/product/barcode/' + sku, function(product) {
+                $.get('/api/product/barcode/' + encodeURIComponent(sku))
+                    .done(function(product) {
 
-                    addItem(product);
+                        if (!product || !product.id) {
+                            Toast.fire({
+                                icon: "error",
+                                title: `SKU "${sku}" tidak ditemukan!`
+                            });
+                            return;
+                        }
 
-                });
+                        addItem(product);
+
+                    })
+                    .fail(function() {
+
+                        Toast.fire({
+                            icon: "error",
+                            title: `SKU "${sku}" tidak ditemukan!`
+                        });
+
+                    });
 
                 $('#barcode_scan').val('').focus();
 
@@ -560,17 +579,36 @@ data-id="${id}">X</button>
 
             clearTimeout(barcodeTimer10);
 
+            let $input10 = $(this);
+
             barcodeTimer10 = setTimeout(() => {
 
-                let sku = $(this).val();
+                let sku = $input10.val().trim();
 
                 if (!sku) return;
 
-                $.get('/api/product/barcode/' + sku, function(product) {
+                $.get('/api/product/barcode/' + encodeURIComponent(sku))
+                    .done(function(product) {
 
-                    addItemQty(product, 10);
+                        if (!product || !product.id) {
+                            Toast.fire({
+                                icon: "error",
+                                title: `SKU "${sku}" tidak ditemukan!`
+                            });
+                            return;
+                        }
 
-                });
+                        addItemQty(product, 10);
+
+                    })
+                    .fail(function() {
+
+                        Toast.fire({
+                            icon: "error",
+                            title: `SKU "${sku}" tidak ditemukan!`
+                        });
+
+                    });
 
                 $('#barcode_scan_10').val('').focus();
 
@@ -584,17 +622,36 @@ data-id="${id}">X</button>
 
             clearTimeout(barcodeTimer);
 
+            let $input = $(this);
+
             barcodeTimer = setTimeout(() => {
 
-                let sku = $(this).val();
+                let sku = $input.val().trim();
 
                 if (!sku) return;
 
-                $.get('/api/product/barcode/' + sku, function(product) {
+                $.get('/api/product/barcode/' + encodeURIComponent(sku))
+                    .done(function(product) {
 
-                    addItem(product);
+                        if (!product || !product.id) {
+                            Toast.fire({
+                                icon: "error",
+                                title: `SKU "${sku}" tidak ditemukan!`
+                            });
+                            return;
+                        }
 
-                });
+                        addItem(product);
+
+                    })
+                    .fail(function() {
+
+                        Toast.fire({
+                            icon: "error",
+                            title: `SKU "${sku}" tidak ditemukan!`
+                        });
+
+                    });
 
                 $('#barcode_scan').val('');
 

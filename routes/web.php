@@ -565,6 +565,10 @@ Route::middleware(['auth.pengguna'])->group(function () {
         ->name('pembelian.create')
         ->middleware('permission:buat,pembelian');
 
+    Route::get('/transaksi/pembelian/create-cepat', [PembelianController::class, 'create'])
+        ->name('pembelian.create-cepat')
+        ->middleware('permission:buat,pembelian');
+
     Route::post('/transaksi/pembelian/store', [PembelianController::class, 'store'])
         ->name('pembelian.store')
         ->middleware('permission:buat,pembelian');
@@ -591,6 +595,10 @@ Route::middleware(['auth.pengguna'])->group(function () {
     */
     Route::get('/transaksi/penjualan', [PenjualanController::class, 'index'])
         ->name('penjualan.index')
+        ->middleware('permission:lihat,penjualan');
+
+    Route::get('/transaksi/penjualan/analisa-stok', [PenjualanController::class, 'analisaStok'])
+        ->name('penjualan.analisa')
         ->middleware('permission:lihat,penjualan');
 
     Route::get('/transaksi/penjualan/draft', [PenjualanController::class, 'draft'])

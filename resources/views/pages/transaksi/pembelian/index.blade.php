@@ -130,6 +130,53 @@
                         </div> --}}
 
                         <div class="col-sm-12">
+
+                            {{-- ===== CARD 1: FILTER ===== --}}
+                            <div class="card mb-4">
+                                <div style="border:none !important" class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                                    <h6 class="card-header-title mb-0">
+                                        <i class="feather icon-filter mr-2"></i> Filter Pembelian
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <form method="GET" action="{{ route('pembelian.index') }}">
+                                        <div class="form-row">
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Dari Tanggal</label>
+                                                <input type="date" name="dari_tanggal" class="form-control"
+                                                    value="{{ $dariTanggal ?? date('Y-m-d') }}">
+                                            </div>
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Sampai Tanggal</label>
+                                                <input type="date" name="sampai_tanggal" class="form-control"
+                                                    value="{{ $sampaiTanggal ?? date('Y-m-d') }}">
+                                            </div>
+                                            <div class="form-group col-md-4">
+                                                <label class="font-weight-bold">Tipe Pembelian</label>
+                                                <select name="tipe" class="form-control">
+                                                    <option value="semua" {{ ($tipe ?? 'semua') === 'semua' ? 'selected' : '' }}>Semua</option>
+                                                    <option value="cepat" {{ ($tipe ?? '') === 'cepat' ? 'selected' : '' }}>Cepat</option>
+                                                    <option value="normal" {{ ($tipe ?? '') === 'normal' ? 'selected' : '' }}>Normal</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="d-flex flex-wrap justify-content-end" style="gap:10px">
+                                            <button type="submit" class="btn btn-info">
+                                                <i class="feather icon-refresh-cw"></i> Proses
+                                            </button>
+                                            @if(($dariTanggal ?? date('Y-m-d')) != date('Y-m-d') || ($sampaiTanggal ?? date('Y-m-d')) != date('Y-m-d') || ($tipe ?? 'semua') !== 'semua')
+                                                <a href="{{ route('pembelian.index') }}"
+                                                    class="btn btn-outline-secondary">
+                                                    <i class="feather icon-rotate-ccw"></i> Reset
+                                                </a>
+                                            @endif
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            {{-- ===== CARD 2: DATA ===== --}}
                             <div class="card mb-4">
                                 <div style="border: none !important"
                                     class="card-header d-flex justify-content-between align-items-center">
@@ -156,8 +203,11 @@
                                         </button>
                                         @endif
                                         @if(hasPermission('tambah', 'pembelian'))
-                                        <a href="{{ route('pembelian.create') }}" class="btn btn-primary btn-sm">
-                                            <i class="feather icon-plus"></i> Buat Penambahan Barang
+                                        <a href="{{ route('pembelian.create-cepat') }}" class="btn btn-success btn-sm">
+                                            <i class="feather icon-zap"></i> Buat Penambahan Cepat
+                                        </a>
+                                        <a href="{{ route('pembelian.create') }}" class="btn btn-primary btn-sm ml-2">
+                                            <i class="feather icon-plus"></i> Buat Pembelian
                                         </a>
                                         @endif
 
@@ -228,7 +278,14 @@
 
                                                                 <td>{{ $pb->user->nama ?? '-' }}</td>
 
-                                                                <td>{{ $pb->keterangan }}</td>
+                                                                <td>
+                                                                    @if(trim((string) $pb->keterangan) === ($keteranganCepat ?? 'penambahan barang langsung dari kepala gudang'))
+                                                                        <span class="badge badge-success mb-1">Cepat</span><br>
+                                                                    @else
+                                                                        <span class="badge badge-primary mb-1">Normal</span><br>
+                                                                    @endif
+                                                                    {{ $pb->keterangan }}
+                                                                </td>
 
                                                                 @if(hasPermission('edit', 'pembelian') || hasPermission('hapus', 'pembelian'))
                                                                 <td>

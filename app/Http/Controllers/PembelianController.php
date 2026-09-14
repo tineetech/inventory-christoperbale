@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notifikasi;
 use App\Models\Pembelian;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
@@ -13,18 +14,47 @@ use App\Models\StokMovement;
 
 class PembelianController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $pembelian = Pembelian::with('supplier', 'detail.barang.stok', 'user')->whereDate('tanggal', today())->orderByDesc('created_at')->get();
-        return view('pages.transaksi.pembelian.index', compact('pembelian'));
+        $keteranganCepat = 'penambahan barang langsung dari kepala gudang';
+
+        $dariTanggal = $request->input('dari_tanggal', today()->toDateString());
+        $sampaiTanggal = $request->input('sampai_tanggal', today()->toDateString());
+
+        if ($dariTanggal > $sampaiTanggal) {
+            [$dariTanggal, $sampaiTanggal] = [$sampaiTanggal, $dariTanggal];
+        }
+
+        $tipe = $request->input('tipe', 'semua');
+        if (!in_array($tipe, ['semua', 'cepat', 'normal'])) {
+            $tipe = 'semua';
+        }
+
+        $query = Pembelian::with('supplier', 'detail.barang.stok', 'user')
+            ->whereDate('tanggal', '>=', $dariTanggal)
+            ->whereDate('tanggal', '<=', $sampaiTanggal);
+
+        if ($tipe === 'cepat') {
+            $query->where('keterangan', $keteranganCepat);
+        } elseif ($tipe === 'normal') {
+            $query->where(function ($q) use ($keteranganCepat) {
+                $q->where('keterangan', '!=', $keteranganCepat)->orWhereNull('keterangan');
+            });
+        }
+
+        $pembelian = $query->orderByDesc('created_at')->get();
+
+        return view('pages.transaksi.pembelian.index', compact('pembelian', 'dariTanggal', 'sampaiTanggal', 'tipe', 'keteranganCepat'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $supplier = Supplier::all();
         $user = Auth::guard('pengguna')->user()->role->nama_role;
         $kode = 'PB-' . date('Ymd') . '-' . rand(100,999);
-        return view('pages.transaksi.pembelian.create', compact('supplier','kode', 'user'));
+        $isCepat = $request->routeIs('pembelian.create-cepat') || $request->boolean('cepat');
+        $defaultKeterangan = $isCepat ? 'penambahan barang langsung dari kepala gudang' : '';
+        return view('pages.transaksi.pembelian.create', compact('supplier','kode', 'user', 'defaultKeterangan', 'isCepat'));
     }
 
 
@@ -47,6 +77,9 @@ class PembelianController extends Controller
                 throw new \Exception('Item tidak boleh kosong');
             }
 
+            $isCepat = $request->boolean('is_cepat');
+            $actor = Auth::guard('pengguna')->user();
+            $actor->loadMissing('role');
 
             // 1️⃣ create pembelian
             $pembelian = Pembelian::create([
@@ -55,14 +88,20 @@ class PembelianController extends Controller
                 'tanggal'        => $request->tanggal_final,
                 'total_harga'    => $request->total_harga,
                 'keterangan'     => $request->keterangan,
-                'created_by'     => Auth::guard('pengguna')->user()->id
+                'created_by'     => $actor->id
             ]);
+
+            $totalQty = 0;
 
             foreach($items as $item){
 
                 $barangId = $item['id'];
-                $qty      = $item['qty'];
+                $qty      = (int) ($item['qty'] ?? 0);
                 $harga    = $item['harga_1'];
+
+                if ($qty <= 0) {
+                    throw new \Exception('Qty item tidak valid');
+                }
 
                 $subtotal = $qty * $harga;
 
@@ -97,7 +136,57 @@ class PembelianController extends Controller
                     'referensi_tipe'  => 'pembelian',
                     'referensi_id'    => $pembelian->id,
                     'keterangan'      => 'Pembelian '.$pembelian->kode_pembelian,
-                    'created_by'     => Auth::guard('pengguna')->user()->id
+                    'created_by'     => $actor->id
+                ]);
+
+                $totalQty += $qty;
+            }
+
+            // 5️⃣ notifikasi pembelian (normal maupun cepat)
+            $namaAktor = $actor->nama ?? $actor->full_name ?? 'Pengguna';
+            $waktuPembelian = \Carbon\Carbon::parse($pembelian->tanggal);
+            $tglTampil = $waktuPembelian->format('d/m/Y');
+            $jamTampil = $waktuPembelian->format('H:i');
+
+            if ($isCepat) {
+                $isi = 'Kepala gudang ' . $namaAktor . ' menambahkan ' . $totalQty . ' barang '
+                    . 'via pembelian ' . $pembelian->kode_pembelian
+                    . ' pada ' . $tglTampil . ' pukul ' . $jamTampil . '.';
+
+                Notifikasi::create([
+                    'judul'      => 'Penambahan Cepat Barang oleh Kepala Gudang',
+                    'isi'        => $isi,
+                    'tipe'       => 'pembelian_cepat',
+                    'link'       => route('pembelian.index'),
+                    'payload'    => [
+                        'pembelian_id'   => $pembelian->id,
+                        'kode_pembelian' => $pembelian->kode_pembelian,
+                        'total_qty'      => $totalQty,
+                        'tanggal'        => $pembelian->tanggal,
+                        'dibuat_oleh'    => $namaAktor,
+                    ],
+                    'user_id'    => null, // broadcast ke semua pengguna
+                    'created_by' => $actor->id,
+                ]);
+            } else {
+                $isi = $namaAktor . ' membuat pembelian ' . $pembelian->kode_pembelian
+                    . ' sejumlah ' . $totalQty . ' barang'
+                    . ' pada ' . $tglTampil . ' pukul ' . $jamTampil . '.';
+
+                Notifikasi::create([
+                    'judul'      => 'Pembelian Baru',
+                    'isi'        => $isi,
+                    'tipe'       => 'pembelian',
+                    'link'       => route('pembelian.index'),
+                    'payload'    => [
+                        'pembelian_id'   => $pembelian->id,
+                        'kode_pembelian' => $pembelian->kode_pembelian,
+                        'total_qty'      => $totalQty,
+                        'tanggal'        => $pembelian->tanggal,
+                        'dibuat_oleh'    => $namaAktor,
+                    ],
+                    'user_id'    => null, // broadcast ke semua pengguna
+                    'created_by' => $actor->id,
                 ]);
             }
 

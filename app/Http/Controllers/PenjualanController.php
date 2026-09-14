@@ -7,6 +7,7 @@ use App\Models\PenjualanDraft;
 use App\Models\Notifikasi;
 use App\Models\Dropshipper;
 use App\Models\Supplier;
+use App\Models\Barang;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class PenjualanController extends Controller
 {
@@ -79,13 +81,16 @@ class PenjualanController extends Controller
             $query->orderByDesc('id');
         }
 
+        // ── Count scan out pending (mengikuti semua filter di atas) ──
+        $pendingScanOut = (clone $query)->where('scan_out', 'pending')->count();
+
         // ── Pagination ──────────────────────────────────────
         $perPage = in_array((int) $request->per_page, [10, 25, 50, 100]) ? (int) $request->per_page : 10;
         $penjualan = $query->paginate($perPage)->withQueryString();
 
         $dropshippers = Dropshipper::orderBy('nama')->get();
 
-        return view('pages.transaksi.penjualan.index', compact('penjualan', 'dropshippers'));
+        return view('pages.transaksi.penjualan.index', compact('penjualan', 'dropshippers', 'pendingScanOut'));
     }
 
     public function draft(Request $request)
@@ -436,7 +441,6 @@ class PenjualanController extends Controller
         try {
 
             $items           = json_decode($request->items, true);
-            $isDraft         = $request->is_draft ?? 'no';
             $nomorResi       = $items[0]['nomor_resi'] ?? null;
             $nomorPesanan    = $items[0]['nomor_pesanan'];
             $nomorTransaksi  = $items[0]['nomor_transaksi'];
@@ -512,6 +516,8 @@ class PenjualanController extends Controller
                 $subtotal = $qty * $harga;
 
                 // 2️⃣ insert penjualan_detail
+                // Stok TIDAK dikurangi di sini — pengurangan dilakukan
+                // saat scan out resi dikonfirmasi (lihat PenjualanScanOutController@confirm)
                 PenjualanDetail::create([
                     'penjualan_id'    => $penjualan->id,
                     'barang_id'       => $barangId,
@@ -522,36 +528,6 @@ class PenjualanController extends Controller
                     'nomor_pesanan'   => $item['nomor_pesanan'],
                     'nomor_transaksi' => $item['nomor_transaksi']
                 ]);
-
-                $stok        = StokBarang::where('barang_id', $barangId)->lockForUpdate()->first();
-                $stokSebelum = $stok->jumlah_stok ?? 0;
-
-                if ($isDraft === 'no' && $stokSebelum < $qty) {
-                    throw new \Exception("Stok tidak cukup untuk barang ID " . $barangId);
-                }
-
-                $stokSesudah = $stokSebelum - $qty;
-
-                // 3️⃣ update stok_barang
-                if ($isDraft === 'no') {
-                    StokBarang::updateOrCreate(
-                        ['barang_id' => $barangId],
-                        ['jumlah_stok' => $stokSesudah]
-                    );
-
-                    // 4️⃣ create stok movement
-                    StokMovement::create([
-                        'barang_id'      => $barangId,
-                        'jenis'          => 'keluar',
-                        'qty'            => $qty,
-                        'stok_sebelum'   => $stokSebelum,
-                        'stok_sesudah'   => $stokSesudah,
-                        'referensi_tipe' => 'penjualan',
-                        'referensi_id'   => $penjualan->id,
-                        'keterangan'     => 'Penjualan ' . $penjualan->kode_penjualan,
-                        'created_by'     => Auth::guard('pengguna')->user()->id
-                    ]);
-                }
             }
 
             DB::commit();
@@ -651,16 +627,6 @@ class PenjualanController extends Controller
                     $totalHargaCalc += (int)($item['qty'] ?? 0) * (float)($item['harga_2'] ?? 0);
                 }
 
-                if ($isDraft === 'no') {
-                    foreach ($items as $item) {
-                        $stok    = \App\Models\StokBarang::where('barang_id', $item['id'])->lockForUpdate()->first();
-                        $stokAda = $stok->jumlah_stok ?? 0;
-                        if ($stokAda < (int)($item['qty'] ?? 0)) {
-                            throw new \Exception("Stok tidak cukup untuk barang ID {$item['id']} (ada: {$stokAda}, butuh: {$item['qty']})");
-                        }
-                    }
-                }
-
                 $penjualan = \App\Models\Penjualan::create([
                     'kode_penjualan'  => $kodePenjualan,
                     'nomor_resi'      => $nomorResi,
@@ -681,6 +647,8 @@ class PenjualanController extends Controller
                     $qty      = (int)($item['qty'] ?? 0);
                     $harga    = (float)($item['harga_2'] ?? 0);
 
+                    // Stok TIDAK dikurangi di sini — pengurangan dilakukan
+                    // saat scan out resi dikonfirmasi (lihat PenjualanScanOutController@confirm)
                     \App\Models\PenjualanDetail::create([
                         'penjualan_id'    => $penjualan->id,
                         'barang_id'       => $barangId,
@@ -691,29 +659,6 @@ class PenjualanController extends Controller
                         'nomor_pesanan'   => $item['nomor_pesanan']   ?? $nomorPesanan,
                         'nomor_transaksi' => $item['nomor_transaksi'] ?? null,
                     ]);
-
-                    if ($isDraft === 'no') {
-                        $stok        = \App\Models\StokBarang::where('barang_id', $barangId)->lockForUpdate()->first();
-                        $stokSebelum = $stok->jumlah_stok ?? 0;
-                        $stokSesudah = $stokSebelum - $qty;
-
-                        \App\Models\StokBarang::updateOrCreate(
-                            ['barang_id' => $barangId],
-                            ['jumlah_stok' => $stokSesudah]
-                        );
-
-                        \App\Models\StokMovement::create([
-                            'barang_id'      => $barangId,
-                            'jenis'          => 'keluar',
-                            'qty'            => $qty,
-                            'stok_sebelum'   => $stokSebelum,
-                            'stok_sesudah'   => $stokSesudah,
-                            'referensi_tipe' => 'penjualan',
-                            'referensi_id'   => $penjualan->id,
-                            'keterangan'     => 'Penjualan ' . $penjualan->kode_penjualan,
-                            'created_by'     => $userId,
-                        ]);
-                    }
                 }
 
                 DB::commit();
@@ -1912,5 +1857,161 @@ private function isRowBlankWhite($img, int $width, int $y): bool
             'success' => true,
             'message' => 'Pembayaran "' . $kode . '" dikonfirmasi. Data dipindahkan ke penjualan dengan status packing.',
         ]);
+    }
+
+    // =========================================================
+    // ANALISA STOK
+    // =========================================================
+    public function analisaStok(Request $request)
+    {
+        $dateStr = $request->get('tanggal', today()->format('Y-m-d'));
+        $date    = Carbon::parse($dateStr);
+
+        // ── Ambil semua penjualan di tanggal tersebut (jam 00:00–23:59) ──
+        $from = $date->copy()->startOfDay();
+        $to   = $date->copy()->endOfDay();
+
+        $penjualanList = Penjualan::with(['detail.barang.stok', 'dropshipper'])
+            ->whereBetween('tanggal', [$from, $to])
+            ->orderBy('tanggal')
+            ->get();
+
+        // ── Hitung total transaksi & total qty keluar (dari penjualan) ──
+        $totalTransaksi  = $penjualanList->count();
+        $totalNilai      = $penjualanList->sum('total_harga');
+        $totalQtyKeluar  = 0;
+        $totalQtyTerkonfirmasi = 0; // hanya scan_out=done
+
+        // ── Per-barang breakdown ──
+        $barangMap = []; // barang_id => aggregated data
+
+        foreach ($penjualanList as $pj) {
+            $isScanDone = $pj->scan_out === 'done';
+
+            foreach ($pj->detail as $d) {
+                $barangId = $d->barang_id;
+                $qty      = (int) $d->qty;
+                $totalQtyKeluar += $qty;
+                if ($isScanDone) {
+                    $totalQtyTerkonfirmasi += $qty;
+                }
+
+                if (!isset($barangMap[$barangId])) {
+                    $barangMap[$barangId] = [
+                        'barang'         => $d->barang,
+                        'total_qty'      => 0,
+                        'qty_terkonfirmasi' => 0,   // scan_out=done
+                        'transaksi'      => 0,
+                        'stok_saat_ini'  => $d->barang?->stok?->jumlah_stok ?? 0,
+                        'stok_awal_hari' => null,    // dari StokMovement
+                    ];
+                }
+                $barangMap[$barangId]['total_qty']  += $qty;
+                $barangMap[$barangId]['transaksi']  += 1;
+                if ($isScanDone) {
+                    $barangMap[$barangId]['qty_terkonfirmasi'] += $qty;
+                }
+            }
+        }
+
+        // ── Ambil StokMovement di rentang hari ini ──
+        $movementsByBarang = StokMovement::with('barang')
+            ->whereBetween('created_at', [$from, $to])
+            ->orderBy('created_at')
+            ->get()
+            ->groupBy('barang_id');
+
+        // ── Hitung stok awal hari (stok sebelum movement pertama hari ini) ──
+        foreach ($barangMap as $barangId => &$data) {
+            if (isset($movementsByBarang[$barangId])) {
+                $firstMovement = $movementsByBarang[$barangId]->first();
+                $data['stok_awal_hari'] = $firstMovement->stok_sebelum;
+            } else {
+                // Tidak ada movement → stok awal = stok sekarang (tak berubah)
+                $data['stok_awal_hari'] = $data['stok_saat_ini'];
+            }
+        }
+        unset($data);
+
+        // ── Summary stok movement (masuk & keluar) per barang ──
+        $movementSummary = []; // barang_id => [masuk, keluar]
+        foreach ($movementsByBarang as $barangId => $movements) {
+            $masuk  = $movements->where('jenis', 'masuk')->sum('qty');
+            $keluar = $movements->where('jenis', 'keluar')->sum('qty');
+            $movementSummary[$barangId] = [
+                'masuk'  => $masuk,
+                'keluar' => $keluar,
+            ];
+        }
+
+        // ── Juga masukkan barang yang ada movement tapi tidak ada di penjualan ──
+        foreach ($movementsByBarang as $barangId => $movements) {
+            if (!isset($barangMap[$barangId])) {
+                $first = $movements->first();
+                $stokSekarang = $first->barang?->stok?->jumlah_stok ?? 0;
+                $barangMap[$barangId] = [
+                    'barang'            => $first->barang,
+                    'total_qty'         => 0,
+                    'qty_terkonfirmasi' => 0,
+                    'transaksi'         => 0,
+                    'stok_saat_ini'     => $stokSekarang,
+                    'stok_awal_hari'    => $movements->first()->stok_sebelum,
+                ];
+            }
+        }
+
+        // ── Validasi: selisih qty keluar penjualan vs stok movement keluar ──
+        foreach ($barangMap as $barangId => &$data) {
+            $mvKeluar = $movementSummary[$barangId]['keluar'] ?? 0;
+            $mvMasuk  = $movementSummary[$barangId]['masuk']  ?? 0;
+            $data['mv_keluar'] = $mvKeluar;
+            $data['mv_masuk']  = $mvMasuk;
+            // Selisih: qty penjualan yang terkonfirmasi vs movement keluar
+            $data['selisih'] = $data['qty_terkonfirmasi'] - $mvKeluar;
+            // Status validasi
+            if ($data['qty_terkonfirmasi'] === 0 && $mvKeluar === 0) {
+                $data['validasi'] = 'no_data';
+            } elseif ($data['selisih'] === 0) {
+                $data['validasi'] = 'valid';
+            } elseif ($data['selisih'] > 0) {
+                $data['validasi'] = 'kurang_keluar'; // movement keluar lebih sedikit dari qty konfirmasi
+            } else {
+                $data['validasi'] = 'lebih_keluar';  // movement keluar lebih banyak
+            }
+        }
+        unset($data);
+
+        // ── Global validation: total qty terkonfirmasi vs total movement keluar ──
+        $totalMvKeluar = collect($movementSummary)->sum('keluar');
+        $totalMvMasuk  = collect($movementSummary)->sum('masuk');
+
+        // ── Penjualan scan_out stats ──
+        $totalDone    = $penjualanList->where('scan_out', 'done')->count();
+        $totalPending = $penjualanList->where('scan_out', 'pending')->count();
+        $totalNoScan  = $penjualanList->whereNotIn('scan_out', ['done', 'pending'])->count();
+
+        // ── Prediksi (rata-rata qty per transaksi) ──
+        $prediksiRataQty = $totalTransaksi > 0
+            ? round($totalQtyKeluar / $totalTransaksi, 2)
+            : 0;
+
+        return view('pages.transaksi.penjualan.analisa', compact(
+            'date',
+            'dateStr',
+            'penjualanList',
+            'totalTransaksi',
+            'totalNilai',
+            'totalQtyKeluar',
+            'totalQtyTerkonfirmasi',
+            'totalMvKeluar',
+            'totalMvMasuk',
+            'totalDone',
+            'totalPending',
+            'totalNoScan',
+            'prediksiRataQty',
+            'barangMap',
+            'movementSummary',
+            'movementsByBarang'
+        ));
     }
 }

@@ -43,4 +43,6 @@ Route::get('/import-job-status/{jobId}', [ImportPenjualanController::class, 'pol
 Route::prefix('penjualan')->group(function () {
     Route::get('/list', [PenjualanScanOutController::class, 'list']);
     Route::post('/scan-out', [PenjualanScanOutController::class, 'scanOut']);
+    Route::get('/by-resi/{nomorResi}', [PenjualanScanOutController::class, 'byResi']);
+    Route::post('/scan-out-confirm', [PenjualanScanOutController::class, 'confirm']);
 });

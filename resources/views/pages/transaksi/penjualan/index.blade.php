@@ -66,6 +66,32 @@ if (!function_exists('sortIcon')) {
 
                         <div class="col-sm-12">
 
+                            {{-- ===== CARD 0: ANALISA STOK CTA ===== --}}
+                            <a href="{{ route('penjualan.analisa') }}" style="text-decoration:none">
+                                <div class="card mb-4 border-0 shadow-sm" style="background:linear-gradient(135deg,#00499b 0%,#0070e0 100%);cursor:pointer;transition:transform .15s,box-shadow .15s"
+                                    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(0,73,155,.35)'"
+                                    onmouseout="this.style.transform='';this.style.boxShadow=''">
+                                    <div class="card-body d-flex align-items-center justify-content-between py-3 px-4">
+                                        <div class="d-flex align-items-center">
+                                            <div class="mr-3" style="background:rgba(255,255,255,.15);border-radius:12px;padding:10px 12px">
+                                                <i class="feather icon-bar-chart-2 text-white" style="font-size:1.6rem"></i>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0 font-weight-bold text-white">Analisa Stok Hari Ini</h6>
+                                                <p class="mb-0 text-white small" style="opacity:.85">
+                                                    Lihat ringkasan masuk &amp; keluar stok, prediksi penjualan, dan validasi gudang untuk tanggal
+                                                    <strong>{{ now()->format('d/m/Y') }}</strong>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div class="d-none d-sm-flex align-items-center text-white" style="opacity:.8">
+                                            <span class="small mr-1">Buka Analisa</span>
+                                            <i class="feather icon-chevron-right"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+
                             {{-- ===== CARD 1: FILTER ===== --}}
                             <div class="card mb-4">
                                 <div style="border:none !important" class="card-header d-flex justify-content-between align-items-center flex-wrap">
@@ -173,7 +199,8 @@ if (!function_exists('sortIcon')) {
                                 <div style="border:none !important" class="card-header d-flex flex-wrap justify-content-between align-items-center">
                                     <h6 class="card-header-title mb-0">
                                         <i class="feather icon-truck mr-2"></i> Data Penjualan
-                                        <span class="badge badge-light ml-1">{{ $penjualan->total() }} transaksi</span>
+                                        <span class="badge badge-info ml-1">{{ $penjualan->total() }} transaksi</span>
+                                        <span class="badge badge-warning ml-1">{{ $pendingScanOut ?? 0 }} pending scan out</span>
                                     </h6>
                                     @if(hasPermission('tambah', 'penjualan'))
                                     <div class="d-flex flex-wrap" style="gap:6px">
@@ -483,6 +510,7 @@ if (!function_exists('sortIcon')) {
 @section('scripts')
     <script>
         const CSRF_TOKEN = '{{ csrf_token() }}';
+        const ACTOR_ID = @json(Auth::guard('pengguna')->id());
 
         // =====================================================
         // AUTO-SUBMIT FILTER FORM
@@ -541,35 +569,230 @@ if (!function_exists('sortIcon')) {
             }
         });
 
+        function escHtml(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[c]));
+        }
+
         async function processScan(nomor_resi) {
+            let data;
+
             try {
-                const res = await fetch('/api/penjualan/scan-out', {
+                const res = await fetch('/api/penjualan/by-resi/' + encodeURIComponent(nomor_resi));
+                const json = await res.json();
+
+                if (!res.ok || !json.success) {
+                    Toast.fire({
+                        icon: 'error',
+                        title: 'Tidak Ditemukan',
+                        text: json.message ?? `Resi "${nomor_resi}" tidak ditemukan.`,
+                    });
+                    return;
+                }
+
+                data = json.penjualan;
+            } catch (e) {
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Gagal menghubungi server.'
+                });
+                console.error(e);
+                return;
+            } finally {
+                focusScan();
+            }
+
+            if (data.scan_out === 'done') {
+                Toast.fire({
+                    icon: 'warning',
+                    title: 'Sudah Di-scan',
+                    text: `Resi "${data.nomor_resi}" sudah pernah di-scan out (${data.kode_penjualan}).`,
+                });
+                return;
+            }
+
+            showScanConfirm(data);
+        }
+
+        // =====================================================
+        // POPUP 1 — KONFIRMASI PENJUALAN
+        // =====================================================
+        function showScanConfirm(data) {
+            const isDraft = data.is_draft === 'yes';
+            const kurang = data.items.filter(i => i.stok_saat_ini < i.qty);
+            const needLanjut = isDraft || kurang.length > 0;
+
+            const rows = data.items.map(i => `
+                <tr>
+                    <td class="text-left">${escHtml(i.sku)}</td>
+                    <td>${i.qty}</td>
+                </tr>`).join('');
+
+            let extra = '';
+
+            if (isDraft) {
+                extra += `<div class="alert alert-warning text-left mt-2 mb-0" style="font-size:.85rem">
+                    Resi ini masih berstatus <strong>draft</strong>. Lanjutkan sekarang, atau proses nanti saja di menu penjualan draft.
+                </div>`;
+            }
+
+            if (kurang.length > 0) {
+                extra += `<div class="alert alert-danger text-left mt-2 mb-0" style="font-size:.85rem">
+                    Stok kurang untuk <strong>${kurang.length} barang</strong>. Lanjutkan dengan adjust stok langsung di sini, atau proses nanti di menu penjualan draft / lainnya.
+                </div>`;
+            }
+
+            Swal.fire({
+                title: 'Konfirmasi Penjualan',
+                html: `
+                    <div class="text-left" style="font-size:.9rem">
+                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Nomor Resi</span><strong>${escHtml(data.nomor_resi)}</strong></div>
+                        <div class="d-flex justify-content-between mb-2"><span class="text-muted">Total Barang</span><strong>${data.total_qty} barang (${data.total_jenis} jenis)</strong></div>
+                        <table class="table table-sm table-bordered mb-2">
+                            <thead class="thead-light"><tr><th class="text-left">SKU</th><th style="width:110px">Qty Dipesan</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                        <p class="mb-0">Konfirmasi pengurangan stok untuk barang-barang di atas?</p>
+                        ${extra}
+                    </div>`,
+                icon: 'question',
+                showCancelButton: true,
+                reverseButtons: true,
+                cancelButtonText: 'Kembali',
+                confirmButtonText: needLanjut ? 'Oke, Lanjutkan' : 'Oke',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#6c757d',
+            }).then(result => {
+                if (!result.isConfirmed) return;
+
+                if (kurang.length > 0) {
+                    showAdjustPopup(data, kurang);
+                } else {
+                    submitScanConfirm(data, []);
+                }
+            });
+        }
+
+        // =====================================================
+        // POPUP 2 — KONFIRMASI ADJUST STOK
+        // =====================================================
+        // Cegah input stok baru negatif (clamp saat mengetik)
+        document.addEventListener('input', function(e) {
+            if (e.target.classList && e.target.classList.contains('adj-input')) {
+                if (e.target.value !== '' && Number(e.target.value) < 0) {
+                    e.target.value = 0;
+                }
+            }
+        });
+
+        function showAdjustPopup(data, kurang) {
+            const totalNormal = data.total_jenis - kurang.length;
+
+            const rows = kurang.map(i => `
+                <tr>
+                    <td class="text-left">${escHtml(i.sku)}</td>
+                    <td>${i.stok_saat_ini}</td>
+                    <td>${i.qty}</td>
+                    <td><input type="number" class="form-control form-control-sm adj-input"
+                        data-barang="${i.barang_id}" data-qty="${i.qty}"
+                        min="0" value="${i.qty}" style="width:110px"></td>
+                </tr>`).join('');
+
+            Swal.fire({
+                title: 'Konfirmasi Penjualan - Adjust Stok',
+                html: `
+                    <div class="text-left" style="font-size:.9rem">
+                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Nomor Resi</span><strong>${escHtml(data.nomor_resi)}</strong></div>
+                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Total Barang Normal</span><strong>${totalNormal} jenis</strong></div>
+                        <div class="d-flex justify-content-between mb-2"><span class="text-muted">Perlu Adjust</span><strong>${kurang.length} jenis</strong></div>
+                        <div style="overflow-x:auto">
+                        <table class="table table-sm table-bordered mb-2">
+                            <thead class="thead-light"><tr><th class="text-left">SKU</th><th>Stok Saat Ini</th><th>Qty Dipesan</th><th>Stok Baru</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                        </div>
+                        <p class="text-muted small mb-0">Adjust ini merupakan <strong>PERUBAHAN/PENETAPAN</strong> total keseluruhan stok baru pada barang dan <strong>bukan</strong> penambahan stok. Ini akan dilakukan <strong>sebelum</strong> pengurangan stok penjualan. Harap teliti.</p>
+                    </div>`,
+                showCancelButton: true,
+                reverseButtons: true,
+                cancelButtonText: 'Kembali',
+                confirmButtonText: 'Lanjutkan',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#6c757d',
+                preConfirm: () => {
+                    const adjustments = [];
+
+                    for (const input of document.querySelectorAll('.adj-input')) {
+                        const qty = parseInt(input.dataset.qty, 10);
+                        const val = parseInt(input.value, 10);
+                        const sku = input.closest('tr').cells[0].innerText;
+
+                        if (!Number.isFinite(val) || val < 0) {
+                            Swal.showValidationMessage(`Stok baru untuk SKU ${sku} tidak boleh kurang dari 0.`);
+                            return false;
+                        }
+
+                        if (val < qty) {
+                            Swal.showValidationMessage(`Stok baru untuk SKU ${sku} minimal sama dengan qty dipesan (${qty}).`);
+                            return false;
+                        }
+
+                        adjustments.push({
+                            barang_id: parseInt(input.dataset.barang, 10),
+                            stok_baru: val,
+                        });
+                    }
+
+                    return adjustments;
+                },
+            }).then(result => {
+                if (result.isConfirmed && result.value) {
+                    submitScanConfirm(data, result.value);
+                }
+            });
+        }
+
+        // =====================================================
+        // KIRIM KONFIRMASI KE SERVER
+        // =====================================================
+        async function submitScanConfirm(data, adjustments) {
+            if (!ACTOR_ID) {
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Sesi Berakhir',
+                    text: 'ID pengguna tidak terbaca. Silakan login ulang lalu coba lagi.',
+                });
+                return;
+            }
+
+            Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            try {
+                const res = await fetch('/api/penjualan/scan-out-confirm', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': CSRF_TOKEN,
                     },
-                    body: JSON.stringify({ nomor_resi }),
+                    body: JSON.stringify({ nomor_resi: data.nomor_resi, adjustments, actor_id: ACTOR_ID }),
                 });
 
                 const json = await res.json();
 
-                if (json.success) {
-                    Toast.fire({
-                        icon: 'success',
-                        title: 'Scan Out Berhasil',
-                        text: json.message,
-                    });
-                    setTimeout(() => location.reload(), 1500);
+                if (res.ok && json.success) {
+                    showScanSuccess(json.summary);
                 } else {
-                    const alreadyDone = json.penjualan && json.penjualan.scan_out === 'done';
+                    Swal.close();
                     Toast.fire({
-                        icon: alreadyDone ? 'warning' : 'error',
-                        title: alreadyDone ? 'Sudah Di-scan' : 'Tidak Ditemukan',
-                        text: json.message,
+                        icon: json.already ? 'warning' : 'error',
+                        title: json.already ? 'Sudah Di-scan' : 'Gagal',
+                        text: json.message ?? 'Terjadi kesalahan.',
                     });
                 }
             } catch (e) {
+                Swal.close();
                 Toast.fire({
                     icon: 'error',
                     title: 'Error',
@@ -579,6 +802,32 @@ if (!function_exists('sortIcon')) {
             } finally {
                 focusScan();
             }
+        }
+
+        // =====================================================
+        // POPUP SUKSES — AUTO CLOSE 3 DETIK
+        // =====================================================
+        function showScanSuccess(s) {
+            let adjustInfo = '';
+
+            if (s.total_adjust > 0) {
+                adjustInfo = `<div class="d-flex justify-content-between mb-1"><span class="text-muted">Normal / Adjust</span><strong>${s.total_normal} / ${s.total_adjust} jenis</strong></div>`;
+            }
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Scan Out Berhasil',
+                html: `
+                    <div class="text-left" style="font-size:.9rem">
+                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Nomor Resi</span><strong>${escHtml(s.nomor_resi)}</strong></div>
+                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Total Barang</span><strong>${s.total_qty} barang (${s.total_jenis} jenis)</strong></div>
+                        ${adjustInfo}
+                    </div>`,
+                timer: 1500,
+                showConfirmButton: false,
+            });
+
+            setTimeout(() => location.reload(), 3100);
         }
 
         // =====================================================
