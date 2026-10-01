@@ -131,7 +131,9 @@ def parse_shopee(text: str, items: list[dict] | None = None) -> dict:
     order_id = None
 
     # --- Nomor resi SPXID ---
-    resi_match = re.search(r'SPX[I1iLl|]D\s*(\d{10,})', text, re.IGNORECASE)
+    # Format terbaru Shopee Express bisa diakhiri huruf, misal: SPXID06778074129A
+    # Gunakan [0-9A-Z]{10,} bukan \d{10,} agar karakter alfanumerik di akhir ikut tertangkap
+    resi_match = re.search(r'SPX[I1iLl|]D\s*[0-9A-Z]{10,}', text, re.IGNORECASE)
     if resi_match:
         raw  = resi_match.group(0).replace(" ", "")
         resi = re.sub(r'SPX[^D]*D', 'SPXID', raw, flags=re.IGNORECASE)

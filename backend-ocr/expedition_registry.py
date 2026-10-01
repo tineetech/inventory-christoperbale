@@ -74,12 +74,14 @@ EXPEDITION_REGISTRY: dict[str, ExpeditionConfig] = {
     "spx": ExpeditionConfig(
         name="Shopee Express (SPX)",
         resi_text_patterns=[
-            re.compile(r'No\.?\s*Resi\s*[:\s]+(SPX[I1iLl|]D\s*\d{10,})', re.IGNORECASE),
-            re.compile(r'(SPXID\d{10,})', re.IGNORECASE),
+            # Format terbaru SPX bisa diakhiri huruf, misal: SPXID06778074129A
+            # Gunakan [0-9A-Z]{10,} bukan \d{10,} agar tidak terpotong di akhir
+            re.compile(r'No\.?\s*Resi\s*[:\s]+(SPX[I1iLl|]D\s*[0-9A-Z]{10,})', re.IGNORECASE),
+            re.compile(r'(SPXID[0-9A-Z]{10,})', re.IGNORECASE),
         ],
         barcode_resi_patterns=[
-            re.compile(r'^SPXID\d{10,}$', re.IGNORECASE),
-            re.compile(r'^SPX[I1iLl|]D\d{10,}$', re.IGNORECASE),
+            re.compile(r'^SPXID[0-9A-Z]{10,}$', re.IGNORECASE),
+            re.compile(r'^SPX[I1iLl|]D[0-9A-Z]{10,}$', re.IGNORECASE),
         ],
         barcode_crop_zones=[
             (0.05, 0.35, 0.30, 1.00),
