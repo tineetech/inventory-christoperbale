@@ -3,12 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notifikasi;
+use App\Models\Pembelian;
+use App\Models\PembelianDetail;
+use App\Models\Pengguna;
 use App\Models\Penjualan;
 use App\Models\StokBarang;
 use App\Models\StokMovement;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class PenjualanScanOutController extends Controller
 {
@@ -113,26 +118,35 @@ class PenjualanScanOutController extends Controller
     }
 
     /**
-     * Konfirmasi scan out: adjust stok (opsional) lalu kurangi stok
-     * setiap barang sesuai qty pada resi. Semua perubahan stok
-     * dicatat ke stok_movement.
+     * Scan out otomatis: pastikan stok cukup untuk setiap barang.
+     * Bila stok kurang, langsung tambah stok sebesar qty dipesan,
+     * buat pembelian otomatis (semua barang kurang pada 1 resi),
+     * catat stok movement, dan kirim notifikasi.
+     * Setelah stok cukup, kurangi stok sesuai qty lalu tandai
+     * scan_out = done dan is_draft = no.
      *
      * POST /api/penjualan/scan-out-confirm
-     * Body: { "nomor_resi": "...", "actor_id": 1, "adjustments": [{ "barang_id": 1, "stok_baru": 10 }] }
+     * Body: { "nomor_resi": "...", "actor_id": 1 }
      */
     public function confirm(Request $request)
     {
         $request->validate([
-            'nomor_resi'                   => 'required|string',
-            'actor_id'                     => 'required|integer|exists:pengguna,id',
-            'adjustments'                  => 'nullable|array',
-            'adjustments.*.barang_id'      => 'required|integer|exists:barang,id',
-            'adjustments.*.stok_baru'      => 'required|integer|min:0',
+            'nomor_resi' => 'required|string',
+            'actor_id'   => 'required|integer|exists:pengguna,id',
         ]);
 
         // Actor dikirim eksplisit dari halaman (session guard tidak tersedia di konteks API)
         $actorId = (int) $request->input('actor_id');
+        $actor   = Pengguna::find($actorId);
 
+        if (!$actor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Pengguna tidak ditemukan.',
+            ], 422);
+        }
+
+        $namaAktor = $actor->nama ?? $actor->full_name ?? 'Pengguna';
         $nomorResi = trim($request->nomor_resi);
 
         DB::beginTransaction();
@@ -167,74 +181,119 @@ class PenjualanScanOutController extends Controller
                 ], 409);
             }
 
-            $wasDraft  = $penjualan->is_draft;
-            $adjustMap = collect($request->input('adjustments', []))->keyBy('barang_id');
-            $totalAdjust = 0;
+            $wasDraft = $penjualan->is_draft;
 
-            // 1️⃣ Adjust stok terlebih dahulu (sebelum pengurangan)
+            // 1️⃣ Identifikasi barang yang stoknya kurang dari qty dipesan
+            $kurangBarang = [];
+
             foreach ($penjualan->detail as $detail) {
-                if (!$adjustMap->has($detail->barang_id)) {
-                    continue;
+                $stok         = StokBarang::where('barang_id', $detail->barang_id)->lockForUpdate()->first();
+                $stokSaatIni  = $stok->jumlah_stok ?? 0;
+
+                if ($stokSaatIni < (int) $detail->qty) {
+                    $kurangBarang[$detail->barang_id] = (int) $detail->qty;
+                }
+            }
+
+            // 2️⃣ Bila ada yang kurang: tambah stok sebesar qty dipesan + buat pembelian otomatis + notifikasi
+            $topUpBerhasil = 0;
+
+            if (!empty($kurangBarang)) {
+                $supplier = Supplier::first();
+
+                if (!$supplier) {
+                    throw new \Exception('Tidak ada supplier terdaftar untuk pembelian otomatis scan out. Hubungi admin untuk menambahkan supplier.');
                 }
 
-                $stokBaru = (int) $adjustMap[$detail->barang_id]['stok_baru'];
-                $sku      = $detail->barang->sku ?? ('ID ' . $detail->barang_id);
+                $now          = now();
+                $kodePembelian = 'PB-SCANOUT-' . $now->format('Ymd') . '-' . strtoupper(Str::random(6));
 
-                if ($stokBaru < (int) $detail->qty) {
-                    throw new \Exception(
-                        "Stok baru untuk SKU {$sku} minimal sama dengan qty dipesan ({$detail->qty})."
-                    );
+                // Buat header pembelian otomatis (supplier pertama)
+                $totalHarga = 0;
+
+                foreach ($kurangBarang as $barangId => $qty) {
+                    $barang  = \App\Models\Barang::find($barangId);
+                    $harga   = $barang->harga_1 ?? 0;
+                    $totalHarga += $qty * $harga;
                 }
 
-                $stok     = StokBarang::where('barang_id', $detail->barang_id)->lockForUpdate()->first();
-                $sebelum  = $stok->jumlah_stok ?? 0;
-                Log::info("AKTOR: " . $actorId);
+                $pembelian = Pembelian::create([
+                    'kode_pembelian' => $kodePembelian,
+                    'supplier_id'    => $supplier->id,
+                    'tanggal'        => $now,
+                    'total_harga'    => $totalHarga,
+                    'keterangan'     => 'Pembelian otomatis scan out resi ' . $penjualan->nomor_resi,
+                    'created_by'     => $actorId,
+                ]);
 
-                if ($sebelum !== $stokBaru) {
+                foreach ($kurangBarang as $barangId => $qty) {
+                    $barang  = \App\Models\Barang::find($barangId);
+                    $harga   = $barang->harga_1 ?? 0;
+                    $subtotal = $qty * $harga;
+
+                    // Pembelian detail
+                    PembelianDetail::create([
+                        'pembelian_id' => $pembelian->id,
+                        'barang_id'    => $barangId,
+                        'qty'          => $qty,
+                        'harga'        => $harga,
+                        'subtotal'     => $subtotal,
+                    ]);
+
+                    // Top-up stok penuh sesuai qty dipesan
+                    $stok        = StokBarang::where('barang_id', $barangId)->lockForUpdate()->first();
+                    $stokSebelum = $stok->jumlah_stok ?? 0;
+                    $stokSesudah = $stokSebelum + $qty;
+
                     StokBarang::updateOrCreate(
-                        ['barang_id' => $detail->barang_id],
-                        ['jumlah_stok' => $stokBaru]
+                        ['barang_id' => $barangId],
+                        ['jumlah_stok' => $stokSesudah]
                     );
 
                     StokMovement::create([
-                        'barang_id'      => $detail->barang_id,
-                        'jenis'          => $stokBaru > $sebelum ? 'masuk' : 'keluar',
-                        'qty'            => abs($stokBaru - $sebelum),
-                        'stok_sebelum'   => $sebelum,
-                        'stok_sesudah'   => $stokBaru,
-                        'referensi_tipe' => 'penjualan_scanout_adjust',
-                        'referensi_id'   => $penjualan->id,
-                        'keterangan'     => 'Adjust stok sebelum scan out ' . $penjualan->nomor_resi,
-                        'created_by'     => $actorId,
+                        'barang_id'       => $barangId,
+                        'jenis'           => 'masuk',
+                        'qty'             => $qty,
+                        'stok_sebelum'    => $stokSebelum,
+                        'stok_sesudah'    => $stokSesudah,
+                        'referensi_tipe'  => 'pembelian',
+                        'referensi_id'    => $pembelian->id,
+                        'keterangan'      => 'Pembelian otomatis scan out ' . $penjualan->nomor_resi,
+                        'created_by'      => $actorId,
                     ]);
+
+                    $topUpBerhasil++;
                 }
 
-                $totalAdjust++;
-            }
+                $skuList = collect($kurangBarang)->keys()->map(function ($barangId) {
+                    $b = \App\Models\Barang::find($barangId);
+                    return $b->sku ?? ('ID ' . $barangId);
+                })->implode(', ');
 
-            // 2️⃣ Pastikan semua stok cukup (defensif, setelah adjust)
-            $masihKurang = [];
-
-            foreach ($penjualan->detail as $detail) {
-                $stok   = StokBarang::where('barang_id', $detail->barang_id)->lockForUpdate()->first();
-                $sebelum = $stok->jumlah_stok ?? 0;
-
-                if ($sebelum < (int) $detail->qty) {
-                    $masihKurang[] = ($detail->barang->sku ?? ('ID ' . $detail->barang_id))
-                        . ' (stok: ' . $sebelum . ', butuh: ' . $detail->qty . ')';
-                }
-            }
-
-            if (!empty($masihKurang)) {
-                throw new \Exception('Stok masih kurang untuk: ' . implode(', ', $masihKurang) . '. Lakukan adjust stok terlebih dahulu.');
+                Notifikasi::create([
+                    'judul'      => 'Penambahan Stok Otomatis Scan Out',
+                    'isi'        => $namaAktor . ' menambahkan stok otomatis untuk ' . $topUpBerhasil . ' barang (' . $skuList . ') karena stok kurang pada resi ' . $penjualan->nomor_resi . ' pada ' . $now->format('d/m/Y') . ' pukul ' . $now->format('H:i') . ' via pembelian ' . $kodePembelian . '.',
+                    'tipe'       => 'pembelian_cepat',
+                    'link'       => route('pembelian.index'),
+                    'payload'    => [
+                        'pembelian_id'   => $pembelian->id,
+                        'kode_pembelian' => $kodePembelian,
+                        'total_qty'      => array_sum($kurangBarang),
+                        'scan_out_resi'  => $penjualan->nomor_resi,
+                        'tanggal'        => $now,
+                        'dibuat_oleh'    => $namaAktor,
+                    ],
+                    'user_id'    => null,
+                    'created_by' => $actorId,
+                ]);
             }
 
             // 3️⃣ Kurangi stok setiap barang sesuai qty pada resi
             $totalQty = 0;
 
             foreach ($penjualan->detail as $detail) {
-                $qty    = (int) $detail->qty;
-                $stok   = StokBarang::where('barang_id', $detail->barang_id)->lockForUpdate()->first();
+                $qty     = (int) $detail->qty;
+                $stok    = StokBarang::where('barang_id', $detail->barang_id)->lockForUpdate()->first();
                 $sebelum = $stok->jumlah_stok ?? 0;
                 $sesudah = $sebelum - $qty;
 
@@ -266,20 +325,16 @@ class PenjualanScanOutController extends Controller
 
             DB::commit();
 
-            $totalJenis  = $penjualan->detail->count();
-            $totalNormal = $totalJenis - $totalAdjust;
-
             return response()->json([
                 'success' => true,
                 'message' => "Scan out berhasil untuk resi {$nomorResi}.",
                 'summary' => [
-                    'nomor_resi'    => $penjualan->nomor_resi,
-                    'kode_penjualan'=> $penjualan->kode_penjualan,
-                    'total_qty'     => $totalQty,
-                    'total_jenis'   => $totalJenis,
-                    'total_normal'  => $totalNormal,
-                    'total_adjust'  => $totalAdjust,
-                    'was_draft'     => $wasDraft === 'yes',
+                    'nomor_resi'     => $penjualan->nomor_resi,
+                    'kode_penjualan' => $penjualan->kode_penjualan,
+                    'total_qty'      => $totalQty,
+                    'total_jenis'    => $penjualan->detail->count(),
+                    'top_up_items'   => $topUpBerhasil,
+                    'was_draft'      => $wasDraft === 'yes',
                 ],
             ]);
         } catch (\Exception $e) {

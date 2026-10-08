@@ -200,7 +200,7 @@ if (!function_exists('sortIcon')) {
                                     <h6 class="card-header-title mb-0">
                                         <i class="feather icon-truck mr-2"></i> Data Penjualan
                                         <span class="badge badge-info ml-1">{{ $penjualan->total() }} transaksi</span>
-                                        <span class="badge badge-warning ml-1">{{ $pendingScanOut ?? 0 }} pending scan out</span>
+                                        <span class="badge badge-warning ml-1" id="pendingScanBadge"><span id="pendingScanCount">{{ $pendingScanOut ?? 0 }}</span> pending scan out</span>
                                     </h6>
                                     @if(hasPermission('tambah', 'penjualan'))
                                     <div class="d-flex flex-wrap" style="gap:6px">
@@ -539,13 +539,21 @@ if (!function_exists('sortIcon')) {
         // =====================================================
         function focusScan() {
             const el = document.getElementById('scanOutPenjualan');
-            if (el) el.focus();
+            if (el && !el.disabled) el.focus();
+        }
+
+        function setScanBusy(busy) {
+            const el = document.getElementById('scanOutPenjualan');
+            if (!el) return;
+            el.disabled = busy;
+            if (!busy) focusScan();
         }
 
         const scanInput = document.getElementById('scanOutPenjualan');
         let scanTimeout = null;
 
         scanInput.addEventListener('input', function() {
+            if (this.disabled) return;
             clearTimeout(scanTimeout);
             if (!this.value.trim()) return;
             scanTimeout = setTimeout(() => {
@@ -558,6 +566,7 @@ if (!function_exists('sortIcon')) {
         });
 
         scanInput.addEventListener('keydown', function(e) {
+            if (this.disabled) return;
             if (e.key === 'Enter') {
                 clearTimeout(scanTimeout);
                 const val = this.value.trim();
@@ -577,6 +586,8 @@ if (!function_exists('sortIcon')) {
 
         async function processScan(nomor_resi) {
             let data;
+
+            setScanBusy(true);
 
             try {
                 const res = await fetch('/api/penjualan/by-resi/' + encodeURIComponent(nomor_resi));
@@ -601,7 +612,7 @@ if (!function_exists('sortIcon')) {
                 console.error(e);
                 return;
             } finally {
-                focusScan();
+                setScanBusy(false);
             }
 
             if (data.scan_out === 'done') {
@@ -613,151 +624,13 @@ if (!function_exists('sortIcon')) {
                 return;
             }
 
-            showScanConfirm(data);
+            await submitScan(data);
         }
 
         // =====================================================
-        // POPUP 1 — KONFIRMASI PENJUALAN
+        // PROCESS SCAN OUT — LANGSUNG POTONG STOK
         // =====================================================
-        function showScanConfirm(data) {
-            const isDraft = data.is_draft === 'yes';
-            const kurang = data.items.filter(i => i.stok_saat_ini < i.qty);
-            const needLanjut = isDraft || kurang.length > 0;
-
-            const rows = data.items.map(i => `
-                <tr>
-                    <td class="text-left">${escHtml(i.sku)}</td>
-                    <td>${i.qty}</td>
-                </tr>`).join('');
-
-            let extra = '';
-
-            if (isDraft) {
-                extra += `<div class="alert alert-warning text-left mt-2 mb-0" style="font-size:.85rem">
-                    Resi ini masih berstatus <strong>draft</strong>. Lanjutkan sekarang, atau proses nanti saja di menu penjualan draft.
-                </div>`;
-            }
-
-            if (kurang.length > 0) {
-                extra += `<div class="alert alert-danger text-left mt-2 mb-0" style="font-size:.85rem">
-                    Stok kurang untuk <strong>${kurang.length} barang</strong>. Lanjutkan dengan adjust stok langsung di sini, atau proses nanti di menu penjualan draft / lainnya.
-                </div>`;
-            }
-
-            Swal.fire({
-                title: 'Konfirmasi Penjualan',
-                html: `
-                    <div class="text-left" style="font-size:.9rem">
-                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Nomor Resi</span><strong>${escHtml(data.nomor_resi)}</strong></div>
-                        <div class="d-flex justify-content-between mb-2"><span class="text-muted">Total Barang</span><strong>${data.total_qty} barang (${data.total_jenis} jenis)</strong></div>
-                        <table class="table table-sm table-bordered mb-2">
-                            <thead class="thead-light"><tr><th class="text-left">SKU</th><th style="width:110px">Qty Dipesan</th></tr></thead>
-                            <tbody>${rows}</tbody>
-                        </table>
-                        <p class="mb-0">Konfirmasi pengurangan stok untuk barang-barang di atas?</p>
-                        ${extra}
-                    </div>`,
-                icon: 'question',
-                showCancelButton: true,
-                reverseButtons: true,
-                cancelButtonText: 'Kembali',
-                confirmButtonText: needLanjut ? 'Oke, Lanjutkan' : 'Oke',
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#6c757d',
-            }).then(result => {
-                if (!result.isConfirmed) return;
-
-                if (kurang.length > 0) {
-                    showAdjustPopup(data, kurang);
-                } else {
-                    submitScanConfirm(data, []);
-                }
-            });
-        }
-
-        // =====================================================
-        // POPUP 2 — KONFIRMASI ADJUST STOK
-        // =====================================================
-        // Cegah input stok baru negatif (clamp saat mengetik)
-        document.addEventListener('input', function(e) {
-            if (e.target.classList && e.target.classList.contains('adj-input')) {
-                if (e.target.value !== '' && Number(e.target.value) < 0) {
-                    e.target.value = 0;
-                }
-            }
-        });
-
-        function showAdjustPopup(data, kurang) {
-            const totalNormal = data.total_jenis - kurang.length;
-
-            const rows = kurang.map(i => `
-                <tr>
-                    <td class="text-left">${escHtml(i.sku)}</td>
-                    <td>${i.stok_saat_ini}</td>
-                    <td>${i.qty}</td>
-                    <td><input type="number" class="form-control form-control-sm adj-input"
-                        data-barang="${i.barang_id}" data-qty="${i.qty}"
-                        min="0" value="${i.qty}" style="width:110px"></td>
-                </tr>`).join('');
-
-            Swal.fire({
-                title: 'Konfirmasi Penjualan - Adjust Stok',
-                html: `
-                    <div class="text-left" style="font-size:.9rem">
-                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Nomor Resi</span><strong>${escHtml(data.nomor_resi)}</strong></div>
-                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Total Barang Normal</span><strong>${totalNormal} jenis</strong></div>
-                        <div class="d-flex justify-content-between mb-2"><span class="text-muted">Perlu Adjust</span><strong>${kurang.length} jenis</strong></div>
-                        <div style="overflow-x:auto">
-                        <table class="table table-sm table-bordered mb-2">
-                            <thead class="thead-light"><tr><th class="text-left">SKU</th><th>Stok Saat Ini</th><th>Qty Dipesan</th><th>Stok Baru</th></tr></thead>
-                            <tbody>${rows}</tbody>
-                        </table>
-                        </div>
-                        <p class="text-muted small mb-0">Adjust ini merupakan <strong>PERUBAHAN/PENETAPAN</strong> total keseluruhan stok baru pada barang dan <strong>bukan</strong> penambahan stok. Ini akan dilakukan <strong>sebelum</strong> pengurangan stok penjualan. Harap teliti.</p>
-                    </div>`,
-                showCancelButton: true,
-                reverseButtons: true,
-                cancelButtonText: 'Kembali',
-                confirmButtonText: 'Lanjutkan',
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#6c757d',
-                preConfirm: () => {
-                    const adjustments = [];
-
-                    for (const input of document.querySelectorAll('.adj-input')) {
-                        const qty = parseInt(input.dataset.qty, 10);
-                        const val = parseInt(input.value, 10);
-                        const sku = input.closest('tr').cells[0].innerText;
-
-                        if (!Number.isFinite(val) || val < 0) {
-                            Swal.showValidationMessage(`Stok baru untuk SKU ${sku} tidak boleh kurang dari 0.`);
-                            return false;
-                        }
-
-                        if (val < qty) {
-                            Swal.showValidationMessage(`Stok baru untuk SKU ${sku} minimal sama dengan qty dipesan (${qty}).`);
-                            return false;
-                        }
-
-                        adjustments.push({
-                            barang_id: parseInt(input.dataset.barang, 10),
-                            stok_baru: val,
-                        });
-                    }
-
-                    return adjustments;
-                },
-            }).then(result => {
-                if (result.isConfirmed && result.value) {
-                    submitScanConfirm(data, result.value);
-                }
-            });
-        }
-
-        // =====================================================
-        // KIRIM KONFIRMASI KE SERVER
-        // =====================================================
-        async function submitScanConfirm(data, adjustments) {
+        async function submitScan(data) {
             if (!ACTOR_ID) {
                 Toast.fire({
                     icon: 'error',
@@ -767,7 +640,8 @@ if (!function_exists('sortIcon')) {
                 return;
             }
 
-            Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            setScanBusy(true);
+            showScanLoading(data.nomor_resi);
 
             try {
                 const res = await fetch('/api/penjualan/scan-out-confirm', {
@@ -776,13 +650,16 @@ if (!function_exists('sortIcon')) {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': CSRF_TOKEN,
                     },
-                    body: JSON.stringify({ nomor_resi: data.nomor_resi, adjustments, actor_id: ACTOR_ID }),
+                    body: JSON.stringify({ nomor_resi: data.nomor_resi, actor_id: ACTOR_ID }),
                 });
 
                 const json = await res.json();
 
                 if (res.ok && json.success) {
+                    Swal.close();
+                    updateTableRow(json.summary);
                     showScanSuccess(json.summary);
+                    if (window.refreshNotifikasi) window.refreshNotifikasi();
                 } else {
                     Swal.close();
                     Toast.fire({
@@ -800,34 +677,83 @@ if (!function_exists('sortIcon')) {
                 });
                 console.error(e);
             } finally {
-                focusScan();
+                setScanBusy(false);
             }
         }
 
         // =====================================================
-        // POPUP SUKSES — AUTO CLOSE 3 DETIK
+        // TOAST LOADING — KANAN ATAS
+        // =====================================================
+        function showScanLoading(resi) {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: false,
+                title: 'Memproses scan out',
+                html: `<div class="text-left" style="font-size:.8rem">
+                    <div class="d-flex justify-content-between"><span class="text-muted">Resi</span><strong>${escHtml(resi)}</strong></div>
+                </div>`,
+                didOpen: () => Swal.showLoading(),
+            });
+        }
+
+        // =====================================================
+        // UPDATE ROW TABEL TANPA REFRESH
+        // =====================================================
+        function updateTableRow(s) {
+            const rows = document.querySelectorAll('#tableBody tr.main-row');
+
+            for (const row of rows) {
+                const cells = row.querySelectorAll(':scope > td');
+                if (!cells.length) continue;
+
+                const kodeCell = cells[2];
+                if (!kodeCell || !kodeCell.textContent.trim().includes(s.kode_penjualan)) continue;
+
+                // Kolom Scan Out (~index 8)
+                if (cells[8]) {
+                    cells[8].innerHTML = '<span class="badge badge-success">Done</span>';
+                }
+
+                // Kolom Draft? (~index 9)
+                if (cells[9]) {
+                    cells[9].innerHTML = '<span class="badge badge-danger">Tidak</span>';
+                }
+
+                // Update badge pending scan out di header
+                const countEl = document.getElementById('pendingScanCount');
+                if (countEl) {
+                    const cur = parseInt(countEl.textContent, 10) || 0;
+                    countEl.textContent = Math.max(0, cur - 1);
+                }
+
+                return;
+            }
+        }
+
+        // =====================================================
+        // TOAST SUKSES — KANAN ATAS, TANPA RELOAD
         // =====================================================
         function showScanSuccess(s) {
-            let adjustInfo = '';
+            let topUpInfo = '';
 
-            if (s.total_adjust > 0) {
-                adjustInfo = `<div class="d-flex justify-content-between mb-1"><span class="text-muted">Normal / Adjust</span><strong>${s.total_normal} / ${s.total_adjust} jenis</strong></div>`;
+            if (s.top_up_items > 0) {
+                topUpInfo = `<div class="text-info mt-1" style="font-size:.78rem">+${s.top_up_items} barang auto top-up (pembelian otomatis)</div>`;
             }
 
-            Swal.fire({
+            Toast.fire({
                 icon: 'success',
                 title: 'Scan Out Berhasil',
                 html: `
-                    <div class="text-left" style="font-size:.9rem">
-                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Nomor Resi</span><strong>${escHtml(s.nomor_resi)}</strong></div>
-                        <div class="d-flex justify-content-between mb-1"><span class="text-muted">Total Barang</span><strong>${s.total_qty} barang (${s.total_jenis} jenis)</strong></div>
-                        ${adjustInfo}
+                    <div class="text-left" style="font-size:.8rem">
+                        <div class="d-flex justify-content-between"><span class="text-muted">Resi</span><strong>${escHtml(s.nomor_resi)}</strong></div>
+                        <div class="d-flex justify-content-between"><span class="text-muted">Kode</span><strong>${escHtml(s.kode_penjualan)}</strong></div>
+                        <div class="d-flex justify-content-between"><span class="text-muted">Total</span><strong>${s.total_qty} barang (${s.total_jenis} jenis)</strong></div>
+                        ${s.was_draft ? '<div class="text-warning mt-1">Draft → penjualan normal</div>' : ''}
+                        ${topUpInfo}
                     </div>`,
-                timer: 1500,
-                showConfirmButton: false,
             });
-
-            setTimeout(() => location.reload(), 3100);
         }
 
         // =====================================================

@@ -367,6 +367,9 @@
                 .catch(function () { /* silent */ });
         }
 
+        // Ekspos untuk refresh dari halaman lain (mis. setelah scan out penjualan)
+        window.refreshNotifikasi = loadNotifikasi;
+
         function markAllRead() {
             fetch(readUrl, {
                 method: 'POST',
