@@ -960,9 +960,13 @@ class PenjualanController extends Controller
             /*
             =============================================
             1️⃣ ROLLBACK STOK DARI PENJUALAN
+            Hanya jika sudah scan out (stok sudah dipotong),
+            dan hanya jika skenario pembelian otomatis top-up
+            tidak terjadi (kondisi scan_out pending/draft tidak
+            menambahkan stok kembali).
             =============================================
             */
-            if ($penjualan->is_draft === 'no') {
+            if ($penjualan->scan_out === 'done') {
 
                 foreach ($penjualan->detail as $detail) {
 
@@ -1049,8 +1053,8 @@ class PenjualanController extends Controller
             try {
                 $penjualan = Penjualan::with('detail')->findOrFail($id);
 
-                // Rollback stok jika bukan draft
-                if ($penjualan->is_draft === 'no') {
+                // Rollback stok jika sudah scan out (stok sudah dipotong)
+                if ($penjualan->scan_out === 'done') {
                     foreach ($penjualan->detail as $detail) {
                         $stok        = StokBarang::where('barang_id', $detail->barang_id)->lockForUpdate()->first();
                         $stokSebelum = $stok->jumlah_stok ?? 0;
