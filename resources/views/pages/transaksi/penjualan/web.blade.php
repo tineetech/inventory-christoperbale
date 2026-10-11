@@ -211,7 +211,7 @@ if (!function_exists('sortIcon')) {
                                                                         <span class="badge badge-secondary">{{ ucfirst($bayarStatus ?? '-') }}</span>
                                                                     @endif
                                                                 </td>
-                                                                <td class="d-none d-md-table-cell" style="white-space:nowrap">{{ \Carbon\Carbon::parse($draft->tanggal)->format('d/m/Y H:i') }}</td>
+                                                                <td class="d-none d-md-table-cell" style="white-space:nowrap">{{ $draft->created_at ? \Carbon\Carbon::parse($draft->created_at)->format('d/m/Y H:i') : '-' }}</td>
                                                                 <td style="font-weight:bold;white-space:nowrap">Rp {{ number_format($draft->total_harga, 0, ',', '.') }}</td>
                                                                 <td style="white-space:nowrap">
                                                                     @if ($bayarStatus === 'paid_confirmation' && hasPermission('edit', 'penjualan'))
@@ -716,18 +716,74 @@ if (!function_exists('sortIcon')) {
         // =====================================================
         // KONFIRMASI PEMBAYARAN DRAFT WEB
         // =====================================================
+        const DRAFT_DROPSHIPPERS = @json($dropshippers->map(fn($ds) => ['id' => $ds->id, 'nama' => $ds->nama])->values());
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text ?? '';
+            return div.innerHTML;
+        }
+
         async function confirmDraftPayment(id) {
-            const result = await Swal.fire({
+            const optionsHtml = DRAFT_DROPSHIPPERS.map(ds =>
+                `<option value="${ds.id}">${escapeHtml(ds.nama)}</option>`
+            ).join('');
+
+            const swalResult = await Swal.fire({
                 title: 'Konfirmasi Pembayaran?',
                 text: 'Status pembayaran menjadi PAID dan data akan dipindahkan ke penjualan dengan status packing.',
                 icon: 'question',
+                html: `
+                    <p class="text-muted small mb-3">Status pembayaran menjadi PAID dan data akan dipindahkan ke penjualan dengan status packing.</p>
+                    <div class="text-left">
+                        <label class="font-weight-bold small">Pilih Dropshipper <span class="text-danger">*</span></label>
+                        <select id="swalDropshipper" class="form-control mb-3">
+                            <option value="">-- Pilih Dropshipper --</option>
+                            ${optionsHtml}
+                        </select>
+                        <label class="font-weight-bold small">No Resi <span class="text-danger">*</span></label>
+                        <input id="swalResi" type="text" class="form-control" placeholder="Input nomor resi...">
+                    </div>`,
                 showCancelButton: true,
                 confirmButtonColor: '#28a745',
                 cancelButtonColor: '#6c757d',
                 confirmButtonText: 'Ya, konfirmasi!',
-                cancelButtonText: 'Batal'
+                cancelButtonText: 'Batal',
+                focusConfirm: false,
+                didOpen: () => {
+                    const confirmBtn = Swal.getConfirmButton();
+                    const dsSelect = document.getElementById('swalDropshipper');
+                    const resiInput = document.getElementById('swalResi');
+                    confirmBtn.disabled = true;
+
+                    const toggleBtn = () => {
+                        const ok = dsSelect.value !== '' && resiInput.value.trim() !== '';
+                        confirmBtn.disabled = !ok;
+                    };
+                    dsSelect.addEventListener('change', () => {
+                        Swal.resetValidationMessage();
+                        toggleBtn();
+                    });
+                    resiInput.addEventListener('input', () => {
+                        Swal.resetValidationMessage();
+                        toggleBtn();
+                    });
+                },
+                preConfirm: () => {
+                    const dropshipperId = document.getElementById('swalDropshipper').value;
+                    const nomorResi = document.getElementById('swalResi').value.trim();
+                    if (!dropshipperId) {
+                        Swal.showValidationMessage('Dropshipper wajib dipilih.');
+                        return false;
+                    }
+                    if (!nomorResi) {
+                        Swal.showValidationMessage('No resi wajib diisi.');
+                        return false;
+                    }
+                    return { dropshipper_id: dropshipperId, nomor_resi: nomorResi };
+                }
             });
-            if (!result.isConfirmed) return;
+            if (!swalResult.isConfirmed) return;
 
             try {
                 const res = await fetch('/transaksi/penjualan/web/draft/' + id + '/confirm-payment', {
@@ -736,14 +792,18 @@ if (!function_exists('sortIcon')) {
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    }
+                    },
+                    body: JSON.stringify(swalResult.value)
                 });
                 const data = await res.json();
 
                 if (res.ok && data.success) {
                     Swal.fire('Berhasil', data.message, 'success').then(() => location.reload());
                 } else {
-                    Swal.fire('Gagal', data.message || 'Terjadi kesalahan.', 'error');
+                    const errMsg = data.message
+                        || (data.errors ? Object.values(data.errors).flat().join(' ') : '')
+                        || 'Terjadi kesalahan.';
+                    Swal.fire('Gagal', errMsg, 'error');
                 }
             } catch (err) {
                 Swal.fire('Gagal', 'Terjadi kesalahan koneksi.', 'error');

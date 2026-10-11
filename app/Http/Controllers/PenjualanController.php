@@ -1777,6 +1777,18 @@ private function isRowBlankWhite($img, int $width, int $y): bool
             ], 422);
         }
 
+        $validated = $request->validate([
+            'dropshipper_id' => 'required|exists:dropshipper,id',
+            'nomor_resi'     => 'required|string|max:255',
+        ]);
+
+        if (Penjualan::where('nomor_resi', $validated['nomor_resi'])->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nomor resi "' . $validated['nomor_resi'] . '" sudah digunakan oleh penjualan lain.',
+            ], 422);
+        }
+
         // Pastikan kode penjualan unik di tabel penjualan
         $kode = $draft->kode_penjualan;
         if (Penjualan::where('kode_penjualan', $kode)->exists()) {
@@ -1788,6 +1800,8 @@ private function isRowBlankWhite($img, int $width, int $y): bool
         try {
             $penjualan = Penjualan::create([
                 'kode_penjualan' => $kode,
+                'nomor_resi'     => $validated['nomor_resi'],
+                'dropshipper_id' => $validated['dropshipper_id'],
                 // Tanggal memakai waktu saat konfirmasi pembayaran (jam juga)
                 'tanggal'        => now(),
                 'total_harga'    => $draft->total_harga,
@@ -1805,6 +1819,7 @@ private function isRowBlankWhite($img, int $width, int $y): bool
             foreach ($draft->items as $item) {
                 PenjualanDetail::create([
                     'penjualan_id' => $penjualan->id,
+                    'nomor_resi'   => $validated['nomor_resi'],
                     'barang_id'    => $item->barang_id,
                     'qty'          => $item->qty,
                     'harga'        => $item->harga,
