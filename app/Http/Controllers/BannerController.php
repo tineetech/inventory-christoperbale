@@ -58,7 +58,7 @@ class BannerController extends Controller
     public function update(Request $request, $id)
     {
         $banner = Banner::findOrFail($id);
-        $data = $this->validateBanner($request, false);
+        $data = $this->validateBanner($request, false, $banner->id);
 
         if ($request->hasFile('gambar') && $request->file('gambar')->isValid()) {
             if ($banner->gambar) {
@@ -86,7 +86,7 @@ class BannerController extends Controller
         return redirect()->route('banner.index')->with('success', 'Banner "' . $title . '" berhasil dihapus.');
     }
 
-    private function validateBanner(Request $request, bool $requireImage): array
+    private function validateBanner(Request $request, bool $requireImage, ?int $exceptId = null): array
     {
         $request->validate([
             'title'     => 'required|string|max:255',
@@ -99,8 +99,19 @@ class BannerController extends Controller
         return [
             'title'     => $request->title,
             'catatan'   => $request->catatan,
-            'urutan'    => $request->filled('urutan') ? (int) $request->urutan : null,
+            'urutan'    => $request->filled('urutan') ? (int) $request->urutan : $this->nextUrutan($exceptId),
             'is_active' => $request->boolean('is_active'),
         ];
+    }
+
+    private function nextUrutan(?int $exceptId = null): int
+    {
+        $query = Banner::query();
+        if ($exceptId) {
+            $query->where('id', '!=', $exceptId);
+        }
+        $max = $query->max('urutan');
+
+        return $max === null ? 0 : ((int) $max + 1);
     }
 }

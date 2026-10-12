@@ -43,7 +43,7 @@
                             <i class="feather icon-package mr-2"></i> Data Produk
                         </h6>
                         <div class="d-flex flex-wrap align-items-center" style="gap: 5px">
-                            @if (hasPermission('tambah', 'barang'))
+                            @if (hasPermission('tambah', 'produk'))
                                 <a href="{{ route('produk.create') }}" class="btn btn-sm text-white"
                                     style="background: linear-gradient(135deg, #ff8a00, #ff5b00); border: none;">
                                     <i class="feather icon-plus"></i>
