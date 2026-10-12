@@ -66,7 +66,7 @@
                             </a>
                         </li>
                     @endif
-                    @if (hasPermission('lihat', 'barang'))
+                    @if (hasPermission('lihat', 'dashboard_trx'))
                         <li class="sidenav-item {{ request()->routeIs('hpp-riwayat.*') ? 'active' : '' }}">
                             <a href="{{ route('hpp-riwayat.index') }}" class="sidenav-link">
                                 <i class="sidenav-icon feather icon-trending-up"></i>
