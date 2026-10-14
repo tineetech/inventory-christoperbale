@@ -15,9 +15,21 @@ class ProdukController extends Controller
     public function index(Request $request)
     {
         $search = $request->get('search');
+        $namaProduk = $request->get('nama_produk');
+        $brandId = $request->get('brand_id');
+        $hargaMin = $request->get('harga_min');
+        $hargaMax = $request->get('harga_max');
+        $status = $request->get('status');
         $perPage = $request->get('per_page', 10);
 
         $produk = Produk::with('fotoUtama', 'brand')->withCount(['varian', 'foto', 'barang']);
+
+        if ($namaProduk) {
+            $produk->where(function ($q) use ($namaProduk) {
+                $q->where('nama_produk', 'like', "%{$namaProduk}%")
+                  ->orWhere('slug', 'like', "%{$namaProduk}%");
+            });
+        }
 
         if ($search) {
             $produk->where(function ($q) use ($search) {
@@ -27,9 +39,26 @@ class ProdukController extends Controller
             });
         }
 
-        $produk = $produk->latest()->paginate($perPage);
+        if ($brandId) {
+            $produk->where('brand_id', $brandId);
+        }
 
-        return view('pages.master.produk.index', compact('produk'));
+        if ($hargaMin !== null && $hargaMin !== '') {
+            $produk->where('harga_normal', '>=', (float) $hargaMin);
+        }
+
+        if ($hargaMax !== null && $hargaMax !== '') {
+            $produk->where('harga_normal', '<=', (float) $hargaMax);
+        }
+
+        if ($status !== null && $status !== '') {
+            $produk->where('status', $status);
+        }
+
+        $produk = $produk->latest()->paginate($perPage)->withQueryString();
+        $brands = \App\Models\Brand::orderBy('nama_brand')->get();
+
+        return view('pages.master.produk.index', compact('produk', 'brands'));
     }
 
     public function create()

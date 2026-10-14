@@ -36,41 +36,91 @@
                 </div>
             @endif
 
+            {{-- ===== CARD FILTER PRODUK ===== --}}
             <div class="card mb-4">
-                <div class="card-header" style="border: none !important">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-                        <h6 class="card-header-title mb-0">
-                            <i class="feather icon-package mr-2"></i> Data Produk
-                        </h6>
-                        <div class="d-flex flex-wrap align-items-center" style="gap: 5px">
-                            @if (hasPermission('tambah', 'barang'))
-                                <a href="{{ route('produk.create') }}" class="btn btn-sm text-white"
-                                    style="background: linear-gradient(135deg, #ff8a00, #ff5b00); border: none;">
-                                    <i class="feather icon-plus"></i>
-                                    <span class="d-none d-sm-inline">Tambah Produk</span>
+                <div style="border:none !important" class="card-header d-flex justify-content-between align-items-center flex-wrap">
+                    <h6 class="card-header-title mb-0">
+                        <i class="feather icon-filter mr-2"></i> Filter Produk
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="GET" action="{{ route('produk.index') }}" id="filterForm">
+                        <input type="hidden" name="per_page" value="{{ request('per_page', 10) }}">
+                        <div class="form-row">
+                            <div class="form-group col-md-3">
+                                <label class="font-weight-bold">Nama Produk</label>
+                                <input type="text" name="nama_produk" class="form-control"
+                                    placeholder="Cari nama produk / keyword..."
+                                    value="{{ request('nama_produk') }}">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label class="font-weight-bold">Brand</label>
+                                <select name="brand_id" class="form-control">
+                                    <option value="">-- Semua Brand --</option>
+                                    @foreach($brands as $brand)
+                                        <option value="{{ $brand->id }}" {{ request('brand_id') == $brand->id ? 'selected' : '' }}>
+                                            {{ $brand->nama_brand }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label class="font-weight-bold">Harga Min</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">Rp</span>
+                                    </div>
+                                    <input type="number" name="harga_min" class="form-control"
+                                        placeholder="Min" value="{{ request('harga_min') }}" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label class="font-weight-bold">Harga Max</label>
+                                <div class="input-group">
+                                    <div class="input-group-prepend">
+                                        <span class="input-group-text">Rp</span>
+                                    </div>
+                                    <input type="number" name="harga_max" class="form-control"
+                                        placeholder="Max" value="{{ request('harga_max') }}" min="0">
+                                </div>
+                            </div>
+                            <div class="form-group col-md-2">
+                                <label class="font-weight-bold">Status</label>
+                                <select name="status" class="form-control">
+                                    <option value="">-- Semua Status --</option>
+                                    <option value="aktif" {{ request('status') === 'aktif' ? 'selected' : '' }}>Aktif</option>
+                                    <option value="nonaktif" {{ request('status') === 'nonaktif' ? 'selected' : '' }}>Nonaktif</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap justify-content-end" style="gap:10px">
+                            <button type="submit" class="btn btn-info">
+                                <i class="feather icon-filter"></i> Proses
+                            </button>
+                            @if (request('nama_produk') || request('brand_id') || request('harga_min') || request('harga_max') || request('status') || request('search'))
+                                <a href="{{ route('produk.index', ['per_page' => request('per_page', 10)]) }}"
+                                    class="btn btn-outline-secondary">
+                                    <i class="feather icon-rotate-ccw"></i> Reset
                                 </a>
                             @endif
                         </div>
-                    </div>
+                    </form>
+                </div>
+            </div>
 
-                    <form method="GET" action="{{ route('produk.index') }}" id="filterForm">
-                        <div class="d-flex flex-wrap align-items-center gap-2">
-                            <div class="flex-grow-1" style="min-width: 160px; max-width: 100%;">
-                                <div class="input-group input-group-sm">
-                                    <div class="input-group-prepend">
-                                        <span class="input-group-text">
-                                            <i class="feather icon-search"></i>
-                                        </span>
-                                    </div>
-                                    <input type="text" name="search" class="form-control form-control-sm"
-                                        placeholder="Cari produk..." value="{{ request('search') }}">
-                                </div>
-                            </div>
-
+            {{-- ===== CARD DATA PRODUK ===== --}}
+            <div class="card mb-4">
+                <div class="card-header" style="border: none !important">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h6 class="card-header-title mb-0">
+                            <i class="feather icon-package mr-2"></i> Data Produk
+                        </h6>
+                        <div class="d-flex flex-wrap align-items-center" style="gap: 12px">
                             <div class="d-flex align-items-center">
                                 <span class="text-muted small mr-2">Show</span>
-                                <select name="per_page" class="form-control form-control-sm"
-                                    style="width: 75px" onchange="this.form.submit()">
+                                <select class="form-control form-control-sm" style="width: 75px"
+                                    onchange="const params = new URLSearchParams(window.location.search); params.set('per_page', this.value); params.delete('page'); window.location.search = params.toString();">
                                     @foreach ([10, 25, 50, 100] as $n)
                                         <option value="{{ $n }}"
                                             {{ request('per_page', 10) == $n ? 'selected' : '' }}>
@@ -81,20 +131,15 @@
                                 <span class="text-muted small ml-2">entries</span>
                             </div>
 
-                            <button type="submit" class="btn btn-sm btn-secondary">
-                                <i class="feather icon-search"></i>
-                                <span class="d-none d-sm-inline">Cari</span>
-                            </button>
-
-                            @if (request('search'))
-                                <a href="{{ route('produk.index', ['per_page' => request('per_page', 10)]) }}"
-                                    class="btn btn-sm btn-outline-secondary">
-                                    <i class="feather icon-x"></i>
-                                    <span class="d-none d-sm-inline">Reset</span>
+                            @if (hasPermission('tambah', 'barang'))
+                                <a href="{{ route('produk.create') }}" class="btn btn-sm text-white"
+                                    style="background: linear-gradient(135deg, #ff8a00, #ff5b00); border: none;">
+                                    <i class="feather icon-plus"></i>
+                                    <span class="d-none d-sm-inline">Tambah Produk</span>
                                 </a>
                             @endif
                         </div>
-                    </form>
+                    </div>
                 </div>
 
                 <div class="nav-tabs-top">
@@ -195,8 +240,7 @@
                                 @if ($produk->hasPages())
                                     <ul class="pagination pagination-sm mb-0 flex-wrap">
                                         <li class="page-item {{ $produk->onFirstPage() ? 'disabled' : '' }}">
-                                            <a class="page-link"
-                                                href="{{ $produk->previousPageUrl() . '&per_page=' . request('per_page', 10) . (request('search') ? '&search=' . request('search') : '') ?? '#' }}">
+                                            <a class="page-link" href="{{ $produk->previousPageUrl() ?? '#' }}">
                                                 <i class="feather icon-chevron-left"></i>
                                             </a>
                                         </li>
@@ -225,45 +269,32 @@
 
                                         @if ($lastPage > 7)
                                             <li class="page-item {{ $currentPage == 1 ? 'active' : '' }}">
-                                                <a class="page-link"
-                                                    href="{{ $produk->url(1) }}&per_page={{ request('per_page', 10) }}{{ request('search') ? '&search=' . request('search') : '' }}">
-                                                    1
-                                                </a>
+                                                <a class="page-link" href="{{ $produk->url(1) }}">1</a>
                                             </li>
                                             @if ($showStartEllipsis)
                                                 <li class="page-item disabled"><span class="page-link">...</span></li>
                                             @endif
                                             @for ($i = $start; $i <= $end; $i++)
                                                 <li class="page-item {{ $currentPage == $i ? 'active' : '' }}">
-                                                    <a class="page-link"
-                                                        href="{{ $produk->url($i) }}&per_page={{ request('per_page', 10) }}{{ request('search') ? '&search=' . request('search') : '' }}">
-                                                        {{ $i }}
-                                                    </a>
+                                                    <a class="page-link" href="{{ $produk->url($i) }}">{{ $i }}</a>
                                                 </li>
                                             @endfor
                                             @if ($showEndEllipsis)
                                                 <li class="page-item disabled"><span class="page-link">...</span></li>
                                             @endif
                                             <li class="page-item {{ $currentPage == $lastPage ? 'active' : '' }}">
-                                                <a class="page-link"
-                                                    href="{{ $produk->url($lastPage) }}&per_page={{ request('per_page', 10) }}{{ request('search') ? '&search=' . request('search') : '' }}">
-                                                    {{ $lastPage }}
-                                                </a>
+                                                <a class="page-link" href="{{ $produk->url($lastPage) }}">{{ $lastPage }}</a>
                                             </li>
                                         @else
                                             @for ($i = $start; $i <= $end; $i++)
                                                 <li class="page-item {{ $currentPage == $i ? 'active' : '' }}">
-                                                    <a class="page-link"
-                                                        href="{{ $produk->url($i) }}&per_page={{ request('per_page', 10) }}{{ request('search') ? '&search=' . request('search') : '' }}">
-                                                        {{ $i }}
-                                                    </a>
+                                                    <a class="page-link" href="{{ $produk->url($i) }}">{{ $i }}</a>
                                                 </li>
                                             @endfor
                                         @endif
 
                                         <li class="page-item {{ !$produk->hasMorePages() ? 'disabled' : '' }}">
-                                            <a class="page-link"
-                                                href="{{ $produk->nextPageUrl() . '&per_page=' . request('per_page', 10) . (request('search') ? '&search=' . request('search') : '') ?? '#' }}">
+                                            <a class="page-link" href="{{ $produk->nextPageUrl() ?? '#' }}">
                                                 <i class="feather icon-chevron-right"></i>
                                             </a>
                                         </li>
