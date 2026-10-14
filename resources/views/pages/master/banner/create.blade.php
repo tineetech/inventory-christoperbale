@@ -84,7 +84,7 @@
                                     placeholder="0" value="{{ old('urutan') }}" min="0">
                                 <small class="form-text text-muted">Urutan keberapa banner ini ditampilkan di website</small>
                                 @error('urutan')<div class="invalid-feedback">{{ $message }}</div>@enderror
-                            </div>
+                            </div>  
                         </div>
 
                         <div class="form-row">
