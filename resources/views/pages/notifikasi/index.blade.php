@@ -72,6 +72,7 @@
                                 <th>User</th>
                                 <th>Status</th>
                                 <th>Dibuat</th>
+                                <th style="width:80px">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -106,10 +107,16 @@
                                     <td style="white-space:nowrap">
                                         {{ \Carbon\Carbon::parse($n->created_at)->format('d/m/Y H:i') }}
                                     </td>
+                                    <td style="white-space:nowrap">
+                                        <button type="button" class="btn btn-sm btn-info"
+                                            title="Lihat Detail" onclick="showNotifDetail({{ $n->id }})">
+                                            <i class="feather icon-eye"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">Tidak ada data notifikasi pada filter ini.</td>
+                                    <td colspan="8" class="text-center text-muted py-4">Tidak ada data notifikasi pada filter ini.</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -201,5 +208,104 @@
                 </div>
             </div>
         </div>
+        {{-- MODAL DETAIL NOTIFIKASI --}}
+        <div class="modal fade" id="notifDetailModal" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title"><i class="feather icon-eye mr-1"></i> Detail Notifikasi</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <table class="table table-sm table-borderless mb-0">
+                            <tr>
+                                <th style="width:130px">Judul</th>
+                                <td id="ndJudul" style="font-weight:600"></td>
+                            </tr>
+                            <tr>
+                                <th>Tipe</th>
+                                <td id="ndTipe"></td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td id="ndStatus"></td>
+                            </tr>
+                            <tr>
+                                <th>Tujuan</th>
+                                <td id="ndUser"></td>
+                            </tr>
+                            <tr>
+                                <th>Dibuat Oleh</th>
+                                <td id="ndCreator"></td>
+                            </tr>
+                            <tr>
+                                <th>Dibuat</th>
+                                <td id="ndDibuat"></td>
+                            </tr>
+                            <tr>
+                                <th>Link</th>
+                                <td id="ndLink"></td>
+                            </tr>
+                        </table>
+                        <hr class="my-2">
+                        <label class="font-weight-bold small">Isi</label>
+                        <div id="ndIsi" class="p-2 rounded" style="background:#f8f9fa;white-space:pre-wrap;word-wrap:break-word;"></div>
+                        <div id="ndPayloadWrap" style="display:none">
+                            <label class="font-weight-bold small mt-2">Payload</label>
+                            <pre id="ndPayload" class="p-2 rounded small mb-0" style="background:#f0f0f0;max-height:200px;overflow:auto;"></pre>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal"><i class="feather icon-x"></i> Tutup</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
+@endsection
+
+@section('scripts')
+    <script>
+        const NOTIF_DETAIL = @json($notifDetail);
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text ?? '';
+            return div.innerHTML;
+        }
+
+        function showNotifDetail(id) {
+            const d = NOTIF_DETAIL[id];
+            if (!d) return;
+
+            document.getElementById('ndJudul').textContent = d.judul ?? '-';
+            document.getElementById('ndTipe').innerHTML = d.tipe
+                ? '<span class="badge badge-light">' + escapeHtml(d.tipe) + '</span>'
+                : '<span class="text-muted">-</span>';
+            document.getElementById('ndStatus').innerHTML = d.is_read
+                ? '<span class="badge badge-success">Sudah Dibaca' + (d.read_at ? ' (' + escapeHtml(d.read_at) + ')' : '') + '</span>'
+                : '<span class="badge badge-warning">Belum Dibaca</span>';
+            document.getElementById('ndUser').innerHTML = d.user
+                ? escapeHtml(d.user)
+                : '<span class="badge badge-info">Semua</span>';
+            document.getElementById('ndCreator').textContent = d.creator ?? '-';
+            document.getElementById('ndDibuat').textContent = d.dibuat ?? '-';
+            document.getElementById('ndLink').innerHTML = d.link
+                ? '<a href="' + escapeHtml(d.link) + '" target="_blank" rel="noopener">' + escapeHtml(d.link) + '</a>'
+                : '<span class="text-muted">-</span>';
+            document.getElementById('ndIsi').textContent = d.isi ?? '-';
+
+            const payloadWrap = document.getElementById('ndPayloadWrap');
+            if (d.payload && Object.keys(d.payload).length > 0) {
+                document.getElementById('ndPayload').textContent = JSON.stringify(d.payload, null, 2);
+                payloadWrap.style.display = 'block';
+            } else {
+                payloadWrap.style.display = 'none';
+            }
+
+            $('#notifDetailModal').modal('show');
+        }
+    </script>
 @endsection

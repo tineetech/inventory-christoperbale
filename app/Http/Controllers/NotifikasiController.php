@@ -27,7 +27,7 @@ class NotifikasiController extends Controller
             [$dariTanggal, $sampaiTanggal] = [$sampaiTanggal, $dariTanggal];
         }
 
-        $query = Notifikasi::with('user')
+        $query = Notifikasi::with(['user', 'creator'])
             ->whereDate('created_at', '>=', $dariTanggal)
             ->whereDate('created_at', '<=', $sampaiTanggal);
 
@@ -44,7 +44,23 @@ class NotifikasiController extends Controller
         $perPage = in_array((int) $request->per_page, [10, 25, 50, 100]) ? (int) $request->per_page : 10;
         $notifikasi = $query->orderByDesc('created_at')->paginate($perPage)->withQueryString();
 
-        return view('pages.notifikasi.index', compact('notifikasi', 'dariTanggal', 'sampaiTanggal'));
+        $notifDetail = $notifikasi->getCollection()->map(function ($n) {
+            return [
+                'id'      => $n->id,
+                'judul'   => $n->judul,
+                'isi'     => $n->isi,
+                'tipe'    => $n->tipe,
+                'link'    => $n->link,
+                'payload' => $n->payload,
+                'user'    => $n->user->nama ?? null,
+                'creator' => $n->creator->nama ?? null,
+                'is_read' => (bool) $n->is_read,
+                'read_at' => $n->read_at ? Carbon::parse($n->read_at)->format('d/m/Y H:i') : null,
+                'dibuat'  => $n->created_at ? Carbon::parse($n->created_at)->format('d/m/Y H:i') : '-',
+            ];
+        })->keyBy('id');
+
+        return view('pages.notifikasi.index', compact('notifikasi', 'dariTanggal', 'sampaiTanggal', 'notifDetail'));
     }
 
     /**
