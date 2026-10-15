@@ -13,6 +13,96 @@
         .swal2-container {
             z-index: 99999 !important;
         }
+
+        .foto-dropzone {
+            border: 2px dashed #b0bec5;
+            border-radius: 8px;
+            background-color: #fbfbfc;
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .foto-dropzone:hover {
+            border-color: #17a2b8;
+            background-color: #f4fafc;
+        }
+        .foto-dropzone.dragover {
+            border-color: #17a2b8 !important;
+            background-color: #e6f7fa !important;
+            box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.2);
+            transform: scale(1.005);
+        }
+        .preview-foto-card {
+            position: relative;
+            width: 95px;
+            height: 95px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            background: #fff;
+            flex-shrink: 0;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .preview-foto-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+        }
+        .preview-foto-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .preview-foto-card .btn-hapus-foto {
+            position: absolute;
+            top: 3px;
+            right: 3px;
+            background: rgba(220, 53, 69, 0.9);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 13px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 5;
+            transition: background 0.15s;
+        }
+        .preview-foto-card .btn-hapus-foto:hover {
+            background: #c82333;
+        }
+        .preview-foto-card .badge-utama {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            background: rgba(40, 167, 69, 0.9);
+            color: #fff;
+            border-radius: 3px;
+            padding: 1px 4px;
+            font-size: 9px;
+            font-weight: 600;
+            text-transform: uppercase;
+            z-index: 4;
+        }
+        .preview-foto-card .foto-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.75));
+            color: #fff;
+            font-size: 9px;
+            padding: 8px 3px 2px 3px;
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
     </style>
 @endsection
 @section('content')
@@ -704,9 +794,21 @@
 
                         <div class="form-group">
                             <label class="font-weight-bold">Foto Produk</label>
-                            <input type="file" class="form-control-file" name="foto[]" multiple accept="image/jpeg,image/png,image/jpg,image/webp" onchange="previewFotoProduk(this)">
-                            <small class="text-muted">Bisa pilih lebih dari 1 foto. Maks 5MB per foto.</small>
-                            <div id="previewFotoProduk" class="d-flex flex-wrap mt-2" style="gap: 8px;"></div>
+                            <div class="foto-dropzone" id="modalFotoDropzone">
+                                <input type="file" id="modalFotoInput" name="foto[]" multiple accept="image/jpeg,image/png,image/jpg,image/webp" style="display: none;">
+                                <div class="dropzone-content">
+                                    <i class="feather icon-upload-cloud text-info mb-2" style="font-size: 38px; display: inline-block;"></i>
+                                    <p class="mb-1 text-dark font-weight-semibold" style="font-size: 14px;">
+                                        Tarik &amp; lepas foto di sini, atau <span class="text-info font-weight-bold">pilih dari perangkat</span>
+                                    </p>
+                                    <p class="text-muted small mb-0">Format: JPG, JPEG, PNG, WEBP &bull; Maksimal 5MB per foto &bull; Bisa pilih lebih dari 1 foto</p>
+                                </div>
+                            </div>
+                            <div id="modalFotoUploadError" class="alert alert-warning py-1 px-3 small mt-2" style="display: none;"></div>
+                            <div id="wrapperPreviewFotoProduk" class="mt-3" style="display: none;">
+                                <label class="form-label small text-muted font-weight-bold mb-2">Foto yang Dipilih:</label>
+                                <div id="previewFotoProduk" class="d-flex flex-wrap" style="gap: 10px;"></div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -847,34 +949,144 @@
             $('#modalKelompokanProduk').modal('show');
         }
 
-        // Preview foto produk
-        function previewFotoProduk(input) {
-            const container = document.getElementById('previewFotoProduk');
-            container.innerHTML = '';
+        const modalFotoDt = new DataTransfer();
+        const modalFotoDropzone = document.getElementById('modalFotoDropzone');
+        const modalFotoInput = document.getElementById('modalFotoInput');
+        const modalPreviewContainer = document.getElementById('previewFotoProduk');
+        const modalWrapperPreview = document.getElementById('wrapperPreviewFotoProduk');
+        const modalErrorAlert = document.getElementById('modalFotoUploadError');
 
-            Array.from(input.files).forEach((file, i) => {
+        if (modalFotoDropzone && modalFotoInput) {
+            modalFotoDropzone.addEventListener('click', function(e) {
+                modalFotoInput.click();
+            });
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                modalFotoDropzone.addEventListener(eventName, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modalFotoDropzone.classList.add('dragover');
+                }, false);
+            });
+
+            ['dragleave', 'dragend'].forEach(eventName => {
+                modalFotoDropzone.addEventListener(eventName, function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modalFotoDropzone.classList.remove('dragover');
+                }, false);
+            });
+
+            modalFotoDropzone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                modalFotoDropzone.classList.remove('dragover');
+                if (e.dataTransfer && e.dataTransfer.files) {
+                    handleModalFotoFiles(e.dataTransfer.files);
+                }
+            }, false);
+
+            modalFotoInput.addEventListener('change', function() {
+                if (this.files && this.files.length > 0) {
+                    handleModalFotoFiles(this.files);
+                }
+            });
+
+            $('#modalKelompokanProduk').on('hidden.bs.modal', function() {
+                resetModalFoto();
+            });
+        }
+
+        function resetModalFoto() {
+            while (modalFotoDt.items.length > 0) {
+                modalFotoDt.items.remove(0);
+            }
+            if (modalFotoInput) modalFotoInput.files = modalFotoDt.files;
+            if (modalPreviewContainer) modalPreviewContainer.innerHTML = '';
+            if (modalWrapperPreview) modalWrapperPreview.style.display = 'none';
+            if (modalErrorAlert) modalErrorAlert.style.display = 'none';
+        }
+
+        function handleModalFotoFiles(files) {
+            const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+            const maxSize = 5 * 1024 * 1024;
+            let errors = [];
+
+            Array.from(files).forEach(file => {
+                if (!validTypes.includes(file.type)) {
+                    errors.push(`"${file.name}" bukan format gambar yang didukung (JPG, PNG, WEBP).`);
+                    return;
+                }
+                if (file.size > maxSize) {
+                    errors.push(`"${file.name}" melebihi ukuran maksimal 5MB.`);
+                    return;
+                }
+
+                const exists = Array.from(modalFotoDt.files).some(existing => 
+                    existing.name === file.name && existing.size === file.size
+                );
+                if (!exists) {
+                    modalFotoDt.items.add(file);
+                }
+            });
+
+            if (errors.length > 0) {
+                modalErrorAlert.innerHTML = '<i class="feather icon-alert-triangle mr-1"></i> ' + errors.join('<br>');
+                modalErrorAlert.style.display = 'block';
+            } else {
+                modalErrorAlert.style.display = 'none';
+            }
+
+            syncModalFotoPreview();
+        }
+
+        function syncModalFotoPreview() {
+            modalFotoInput.files = modalFotoDt.files;
+            modalPreviewContainer.innerHTML = '';
+
+            const files = Array.from(modalFotoDt.files);
+            if (files.length === 0) {
+                modalWrapperPreview.style.display = 'none';
+                return;
+            }
+
+            modalWrapperPreview.style.display = 'block';
+            files.forEach((file, index) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    const wrapper = document.createElement('div');
-                    wrapper.style.cssText = 'position:relative;width:80px;height:80px;border-radius:6px;overflow:hidden;border:1px solid #dee2e6;flex-shrink:0;';
-                    wrapper.innerHTML =
-                        '<img src="' + e.target.result + '" style="width:100%;height:100%;object-fit:cover;">' +
-                        '<span style="position:absolute;top:2px;right:2px;background:rgba(220,53,69,0.85);color:#fff;border-radius:50%;width:18px;height:18px;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;" onclick="hapusPreviewFoto(this,' + i + ')">&times;</span>' +
-                        '<span style="position:absolute;bottom:2px;right:2px;background:rgba(0,0,0,0.5);color:#fff;border-radius:3px;padding:0 4px;font-size:9px;">' + (i + 1) + '</span>';
-                    container.appendChild(wrapper);
+                    const card = document.createElement('div');
+                    card.className = 'preview-foto-card';
+
+                    const isUtama = (index === 0);
+                    const utamaBadge = isUtama ? '<span class="badge-utama">Utama</span>' : '';
+                    const sizeStr = file.size > 1024 * 1024 
+                        ? (file.size / (1024 * 1024)).toFixed(1) + ' MB' 
+                        : Math.round(file.size / 1024) + ' KB';
+
+                    card.innerHTML = `
+                        <img src="${e.target.result}" alt="${file.name}">
+                        ${utamaBadge}
+                        <button type="button" class="btn-hapus-foto" onclick="hapusModalFoto(${index})" title="Hapus foto">&times;</button>
+                        <div class="foto-info" title="${file.name}">${sizeStr}</div>
+                    `;
+                    modalPreviewContainer.appendChild(card);
                 };
                 reader.readAsDataURL(file);
             });
         }
 
-        function hapusPreviewFoto(el, index) {
-            const input = document.querySelector('input[name="foto[]"]');
-            const dt = new DataTransfer();
-            Array.from(input.files).forEach((f, i) => {
-                if (i !== index) dt.items.add(f);
+        function hapusModalFoto(index) {
+            const newDt = new DataTransfer();
+            Array.from(modalFotoDt.files).forEach((f, i) => {
+                if (i !== index) newDt.items.add(f);
             });
-            input.files = dt.files;
-            previewFotoProduk(input);
+
+            while (modalFotoDt.items.length > 0) {
+                modalFotoDt.items.remove(0);
+            }
+            Array.from(newDt.files).forEach(f => modalFotoDt.items.add(f));
+
+            syncModalFotoPreview();
         }
 
         // Auto-slug dari nama_produk

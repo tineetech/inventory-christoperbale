@@ -19,7 +19,9 @@ class ProdukFoto extends Model
     protected static function booted()
     {
         static::deleted(function ($foto) {
-            Storage::disk('public')->delete($foto->foto);
+            if ($foto->foto) {
+                Storage::disk('public')->delete($foto->foto);
+            }
         });
     }
 
