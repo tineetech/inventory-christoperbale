@@ -181,9 +181,6 @@
                                     </td>
                                     <td class="kode-click" style="white-space: nowrap;">
                                         <strong>{{ $item->kode_penjualan }}</strong>
-                                        @if ($item->is_retur === 'yes')
-                                            <span class="badge badge-danger ml-1">Retur</span>
-                                        @endif
                                     </td>
                                     <td style="white-space: nowrap;">{{ $item->nomor_resi ?: '-' }}</td>
                                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
