@@ -593,7 +593,16 @@ class ReportController extends Controller
 
     private function getPenjualanReportQuery(array $filters)
     {
-        $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok')->where('is_retur', 'no');
+        $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok');
+
+        // Default: hanya penjualan normal (bukan retur).
+        // show_retur = yes → penjualan normal + retur.
+        // only_retur = yes → hanya penjualan retur.
+        if (($filters['only_retur'] ?? 'no') === 'yes') {
+            $query->where('is_retur', 'yes');
+        } elseif (($filters['show_retur'] ?? 'no') !== 'yes') {
+            $query->where('is_retur', 'no');
+        }
 
         if ($filters['dari_tanggal']) {
             $dari = $filters['dari_tanggal'] . ' ' . ($filters['dari_jam'] ?? '00:00') . ':00';
@@ -883,6 +892,8 @@ class ReportController extends Controller
             'sampai_jam'     => 'nullable|date_format:H:i',
             'dropshipper_id' => 'nullable|exists:dropshipper,id',
             'search'         => 'nullable|string|max:100',
+            'show_retur'     => 'nullable|in:yes,no',
+            'only_retur'     => 'nullable|in:yes,no',
             'per_page'       => 'nullable|in:10,25,50,100',
         ]);
 
@@ -899,6 +910,8 @@ class ReportController extends Controller
             'sampai_jam'     => $request->sampai_jam ?? null,
             'dropshipper_id' => $request->filled('dropshipper_id') ? (int) $request->dropshipper_id : null,
             'search'         => $request->search ?? null,
+            'show_retur'     => $request->input('show_retur') === 'yes' ? 'yes' : 'no',
+            'only_retur'     => $request->input('only_retur') === 'yes' ? 'yes' : 'no',
             'per_page'       => $this->resolvePerPage($request),
         ];
     }

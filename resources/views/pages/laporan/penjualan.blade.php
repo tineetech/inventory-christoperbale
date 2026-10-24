@@ -19,6 +19,14 @@
         .row-transit {
             background-color: #fff3e0 !important;
         }
+
+        .row-retur {
+            background-color: #fff5f5 !important;
+        }
+
+        #penjualanTable tr.row-retur td:first-child {
+            border-left: 3px solid #dc3545;
+        }
     </style>
 @endsection
 
@@ -73,9 +81,25 @@
                             </div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group col-md-12">
+                            <div class="form-group col-md-6">
                                 <label class="font-weight-bold">Cari</label>
                                 <input type="text" class="form-control" name="search" placeholder="Kode / Resi / Pesanan / Keterangan" value="{{ $filters['search'] }}">
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label class="font-weight-bold">Show Penjualan Retur?</label>
+                                <select class="form-control" name="show_retur">
+                                    <option value="no" {{ ($filters['show_retur'] ?? 'no') === 'no' ? 'selected' : '' }}>No</option>
+                                    <option value="yes" {{ ($filters['show_retur'] ?? 'no') === 'yes' ? 'selected' : '' }}>Yes</option>
+                                </select>
+                                <small class="text-muted">Pilih <strong>Yes</strong> untuk menampilkan penjualan normal + retur.</small>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label class="font-weight-bold">Hanya Penjualan Retur?</label>
+                                <select class="form-control" name="only_retur">
+                                    <option value="no" {{ ($filters['only_retur'] ?? 'no') === 'no' ? 'selected' : '' }}>No</option>
+                                    <option value="yes" {{ ($filters['only_retur'] ?? 'no') === 'yes' ? 'selected' : '' }}>Yes</option>
+                                </select>
+                                <small class="text-muted">Pilih <strong>Yes</strong> untuk hanya menampilkan penjualan retur.</small>
                             </div>
                         </div>
 
@@ -105,6 +129,12 @@
                     </h6>
                     <div class="d-flex align-items-center" style="gap: 12px;">
                         <span class="badge badge-light">{{ $penjualan->total() }} transaksi</span>
+                        @if (($filters['show_retur'] ?? 'no') === 'yes')
+                            <span class="badge badge-warning">Termasuk Retur</span>
+                        @endif
+                        @if (($filters['only_retur'] ?? 'no') === 'yes')
+                            <span class="badge badge-danger">Hanya Retur</span>
+                        @endif
                         <small class="text-muted">
                             Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
                             {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }}
@@ -119,12 +149,11 @@
                                 <th>No</th>
                                 <th>Kode Penjualan</th>
                                 <th>Nomor Resi</th>
-                                <th>No. Pesanan</th>
-                                {{-- <th>No. Transaksi</th> --}}
                                 <th>Dropshipper</th>
                                 <th>Tanggal</th>
                                 <th>Total Harga</th>
                                 <th>Harga Cair</th>
+                                <th>Retur?</th>
                                 <th>Scan Out</th>
                                 <th>Draft</th>
                                 <th>Keterangan</th>
@@ -142,14 +171,21 @@
 
                                     $scanOutLabel = $item->scan_out ? ucfirst($item->scan_out) : '-';
                                 @endphp
-                                <tr class="main-row {{ $item->keterangan === 'sedang transit' ? 'row-transit' : '' }}" data-report-main="true" data-id="{{ $item->id }}"
+                                <tr class="main-row {{ $item->keterangan === 'sedang transit' ? 'row-transit' : '' }} {{ $item->is_retur === 'yes' ? 'row-retur' : '' }}" data-report-main="true" data-id="{{ $item->id }}"
                                     data-expanded="false">
-                                    <td>{{ $penjualan->firstItem() + $index }}</td>
+                                    <td>
+                                        {{ $penjualan->firstItem() + $index }}
+                                        @if ($item->is_retur === 'yes')
+                                            <span class="badge badge-danger ml-1" title="Penjualan Retur">Retur</span>
+                                        @endif
+                                    </td>
                                     <td class="kode-click" style="white-space: nowrap;">
-                                        <strong>{{ $item->kode_penjualan }}</strong></td>
+                                        <strong>{{ $item->kode_penjualan }}</strong>
+                                        @if ($item->is_retur === 'yes')
+                                            <span class="badge badge-danger ml-1">Retur</span>
+                                        @endif
+                                    </td>
                                     <td style="white-space: nowrap;">{{ $item->nomor_resi ?: '-' }}</td>
-                                    <td>{{ $item->nomor_pesanan ?: '-' }}</td>
-                                    {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                                     <td style="white-space: nowrap;">{{ $item->tanggal }}</td>
                                     <td style="white-space: nowrap;">Rp
@@ -157,6 +193,15 @@
                                     <td style="white-space: nowrap;">
                                         {{ $item->harga_cair !== null ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
                                     </td>
+                                    </td>
+                                    <td style="white-space: nowrap;">
+                                        @if ($item->is_retur === 'yes')
+                                            <span class="badge badge-danger">Ya</span>
+                                        @elseif ($item->is_retur === 'no')
+                                            <span class="badge badge-success">Tidak</span>
+                                        @else
+                                            <span class="badge badge-secondary">-</span>
+                                        @endif
                                     </td>
                                     <td><span class="{{ $scanOutClass }}">{{ $scanOutLabel }}</span></td>
                                     <td>
