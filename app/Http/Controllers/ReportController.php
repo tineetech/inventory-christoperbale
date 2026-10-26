@@ -894,6 +894,7 @@ class ReportController extends Controller
             'search'         => 'nullable|string|max:100',
             'show_retur'     => 'nullable|in:yes,no',
             'only_retur'     => 'nullable|in:yes,no',
+            'mode_harga'     => 'nullable|in:harga_reseller,harga_hpp',
             'per_page'       => 'nullable|in:10,25,50,100',
         ]);
 
@@ -912,6 +913,7 @@ class ReportController extends Controller
             'search'         => $request->search ?? null,
             'show_retur'     => $request->input('show_retur') === 'yes' ? 'yes' : 'no',
             'only_retur'     => $request->input('only_retur') === 'yes' ? 'yes' : 'no',
+            'mode_harga'     => $request->input('mode_harga') === 'harga_hpp' ? 'harga_hpp' : 'harga_reseller',
             'per_page'       => $this->resolvePerPage($request),
         ];
     }

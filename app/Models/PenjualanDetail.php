@@ -28,4 +28,28 @@ class PenjualanDetail extends Model
     {
         return $this->belongsTo(Barang::class);
     }
+
+    /**
+     * Harga detail sesuai mode laporan (visualisasi saja, tidak mengubah data).
+     * harga_reseller → barang.harga_2, harga_hpp → barang.harga_1.
+     */
+    public function hargaByMode(string $mode = 'harga_reseller'): float
+    {
+        $barang = $this->barang;
+
+        $harga = $mode === 'harga_hpp'
+            ? ($barang->harga_1 ?? null)
+            : ($barang->harga_2 ?? null);
+
+        if ($harga === null) {
+            $harga = $this->harga;
+        }
+
+        return (float) ($harga ?? 0);
+    }
+
+    public function subtotalByMode(string $mode = 'harga_reseller'): float
+    {
+        return (float) ($this->qty ?? 0) * $this->hargaByMode($mode);
+    }
 }

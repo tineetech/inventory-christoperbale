@@ -31,6 +31,9 @@
 @endsection
 
 @section('content')
+    @php
+        $modeHarga = $filters['mode_harga'] ?? 'harga_reseller';
+    @endphp
     <div class="layout-content">
         <div class="container-fluid flex-grow-1 container-p-y">
             <h4 class="font-weight-bold py-3 mb-0">Laporan Penjualan</h4>
@@ -81,7 +84,7 @@
                             </div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group col-md-6">
+                            <div class="form-group col-md-3">
                                 <label class="font-weight-bold">Cari</label>
                                 <input type="text" class="form-control" name="search" placeholder="Kode / Resi / Pesanan / Keterangan" value="{{ $filters['search'] }}">
                             </div>
@@ -100,6 +103,14 @@
                                     <option value="yes" {{ ($filters['only_retur'] ?? 'no') === 'yes' ? 'selected' : '' }}>Yes</option>
                                 </select>
                                 <small class="text-muted">Pilih <strong>Yes</strong> untuk hanya menampilkan penjualan retur.</small>
+                            </div>
+                            <div class="form-group col-md-3">
+                                <label class="font-weight-bold">Mode Harga Penjualan</label>
+                                <select class="form-control" name="mode_harga">
+                                    <option value="harga_reseller" {{ ($filters['mode_harga'] ?? 'harga_reseller') === 'harga_reseller' ? 'selected' : '' }}>Harga Reseller</option>
+                                    <option value="harga_hpp" {{ ($filters['mode_harga'] ?? 'harga_reseller') === 'harga_hpp' ? 'selected' : '' }}>Harga HPP</option>
+                                </select>
+                                <small class="text-muted">Hanya untuk tampilan laporan, tidak mengubah data.</small>
                             </div>
                         </div>
 
@@ -134,6 +145,11 @@
                         @endif
                         @if (($filters['only_retur'] ?? 'no') === 'yes')
                             <span class="badge badge-danger">Hanya Retur</span>
+                        @endif
+                        @if ($modeHarga === 'harga_hpp')
+                            <span class="badge badge-info">Mode Harga HPP</span>
+                        @else
+                            <span class="badge badge-primary">Mode Harga Reseller</span>
                         @endif
                         <small class="text-muted">
                             Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
@@ -186,10 +202,9 @@
                                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                                     <td style="white-space: nowrap;">{{ $item->tanggal }}</td>
                                     <td style="white-space: nowrap;">Rp
-                                        {{ number_format($item->total_harga, 0, ',', '.') }}</td>
+                                        {{ number_format($item->totalHargaByMode($modeHarga), 0, ',', '.') }}</td>
                                     <td style="white-space: nowrap;">
                                         {{ $item->harga_cair !== null ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
-                                    </td>
                                     </td>
                                     <td style="white-space: nowrap;">
                                         @if ($item->is_retur === 'yes')
@@ -268,7 +283,9 @@
 
                                                     @forelse ($item->detail as $detail)
                                                         @php
-                                                            $totalDetail += $detail->subtotal;
+                                                            $hargaDetail = $detail->hargaByMode($modeHarga);
+                                                            $subtotalDetail = $detail->qty * $hargaDetail;
+                                                            $totalDetail += $subtotalDetail;
                                                         @endphp
                                                         <tr>
                                                             <td>{{ $detail->nomor_resi ?: '-' }}</td>
@@ -276,8 +293,8 @@
                                                             <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                                                             <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
                                                             <td>{{ $detail->qty }}</td>
-                                                            <td>Rp {{ number_format($detail->harga, 0, ',', '.') }}</td>
-                                                            <td>Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
+                                                            <td>Rp {{ number_format($hargaDetail, 0, ',', '.') }}</td>
+                                                            <td>Rp {{ number_format($subtotalDetail, 0, ',', '.') }}</td>
                                                         </tr>
                                                     @empty
                                                         <tr>

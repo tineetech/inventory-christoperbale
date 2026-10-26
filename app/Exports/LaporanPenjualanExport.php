@@ -81,11 +81,11 @@ class LaporanPenjualanExport implements FromView, WithStyles, WithEvents
 $sheet->getColumnDimension('A')->setWidth(8);   // No
 $sheet->getColumnDimension('B')->setWidth(22);  // Kode Penjualan
 $sheet->getColumnDimension('C')->setWidth(20);  // Nomor Resi
-$sheet->getColumnDimension('D')->setWidth(22);  // No Pesanan
-$sheet->getColumnDimension('E')->setWidth(22);  // Dropshipper
-$sheet->getColumnDimension('F')->setWidth(18);  // Tanggal
-$sheet->getColumnDimension('G')->setWidth(18);  // Total Harga
-$sheet->getColumnDimension('H')->setWidth(18);  // Harga Cair
+$sheet->getColumnDimension('D')->setWidth(22);  // Dropshipper
+$sheet->getColumnDimension('E')->setWidth(18);  // Tanggal
+$sheet->getColumnDimension('F')->setWidth(18);  // Total Harga
+$sheet->getColumnDimension('G')->setWidth(18);  // Harga Cair
+$sheet->getColumnDimension('H')->setWidth(10);  // Retur?
 $sheet->getColumnDimension('I')->setWidth(35);  // Keterangan
                 $highestRow = $sheet->getHighestRow();
 
@@ -96,13 +96,17 @@ $sheet->getColumnDimension('I')->setWidth(35);  // Keterangan
                     // Deteksi baris header transaksi (yang ada tanda #1 | kode)
                     if (is_string($cellValue) && str_contains($cellValue, '#')) {
 
+                        // Baris penjualan retur diberi highlight merah muda
+                        $isRetur = trim((string) $sheet->getCell("H{$row}")->getValue()) === 'Ya';
+
                         $sheet->getStyle("A{$row}:I{$row}")->applyFromArray([
                             'font' => [
                                 'bold' => true,
+                                'color' => ['rgb' => $isRetur ? 'A30000' : '000000'],
                             ],
                             'fill' => [
                                 'fillType' => 'solid',
-                                'startColor' => ['rgb' => 'E7E6E6'], // abu soft
+                                'startColor' => ['rgb' => $isRetur ? 'FFE0E0' : 'E7E6E6'], // retur: merah muda, lainnya: abu soft
                             ],
                             'borders' => [
                                 'outline' => [ // border luar saja

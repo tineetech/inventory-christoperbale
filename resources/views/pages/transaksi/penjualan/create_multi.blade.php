@@ -714,37 +714,6 @@
                 </h6>
                 <div class="card-body">
 
-                    {{-- MODE HARGA --}}
-                    {{-- MODE HARGA --}}
-                    <div id="mode-harga-bar"
-                        style="display:none; background:#f8fafc; border:1px solid #dee2e6; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
-                        <label class="font-weight-bold small text-uppercase mb-2 d-block"
-                            style="letter-spacing:.06em; color:#495057;">
-                            <i class="feather icon-tag mr-1"></i> Mode Harga Penjualan
-                        </label>
-                        <div class="d-flex" style="gap:10px;">
-                            <label class="mode-option">
-                                <input type="radio" name="mode_harga" id="mode_harga_2" value="harga_2" checked
-                                    hidden>
-                                <div class="mode-card mode-card--shopee active" id="mode_card_harga_2">
-                                    <i class="feather icon-tag mr-1"></i>
-                                    <span>Harga Reseller</span>
-                                    <i class="feather icon-check-circle ml-2 mode-check"></i>
-                                </div>
-                            </label>
-                            <label class="mode-option">
-                                <input type="radio" name="mode_harga" id="mode_harga_1" value="harga_1" hidden>
-                                <div class="mode-card mode-card--tiktok" id="mode_card_harga_1">
-                                    <i class="feather icon-percent mr-1"></i>
-                                    <span>Harga HPP</span>
-                                    <i class="feather icon-check-circle ml-2 mode-check"></i>
-                                </div>
-                            </label>
-                        </div>
-                        <small class="text-muted mt-1 d-block">
-                            Mengubah mode akan langsung mengupdate harga semua produk di semua resi.
-                        </small>
-                    </div>
                     {{-- SET ALL DROPSHIPPER --}}
                     <div id="set-all-ds-bar"
                         style="display:none; background:#f8fafc;
@@ -1323,8 +1292,6 @@
                         await new Promise(resolve => setTimeout(resolve, 800));
 
                         modalDone(false);
-document.getElementById('mode_harga_2').checked = true;
-$('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
 
                         // Sembunyikan modal otomatis setelah 1.5 detik jika tidak ada warning
                         const hasWarnings = allBackendWarnings.length > 0 ||
@@ -1442,10 +1409,8 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
         function toggleSetAllDsBar() {
             if (resiList.length > 0) {
                 $('#set-all-ds-bar').css('display', 'flex');
-                $('#mode-harga-bar').css('display', 'block');
             } else {
                 $('#set-all-ds-bar').hide();
-                $('#mode-harga-bar').hide();
             }
         }
 
@@ -2316,9 +2281,7 @@ $('input[name="mode_harga"]').filter('[value="harga_2"]').trigger('change');
 
             const nomor_urut = Object.keys(state.items).length + 1;
 
-            const hargaAktif = getModeHarga() === 'harga_1' ?
-                (product.harga_1 ?? product.harga_2) :
-                product.harga_2;
+            const hargaAktif = product.harga_2 ?? 0;
 
             state.items[product.id] = {
                 id: product.id,
@@ -2924,51 +2887,14 @@ document.getElementById('mode_card_ekspedisi_auto')?.classList.add('active');
         // ================================================================
         // MODE HARGA
         // ================================================================
+        // Penjualan multiple selalu memakai Harga Reseller (harga_2).
         function getModeHarga() {
-            return document.querySelector('input[name="mode_harga"]:checked')?.value ?? 'harga_2';
+            return 'harga_2';
         }
 
         function getHargaByMode(product) {
-            return getModeHarga() === 'harga_1' ?
-                (product.harga_1 ?? product.harga_2) :
-                product.harga_2;
+            return product.harga_2 ?? 0;
         }
-
-        // Listener: saat mode harga berubah, update semua item di semua card
-        $('input[name="mode_harga"]').on('change', function() {
-            const mode = this.value;
-
-            // Update tampilan card selector
-            $('.mode-card[id^="mode_card_harga_"]').removeClass('active');
-            $(`#mode_card_${mode}`).addClass('active');
-
-            // Update semua item di semua resi
-            resiList.forEach(r => {
-                Object.values(r.items).forEach(item => {
-                    const newHarga = mode === 'harga_1' ?
-                        (item.harga_1 ?? item.harga_2) :
-                        item.harga_2;
-
-                    item.harga_aktif = newHarga;
-
-                    // Update tampilan harga di row
-                    const row = $(`#row_${r.uid}_${item.id}`);
-                    row.find('td:nth-child(7)').text(formatRupiah(newHarga)); // kolom Harga
-                    row.find('td.row-total').text(formatRupiah(newHarga * item.qty));
-                });
-                calcSubtotal(r.uid);
-            });
-
-            Toast.fire({
-                icon: 'info',
-                title: `Mode harga diubah ke ${mode === 'harga_1' ? 'Harga HPP' : 'Harga Reseller'}`
-            });
-        });
-
-        $('.mode-card[id^="mode_card_harga_"]').on('click', function() {
-            const mode = $(this).attr('id').replace('mode_card_', '');
-            $(`#mode_harga_${mode.replace('harga_', '')}`).prop('checked', true).trigger('change');
-        });
 
 
         // ── Tutup modal = stop polling ────────────────────────────────────

@@ -67,6 +67,15 @@
             background: #f1f1f1;
             font-weight: bold;
         }
+
+        .row-retur td {
+            background: #ffe0e0;
+            color: #a30000;
+        }
+
+        .row-retur td.detail-cell {
+            background: #fff0f0;
+        }
     </style>
 </head>
 
@@ -76,9 +85,13 @@
         <div class="meta">
             Periode: {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
             {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }} |
+            Mode Harga: {{ ($filters['mode_harga'] ?? 'harga_reseller') === 'harga_hpp' ? 'Harga HPP' : 'Harga Reseller' }} |
             Dicetak: {{ now()->format('d M Y H:i') }}
         </div>
     </div>
+    @php
+        $modeHarga = $filters['mode_harga'] ?? 'harga_reseller';
+    @endphp
 
     <table>
         <thead>
@@ -86,12 +99,11 @@
                 <th>No</th>
                 <th>Kode Penjualan</th>
                 <th>Nomor Resi</th>
-                <th>No. Pesanan</th>
-                {{-- <th>No. Transaksi</th> --}}
                 <th>Dropshipper</th>
                 <th>Tanggal</th>
                 <th>Total Harga</th>
                 <th>Harga Cair</th>
+                <th>Retur?</th>
                 <th>Scan Out</th>
                 <th>Draft</th>
                 <th>Keterangan</th>
@@ -107,23 +119,22 @@
                         default => '-',
                     };
                 @endphp
-                <tr>
+                <tr class="{{ $item->is_retur === 'yes' ? 'row-retur' : '' }}">
                     <td>{{ $index + 1 }}</td>
                     <td>{{ $item->kode_penjualan }}</td>
                     <td>{{ $item->nomor_resi ?: '-' }}</td>
-                    <td>{{ $item->nomor_pesanan ?: '-' }}</td>
-                    {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                     <td>{{ $item->tanggal }}</td>
-                    <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>                    
+                    <td>Rp {{ number_format($item->totalHargaByMode($modeHarga), 0, ',', '.') }}</td>                    
                     <td style="white-space: nowrap;">
                         {{ $item->harga_cair !== null ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
                     </td>
+                    <td>{{ $item->is_retur === 'yes' ? 'Ya' : 'Tidak' }}</td>
                     <td>{{ $scanOutLabel }}</td>
                     <td>{{ $draftLabel }}</td>
                     <td>{{ $item->keterangan ?: '-' }}</td>
                 </tr>
-                <tr>
+                <tr class="{{ $item->is_retur === 'yes' ? 'row-retur' : '' }}">
                     <td colspan="11" class="detail-cell">
                         <div class="detail-header">Detail Barang</div>
                         <table class="detail-table">
@@ -145,7 +156,9 @@
 
                                 @forelse ($item->detail as $detail)
                                     @php
-                                        $totalDetail += $detail->subtotal;
+                                        $hargaDetail = $detail->hargaByMode($modeHarga);
+                                        $subtotalDetail = $detail->qty * $hargaDetail;
+                                        $totalDetail += $subtotalDetail;
                                     @endphp
                                     <tr>
                                         <td>{{ $detail->nomor_resi ?: '-' }}</td>
@@ -153,8 +166,8 @@
                                         <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                                         <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
                                         <td>{{ $detail->qty }}</td>
-                                        <td>Rp {{ number_format($detail->harga, 0, ',', '.') }}</td>
-                                        <td>Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
+                                        <td>Rp {{ number_format($hargaDetail, 0, ',', '.') }}</td>
+                                        <td>Rp {{ number_format($subtotalDetail, 0, ',', '.') }}</td>
                                     </tr>
                                 @empty
                                     <tr>

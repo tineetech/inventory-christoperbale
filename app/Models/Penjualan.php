@@ -66,4 +66,20 @@ class Penjualan extends Model
     {
         return $this->hasMany(UserVoucher::class, 'order_id');
     }
+
+    /**
+     * Total harga sesuai mode laporan (visualisasi saja, tidak mengubah data).
+     */
+    public function totalHargaByMode(string $mode = 'harga_reseller'): float
+    {
+        if (!$this->relationLoaded('detail')) {
+            $this->load('detail.barang');
+        }
+
+        if ($this->detail->isEmpty()) {
+            return (float) ($this->total_harga ?? 0);
+        }
+
+        return (float) $this->detail->sum(fn($detail) => $detail->subtotalByMode($mode));
+    }
 }
