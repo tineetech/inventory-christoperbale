@@ -4,19 +4,21 @@
         <tr>
             <th colspan="8">
                 Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
-                {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }} |
-                Mode Harga: {{ ($filters['mode_harga'] ?? 'harga_reseller') === 'harga_hpp' ? 'Harga HPP' : 'Harga Reseller' }}
+                {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }}
             </th>
         </tr>
         <tr>
             <th>No</th>
             <th>Kode Penjualan</th>
             <th>Nomor Resi</th>
+            <th>No. Pesanan</th>
+            {{-- <th>No. Transaksi</th> --}}
             <th>Dropshipper</th>
             <th>Tanggal</th>
             <th>Total Harga</th>
             <th>Harga Cair</th>
-            <th>Retur?</th>
+            {{-- <th>Scan Out</th> --}}
+            {{-- <th>Draft</th> --}}
             <th>Keterangan</th>
         </tr>
     </thead>
@@ -25,11 +27,10 @@
             $grandTotal = 0;
             $grandTotalHargaCair = 0;
             $totalQty = 0;
-            $modeHarga = $filters['mode_harga'] ?? 'harga_reseller';
         @endphp
         @forelse ($penjualan as $index => $item)
             @php
-                $grandTotal += $item->totalHargaByMode($modeHarga);
+                $grandTotal += $item->total_harga;
                 $grandTotalHargaCair += $item->harga_cair ?? 0;
             @endphp
             @php
@@ -44,13 +45,18 @@
                 <td>#{{ $index + 1 }}</td>
                 <td>{{ $item->kode_penjualan }}</td>
                 <td>{{ $item->nomor_resi ?: '-' }}</td>
+                <td>{{ $item->nomor_pesanan ?: '-' }}</td>
+                {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                 <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                 <td>{{ $item->tanggal }}</td>
-                <td>{{ $item->totalHargaByMode($modeHarga) }}</td>
+                <td>{{ $item->total_harga }}</td>
+                {{-- <td>{{ $item->harga_cair }}</td> --}}
+                                    
                 <td style="white-space: nowrap;">
                     {{ $item->harga_cair !== null ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
                 </td>
-                <td>{{ $item->is_retur === 'yes' ? 'Ya' : 'Tidak' }}</td>
+                {{-- <td>{{ $scanOutLabel }}</td>
+                <td>{{ $draftLabel }}</td> --}}
                 <td>{{ $item->keterangan ?: '-' }}</td>
             </tr>
             <tr>
@@ -73,9 +79,7 @@
             @endphp
             @forelse ($item->detail as $detail)
                 @php
-                    $hargaDetail = $detail->hargaByMode($modeHarga);
-                    $subtotalDetail = $detail->qty * $hargaDetail;
-                    $totalDetail += $subtotalDetail;
+                    $totalDetail += $detail->subtotal;
                     $totalQty += $detail->qty;
                 @endphp
                 <tr>
@@ -85,8 +89,8 @@
                     <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                     {{-- <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td> --}}
                     <td>{{ $detail->qty }}</td>
-                    <td>{{ $hargaDetail }}</td>
-                    <td>{{ $subtotalDetail }}</td>
+                    <td>{{ $detail->harga }}</td>
+                    <td>{{ $detail->subtotal }}</td>
                     <td colspan="3"></td>
                 </tr>
             @empty

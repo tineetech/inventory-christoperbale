@@ -165,6 +165,7 @@
                                 <th>No</th>
                                 <th>Kode Penjualan</th>
                                 <th>Nomor Resi</th>
+                                <th>Nomor Pesanan</th>
                                 <th>Dropshipper</th>
                                 <th>Tanggal</th>
                                 <th>Total Harga</th>
@@ -199,6 +200,7 @@
                                         <strong>{{ $item->kode_penjualan }}</strong>
                                     </td>
                                     <td style="white-space: nowrap;">{{ $item->nomor_resi ?: '-' }}</td>
+                                    <td style="white-space: nowrap;">{{ $item->nomor_pesanan ?: '-' }}</td>
                                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                                     <td style="white-space: nowrap;">{{ $item->tanggal }}</td>
                                     <td style="white-space: nowrap;">Rp
