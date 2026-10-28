@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -99,9 +98,8 @@ class ImportPenjualanController extends Controller
     public function pollJobStatus(Request $request, string $jobId)
     {
         try {
-            $response = Http::connectTimeout(5)   // batas fase koneksi
-                     ->timeout(60)                 // batas total->retry(3, 1000, throw: false)
-                    ->get($this->fastApiUrl() . '/job-status/' . $jobId);
+            $response = Http::timeout(120)
+                ->get($this->fastApiUrl() . '/job-status/' . $jobId);
 
             if ($response->failed()) {
                 return response()->json([
@@ -113,7 +111,6 @@ class ImportPenjualanController extends Controller
             $payload = $response->json();
 
             if (isset($payload['error'])) {
-                Log::info("Erorr GET JOB STATUS : " . $payload);
                 return response()->json([
                     'success' => false,
                     'message' => $payload['error'],
@@ -161,7 +158,6 @@ class ImportPenjualanController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::info("Erorr GET JOB STATUS : " . $e);
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
@@ -187,8 +183,7 @@ class ImportPenjualanController extends Controller
         $file = $request->file('file');
 
         try {
-            $response = Http::connectTimeout(15)   // batas fase koneksi
-                ->timeout(60)                 // batas total->retry(3, 1000, throw: false)
+            $response = Http::timeout(300)
                 ->attach(
                     'file',
                     file_get_contents($file->getRealPath()),
