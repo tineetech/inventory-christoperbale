@@ -99,7 +99,7 @@ class ImportPenjualanController extends Controller
     {
         try {
             $response = Http::connectTimeout(15)   // batas fase koneksi
-                    ->timeout(60)                 // batas total->retry(3, 1000, throw: false)
+                     ->timeout(60)                 // batas total->retry(3, 1000, throw: false)
                     ->get($this->fastApiUrl() . '/job-status/' . $jobId);
 
             if ($response->failed()) {
