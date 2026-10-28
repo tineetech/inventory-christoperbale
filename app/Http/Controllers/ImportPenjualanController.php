@@ -112,6 +112,7 @@ class ImportPenjualanController extends Controller
             $payload = $response->json();
 
             if (isset($payload['error'])) {
+                Log::info("Erorr GET JOB STATUS : " . $payload);
                 return response()->json([
                     'success' => false,
                     'message' => $payload['error'],
