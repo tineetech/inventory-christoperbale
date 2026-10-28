@@ -626,6 +626,39 @@ class ReportController extends Controller
             });
         }
 
+        // Filter pengelompokan nomor resi berdasarkan prefix.
+        if (!empty($filters['ekspedisi'])) {
+            $resi = "UPPER(TRIM(nomor_resi))";
+
+            if ($filters['ekspedisi'] === 'spx') {
+                $query->whereRaw("{$resi} LIKE 'SPX%'");
+            } elseif ($filters['ekspedisi'] === 'jnt') {
+                $query->where(function ($q) use ($resi) {
+                    $q->whereRaw("{$resi} LIKE 'JX%'")
+                      ->orWhereRaw("{$resi} LIKE 'JY%'")
+                      ->orWhereRaw("{$resi} LIKE 'JZ%'");
+                });
+            } elseif ($filters['ekspedisi'] === 'anteraja') {
+                $query->whereRaw("{$resi} REGEXP '^[0-9]'");
+            } elseif ($filters['ekspedisi'] === 'lazada') {
+                $query->whereRaw("{$resi} LIKE 'LX%'");
+            } elseif ($filters['ekspedisi'] === 'lainnya') {
+                $query->where(function ($q) use ($resi) {
+                    $q->whereNull('nomor_resi')
+                      ->orWhereRaw("TRIM(nomor_resi) = ''")
+                      ->orWhere(function ($sub) use ($resi) {
+                          $sub->whereRaw("TRIM(nomor_resi) <> ''")
+                              ->whereRaw("{$resi} NOT LIKE 'SPX%'")
+                              ->whereRaw("{$resi} NOT LIKE 'JX%'")
+                              ->whereRaw("{$resi} NOT LIKE 'JY%'")
+                              ->whereRaw("{$resi} NOT LIKE 'JZ%'")
+                              ->whereRaw("{$resi} NOT LIKE 'LX%'")
+                              ->whereRaw("{$resi} NOT REGEXP '^[0-9]'");
+                      });
+                });
+            }
+        }
+
         return $query->latest('tanggal');
     }
 
@@ -895,6 +928,7 @@ class ReportController extends Controller
             'show_retur'     => 'nullable|in:yes,no',
             'only_retur'     => 'nullable|in:yes,no',
             'mode_harga'     => 'nullable|in:harga_reseller,harga_hpp',
+            'ekspedisi'      => 'nullable|in:spx,jnt,anteraja,lazada,lainnya',
             'per_page'       => 'nullable|in:10,25,50,100',
         ]);
 
@@ -914,6 +948,9 @@ class ReportController extends Controller
             'show_retur'     => $request->input('show_retur') === 'yes' ? 'yes' : 'no',
             'only_retur'     => $request->input('only_retur') === 'yes' ? 'yes' : 'no',
             'mode_harga'     => $request->input('mode_harga') === 'harga_hpp' ? 'harga_hpp' : 'harga_reseller',
+            'ekspedisi'      => in_array($request->input('ekspedisi'), ['spx', 'jnt', 'anteraja', 'lazada', 'lainnya'], true)
+                ? $request->input('ekspedisi')
+                : null,
             'per_page'       => $this->resolvePerPage($request),
         ];
     }

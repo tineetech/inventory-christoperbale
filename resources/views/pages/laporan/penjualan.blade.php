@@ -33,6 +33,14 @@
 @section('content')
     @php
         $modeHarga = $filters['mode_harga'] ?? 'harga_reseller';
+        $ekspedisiLabels = [
+            'spx' => 'Shopee (SPX)',
+            'jnt' => 'JNT (JX/JY/JZ)',
+            'anteraja' => 'AnterAja (Angka)',
+            'lazada' => 'Lazada (LX)',
+            'lainnya' => 'Lainnya',
+        ];
+        $ekspedisiTerpilih = $filters['ekspedisi'] ?? null;
     @endphp
     <div class="layout-content">
         <div class="container-fluid flex-grow-1 container-p-y">
@@ -84,7 +92,7 @@
                             </div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group col-md-3">
+                            <div class="form-group col-md-6">
                                 <label class="font-weight-bold">Cari</label>
                                 <input type="text" class="form-control" name="search" placeholder="Kode / Resi / Pesanan / Keterangan" value="{{ $filters['search'] }}">
                             </div>
@@ -104,13 +112,25 @@
                                 </select>
                                 <small class="text-muted">Pilih <strong>Yes</strong> untuk hanya menampilkan penjualan retur.</small>
                             </div>
-                            <div class="form-group col-md-3">
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-md-6">
                                 <label class="font-weight-bold">Mode Harga Penjualan</label>
                                 <select class="form-control" name="mode_harga">
                                     <option value="harga_reseller" {{ ($filters['mode_harga'] ?? 'harga_reseller') === 'harga_reseller' ? 'selected' : '' }}>Harga Reseller</option>
                                     <option value="harga_hpp" {{ ($filters['mode_harga'] ?? 'harga_reseller') === 'harga_hpp' ? 'selected' : '' }}>Harga HPP</option>
                                 </select>
                                 <small class="text-muted">Hanya untuk tampilan laporan, tidak mengubah data.</small>
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label class="font-weight-bold">Ekspedisi (Prefix No Resi)</label>
+                                <select class="form-control" name="ekspedisi">
+                                    <option value="">(Semua)</option>
+                                    @foreach ($ekspedisiLabels as $value => $label)
+                                        <option value="{{ $value }}" {{ $ekspedisiTerpilih === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                <small class="text-muted">Dikelompokkan dari awal nomor resi.</small>
                             </div>
                         </div>
 
@@ -150,6 +170,9 @@
                             <span class="badge badge-info">Mode Harga HPP</span>
                         @else
                             <span class="badge badge-primary">Mode Harga Reseller</span>
+                        @endif
+                        @if ($ekspedisiTerpilih && isset($ekspedisiLabels[$ekspedisiTerpilih]))
+                            <span class="badge badge-secondary">Ekspedisi: {{ $ekspedisiLabels[$ekspedisiTerpilih] }}</span>
                         @endif
                         <small class="text-muted">
                             Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
