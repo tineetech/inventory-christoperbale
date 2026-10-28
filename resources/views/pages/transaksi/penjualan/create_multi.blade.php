@@ -1227,8 +1227,8 @@
 
                     if (!pollData.success) {
                         stopPolling();
+                        console.log(pollData.message);
                         modalLog(`Error: ${pollData.message}`, 'err');
-                        console.log($pollData.message);
                         modalDone(true);
                         return;
                     }
