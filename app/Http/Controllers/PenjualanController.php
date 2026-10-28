@@ -1648,7 +1648,9 @@ private function isRowBlankWhite($img, int $width, int $y): bool
                 for ($i = 0; $i < 40; $i++) {
                     sleep(3);
 
-                    $poll = Http::timeout(500)->get($this->fastApiUrl() . '/job-status/' . $jobId);
+                    $poll = Http::connectTimeout(15)   // batas fase koneksi
+                            ->timeout(60)                 // batas total->retry(3, 1000, throw: false)
+                            ->get($this->fastApiUrl() . '/job-status/' . $jobId);
                     if ($poll->failed()) {
                         continue;
                     }
