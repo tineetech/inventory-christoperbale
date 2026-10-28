@@ -160,6 +160,7 @@ class ImportPenjualanController extends Controller
             ]);
 
         } catch (\Exception $e) {
+            Log::info("Erorr GET JOB STATUS : " . $e);
             return response()->json([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
