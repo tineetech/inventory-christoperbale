@@ -43,7 +43,7 @@ class LaporanPenjualanExport implements FromView, WithStyles, WithEvents
         ]);
 
         // Style header row ke-3 (border + warna hijau)
-        $sheet->getStyle('A3:I3')->applyFromArray([
+        $sheet->getStyle('A3:J3')->applyFromArray([
             'font' => [
                 'bold' => true,
                 'color' => ['rgb' => 'FFFFFF'], // putih
@@ -86,8 +86,21 @@ $sheet->getColumnDimension('E')->setWidth(22);  // Dropshipper
 $sheet->getColumnDimension('F')->setWidth(18);  // Tanggal
 $sheet->getColumnDimension('G')->setWidth(18);  // Total Harga
 $sheet->getColumnDimension('H')->setWidth(18);  // Harga Cair
-$sheet->getColumnDimension('I')->setWidth(35);  // Keterangan
+$sheet->getColumnDimension('I')->setWidth(18);  // Draft
+$sheet->getColumnDimension('J')->setWidth(35);  // Keterangan
                 $highestRow = $sheet->getHighestRow();
+
+                $returKodes = collect($this->penjualan)
+                    ->filter(fn($item) => $item->is_retur === 'yes')
+                    ->pluck('kode_penjualan')
+                    ->map(fn($kode) => trim((string) $kode))
+                    ->all();
+
+                $transitKodes = collect($this->penjualan)
+                    ->filter(fn($item) => $item->is_retur !== 'yes' && $item->keterangan === 'sedang transit')
+                    ->pluck('kode_penjualan')
+                    ->map(fn($kode) => trim((string) $kode))
+                    ->all();
 
                 for ($row = 1; $row <= $highestRow; $row++) {
 
@@ -96,44 +109,65 @@ $sheet->getColumnDimension('I')->setWidth(35);  // Keterangan
                     // Deteksi baris header transaksi (yang ada tanda #1 | kode)
                     if (is_string($cellValue) && str_contains($cellValue, '#')) {
 
-                        $sheet->getStyle("A{$row}:I{$row}")->applyFromArray([
+                        $kode = trim((string) $sheet->getCell("B$row")->getValue());
+                        $isRetur = in_array($kode, $returKodes, true);
+                        $isTransit = in_array($kode, $transitKodes, true);
+
+                        $fillColor = $isRetur ? 'FFC7CE' : ($isTransit ? 'FFF3E0' : 'E7E6E6');
+                        $fontColor = $isRetur ? '9C0006' : '000000';
+
+                        $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
                             'font' => [
                                 'bold' => true,
+                                'color' => ['rgb' => $fontColor],
                             ],
                             'fill' => [
                                 'fillType' => 'solid',
-                                'startColor' => ['rgb' => 'E7E6E6'], // abu soft
+                                'startColor' => ['rgb' => $fillColor],
                             ],
                             'borders' => [
                                 'outline' => [ // border luar saja
                                     'borderStyle' => 'medium',
-
-
-
                                     'color' => ['rgb' => '999999'],
                                 ],
                             ],
                         ]);
+
+                        continue;
+                    }
+
+                    $rowText = trim((string) $cellValue . ' ' . (string) $sheet->getCell("B$row")->getValue());
+
+                    if (str_contains($rowText, 'Grand Total')) {
+                        $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
+                            'font' => [
+                                'bold' => true,
+                                'size' => 12,
+                            ],
+                            'fill' => [
+                                'fillType' => 'solid',
+                                'startColor' => ['rgb' => 'C6EFCE'], // hijau muda
+                            ],
+                            'borders' => [
+                                'top' => [
+                                    'borderStyle' => 'medium',
+                                    'color' => ['rgb' => '000000'],
+                                ],
+                            ],
+                        ]);
+                    } elseif (str_contains($rowText, 'Total Qty Terjual')) {
+                        $sheet->getStyle("A{$row}:J{$row}")->applyFromArray([
+                            'font' => [
+                                'bold' => true,
+                                'size' => 12,
+                            ],
+                            'fill' => [
+                                'fillType' => 'solid',
+                                'startColor' => ['rgb' => 'D9EAD3'], // hijau muda
+                            ],
+                        ]);
                     }
                 }
-
-
-                $sheet->getStyle("A{$highestRow}:I{$highestRow}")->applyFromArray([
-                    'font' => [
-                        'bold' => true,
-                        'size' => 12,
-                    ],
-                    'fill' => [
-                        'fillType' => 'solid',
-                        'startColor' => ['rgb' => 'D9EAD3'], // hijau muda
-                    ],
-                    'borders' => [
-                        'top' => [
-                            'borderStyle' => 'medium',
-                            'color' => ['rgb' => '000000'],
-                        ],
-                    ],
-                ]);
             }
         ];
     }

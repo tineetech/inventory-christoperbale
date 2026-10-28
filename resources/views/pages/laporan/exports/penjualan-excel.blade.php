@@ -18,7 +18,7 @@
             <th>Total Harga</th>
             <th>Harga Cair</th>
             {{-- <th>Scan Out</th> --}}
-            {{-- <th>Draft</th> --}}
+            <th>Retur ?</th>
             <th>Keterangan</th>
         </tr>
     </thead>
@@ -41,7 +41,7 @@
                     default => '-',
                 };
             @endphp
-            <tr{{ $item->keterangan === 'sedang transit' ? ' style="background-color:#fff3e0"' : '' }}>
+            <tr>
                 <td>#{{ $index + 1 }}</td>
                 <td>{{ $item->kode_penjualan }}</td>
                 <td>{{ $item->nomor_resi ?: '-' }}</td>
@@ -55,8 +55,8 @@
                 <td style="white-space: nowrap;">
                     {{ $item->harga_cair !== null ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
                 </td>
-                {{-- <td>{{ $scanOutLabel }}</td>
-                <td>{{ $draftLabel }}</td> --}}
+                {{-- <td>{{ $scanOutLabel }}</td> --}}
+                <td>{{ $item->is_retur }}</td>
                 <td>{{ $item->keterangan ?: '-' }}</td>
             </tr>
             <tr>
@@ -117,12 +117,12 @@
         <tr><td colspan="7"></td></tr>
 
         {{-- GRAND TOTAL --}}
-        <tr style="background-color:#c6efce;">
+        <tr>
             <td colspan="6"><strong>Grand Total</strong></td>
             <td><strong>{{ $grandTotal }}</strong></td>
             <td><strong>{{ $grandTotalHargaCair }}</strong></td>
         </tr>
-        <tr style="background-color:#c6efce;">
+        <tr>
             <td colspan="4"><strong>Total Qty Terjual</strong></td>
             <td><strong>{{ $totalQty }}</strong></td>
             <td colspan="3"></td>
