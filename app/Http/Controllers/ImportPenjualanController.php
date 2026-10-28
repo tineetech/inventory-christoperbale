@@ -160,28 +160,11 @@ class ImportPenjualanController extends Controller
                 'warnings'      => $result['warnings'],
             ]);
 
-        } catch (ConnectionException $e) {
-            Log::warning('[PollJobStatus] OCR connection timeout', [
-                'job_id' => $jobId,
-                'error' => $e->getMessage(),
-            ]);
-
+        } catch (\Exception $e) {
+            Log::info("Erorr GET JOB STATUS : " . $e);
             return response()->json([
                 'success' => false,
-                'status' => 'processing',
-                'retryable' => true,
-                'message' => 'Server OCR sedang lambat atau sementara tidak dapat dijangkau.',
-            ], 503);
-
-        } catch (\Throwable $e) {
-            Log::error('[PollJobStatus] Unexpected error', [
-                'job_id' => $jobId,
-                'error' => $e->getMessage(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat memeriksa status job.',
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
             ], 500);
         }
     }
