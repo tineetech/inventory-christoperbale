@@ -187,7 +187,8 @@ class ImportPenjualanController extends Controller
         $file = $request->file('file');
 
         try {
-            $response = Http::timeout(300)
+            $response = Http::connectTimeout(15)   // batas fase koneksi
+                ->timeout(60)                 // batas total->retry(3, 1000, throw: false)
                 ->attach(
                     'file',
                     file_get_contents($file->getRealPath()),
