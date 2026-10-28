@@ -98,8 +98,9 @@ class ImportPenjualanController extends Controller
     public function pollJobStatus(Request $request, string $jobId)
     {
         try {
-            $response = Http::timeout(300)
-                ->get($this->fastApiUrl() . '/job-status/' . $jobId);
+            $response = Http::connectTimeout(15)   // batas fase koneksi
+                    ->timeout(60)                 // batas total->retry(3, 1000, throw: false)
+                    ->get($this->fastApiUrl() . '/job-status/' . $jobId);
 
             if ($response->failed()) {
                 return response()->json([
