@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -98,7 +99,7 @@ class ImportPenjualanController extends Controller
     public function pollJobStatus(Request $request, string $jobId)
     {
         try {
-            $response = Http::connectTimeout(15)   // batas fase koneksi
+            $response = Http::connectTimeout(5)   // batas fase koneksi
                      ->timeout(60)                 // batas total->retry(3, 1000, throw: false)
                     ->get($this->fastApiUrl() . '/job-status/' . $jobId);
 
@@ -159,11 +160,28 @@ class ImportPenjualanController extends Controller
                 'warnings'      => $result['warnings'],
             ]);
 
-        } catch (\Exception $e) {
-            Log::info("Erorr GET JOB STATUS : " . $e);
+        } catch (ConnectionException $e) {
+            Log::warning('[PollJobStatus] OCR connection timeout', [
+                'job_id' => $jobId,
+                'error' => $e->getMessage(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage(),
+                'status' => 'processing',
+                'retryable' => true,
+                'message' => 'Server OCR sedang lambat atau sementara tidak dapat dijangkau.',
+            ], 503);
+
+        } catch (\Throwable $e) {
+            Log::error('[PollJobStatus] Unexpected error', [
+                'job_id' => $jobId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memeriksa status job.',
             ], 500);
         }
     }
