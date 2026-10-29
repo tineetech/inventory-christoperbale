@@ -136,13 +136,18 @@
 
                         <div class="d-flex flex-wrap justify-content-end" style="gap: 10px;">
                             <a href="{{ route('laporan.penjualan.print', $filters) }}" target="_blank"
-                                class="btn btn-success">
+                                data-export-url="{{ route('laporan.penjualan.print') }}"
+                                class="btn btn-success btn-export-penjualan">
                                 <i class="feather icon-printer"></i> Print
                             </a>
-                            <a href="{{ route('laporan.penjualan.pdf', $filters) }}" class="btn btn-danger">
+                            <a href="{{ route('laporan.penjualan.pdf', $filters) }}"
+                                data-export-url="{{ route('laporan.penjualan.pdf') }}"
+                                class="btn btn-danger btn-export-penjualan">
                                 <i class="feather icon-file-text"></i> PDF
                             </a>
-                            <a href="{{ route('laporan.penjualan.excel', $filters) }}" class="btn btn-warning text-white">
+                            <a href="{{ route('laporan.penjualan.excel', $filters) }}"
+                                data-export-url="{{ route('laporan.penjualan.excel') }}"
+                                class="btn btn-warning text-white btn-export-penjualan">
                                 <i class="feather icon-download"></i> Excel
                             </a>
                             <button type="submit" class="btn btn-info">
@@ -505,6 +510,28 @@
 
 @section('scripts')
     <script>
+        // ── Export mengikuti filter yang sedang dipilih ───────
+        document.querySelectorAll('.btn-export-penjualan').forEach(function(link) {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+
+                const form = document.getElementById('penjualanFilterForm');
+                const params = new URLSearchParams(new FormData(form));
+
+                for (const [key, value] of Array.from(params.entries())) {
+                    if (value === '') params.delete(key);
+                }
+
+                const url = link.dataset.exportUrl + '?' + params.toString();
+
+                if (link.target === '_blank') {
+                    window.open(url, '_blank');
+                } else {
+                    window.location.href = url;
+                }
+            });
+        });
+
         // ── Expand detail row ─────────────────────────────────
         document.getElementById('penjualanTable').addEventListener('click', function(e) {
             const mainRow = e.target.closest('tr[data-report-main]');

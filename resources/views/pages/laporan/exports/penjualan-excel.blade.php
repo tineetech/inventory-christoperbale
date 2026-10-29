@@ -4,7 +4,8 @@
         <tr>
             <th colspan="8">
                 Periode {{ \Carbon\Carbon::parse($filters['dari_tanggal'])->format('d M Y') }} -
-                {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }}
+                {{ \Carbon\Carbon::parse($filters['sampai_tanggal'])->format('d M Y') }} |
+                Mode Harga: {{ ($filters['mode_harga'] ?? 'harga_reseller') === 'harga_hpp' ? 'Harga HPP' : 'Harga Reseller' }}
             </th>
         </tr>
         <tr>
@@ -27,10 +28,11 @@
             $grandTotal = 0;
             $grandTotalHargaCair = 0;
             $totalQty = 0;
+            $modeHarga = $filters['mode_harga'] ?? 'harga_reseller';
         @endphp
         @forelse ($penjualan as $index => $item)
             @php
-                $grandTotal += $item->total_harga;
+                $grandTotal += $item->totalHargaByMode($modeHarga);
                 $grandTotalHargaCair += $item->harga_cair ?? 0;
             @endphp
             @php
@@ -49,7 +51,7 @@
                 {{-- <td>{{ $item->nomor_transaksi ?: '-' }}</td> --}}
                 <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                 <td>{{ $item->tanggal }}</td>
-                <td>{{ $item->total_harga }}</td>
+                <td>{{ $item->totalHargaByMode($modeHarga) }}</td>
                 {{-- <td>{{ $item->harga_cair }}</td> --}}
                                     
                 <td style="white-space: nowrap;">
@@ -79,7 +81,9 @@
             @endphp
             @forelse ($item->detail as $detail)
                 @php
-                    $totalDetail += $detail->subtotal;
+                    $hargaDetail = $detail->hargaByMode($modeHarga);
+                    $subtotalDetail = $detail->qty * $hargaDetail;
+                    $totalDetail += $subtotalDetail;
                     $totalQty += $detail->qty;
                 @endphp
                 <tr>
@@ -89,8 +93,8 @@
                     <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                     {{-- <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td> --}}
                     <td>{{ $detail->qty }}</td>
-                    <td>{{ $detail->harga }}</td>
-                    <td>{{ $detail->subtotal }}</td>
+                    <td>{{ $hargaDetail }}</td>
+                    <td>{{ $subtotalDetail }}</td>
                     <td colspan="3"></td>
                 </tr>
             @empty
