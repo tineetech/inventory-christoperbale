@@ -319,6 +319,18 @@
 
                                         <div class="d-flex align-items-center" style="gap:8px; white-space:nowrap;">
                                             <span>{{ $item->keterangan ?: '-' }}</span>
+                                            @if ($showButton)
+                                                <button class="btn btn-xs btn-primary btn-input-harga-cair" type="button"
+                                                    data-id="{{ $item->id }}"
+                                                    data-kode="{{ $item->kode_penjualan }}"
+                                                    data-total="{{ $item->total_harga }}"
+                                                    data-dropshipper="{{ $item->dropshipper->nama ?? '-' }}"
+                                                    data-tanggal="{{ $item->tanggal }}"
+                                                    onclick="openHargaCairModal(this)">
+                                                    <i class="feather icon-edit"></i>
+                                                    {{ $canEditHargaCair ? 'Edit' : 'Input' }} Harga Cair
+                                                </button>
+                                            @endif
                                             <div class="dropdown">
                                                 <button class="btn btn-xs btn-outline-secondary dropdown-toggle" type="button"
                                                     data-toggle="dropdown" data-boundary="viewport" aria-haspopup="true"
@@ -332,26 +344,14 @@
                                                             Edit Data
                                                         </a>
                                                     @endif
-                                                    @if ($showButton)
-                                                        <button class="dropdown-item btn-input-harga-cair" type="button"
-                                                            data-id="{{ $item->id }}"
-                                                            data-kode="{{ $item->kode_penjualan }}"
-                                                            data-total="{{ $item->total_harga }}"
-                                                            data-dropshipper="{{ $item->dropshipper->nama ?? '-' }}"
-                                                            data-tanggal="{{ $item->tanggal }}"
-                                                            onclick="openHargaCairModal(this)">
-                                                            <i class="feather icon-edit mr-1"></i>
-                                                            {{ $canEditHargaCair ? 'Edit' : 'Input' }} Harga Cair
-                                                        </button>
-                                                    @endif
-                                                    <button class="dropdown-item btn-transit" type="button"
+                                                    <button class="dropdown-item btn-transit cursor-pointer" type="button"
                                                         data-id="{{ $item->id }}"
                                                         data-transit="{{ $item->keterangan === 'sedang transit' ? 'true' : 'false' }}">
                                                         <i class="feather {{ $item->keterangan === 'sedang transit' ? 'icon-check-circle' : 'icon-navigation' }} mr-1"></i>
                                                         {{ $item->keterangan === 'sedang transit' ? 'Sudah Transit' : 'Sedang Transit' }}
                                                     </button>
                                                     @if ($canEditHargaCair)
-                                                        <button class="dropdown-item btn-edit-harga-keuntungan" type="button"
+                                                        <button class="dropdown-item btn-edit-harga-keuntungan cursor-pointer" type="button"
                                                             data-id="{{ $item->id }}"
                                                             data-kode="{{ $item->kode_penjualan }}"
                                                             data-tanggal="{{ $item->tanggal }}"
