@@ -42,6 +42,12 @@
         ];
         $ekspedisiTerpilih = $filters['ekspedisi'] ?? null;
         $isSuperAdmin = Auth::guard('pengguna')->user()->role->nama_role === 'super_admin';
+        $isFinance = strcasecmp((string) optional(optional(Auth::guard('pengguna')->user())->role)->nama_role, 'Finance') === 0;
+        $showKeuntungan = $isSuperAdmin || $isFinance;
+        $detailColspan = 11 + ($isSuperAdmin ? 2 : ($isFinance ? 1 : 0));
+        $mandatoryColumns = $isFinance
+            ? ['no', 'kode_penjualan', 'keterangan', 'keuntungan']
+            : ['no', 'kode_penjualan', 'keterangan'];
     @endphp
     <div class="layout-content">
         <div class="container-fluid flex-grow-1 container-p-y">
@@ -238,6 +244,8 @@
                                 <th data-col="tanggal">Tanggal</th>
                                 @if ($isSuperAdmin)
                                 <th data-col="total_harga">Total Harga</th>
+                                @endif
+                                @if ($showKeuntungan)
                                 <th data-col="keuntungan">Keuntungan</th>
                                 @endif
                                 <th data-col="harga_cair">Harga Cair</th>
@@ -277,6 +285,8 @@
                                     @if ($isSuperAdmin)
                                     <td data-col="total_harga" style="white-space: nowrap;">Rp
                                         {{ number_format($item->totalHargaByMode($modeHarga), 0, ',', '.') }}</td>
+                                    @endif
+                                    @if ($showKeuntungan)
                                     <td data-col="keuntungan" style="white-space: nowrap;">
                                         Rp {{ number_format($item->harga_keuntungan ?? 0, 0, ',', '.') }}
                                     </td>
@@ -350,7 +360,7 @@
                                                         <i class="feather {{ $item->keterangan === 'sedang transit' ? 'icon-check-circle' : 'icon-navigation' }} mr-1"></i>
                                                         {{ $item->keterangan === 'sedang transit' ? 'Sudah Transit' : 'Sedang Transit' }}
                                                     </button>
-                                                    @if ($canEditHargaCair)
+                                                    @if ($isFinance || $isSuperAdmin)
                                                         <button class="dropdown-item btn-edit-harga-keuntungan cursor-pointer" type="button"
                                                             data-id="{{ $item->id }}"
                                                             data-kode="{{ $item->kode_penjualan }}"
@@ -369,7 +379,7 @@
                                 </tr>
                                 <tr class="detail-row" data-report-detail="true" id="detail-{{ $item->id }}"
                                     style="display:none; background:#f9f9f9;">
-                                    <td colspan="{{ $isSuperAdmin ? 13 : 11 }}">
+                                    <td colspan="{{ $detailColspan }}">
                                         <div class="p-3">
                                             <table class="table table-sm table-bordered mb-0">
                                                 <thead class="thead-light">
@@ -424,7 +434,7 @@
                                 </tr>
                             @empty
                                 <tr data-empty-row="true">
-                                    <td colspan="{{ $isSuperAdmin ? 13 : 11 }}" class="text-center text-muted py-4">Belum ada data penjualan pada
+                                    <td colspan="{{ $detailColspan }}" class="text-center text-muted py-4">Belum ada data penjualan pada
                                         filter ini.</td>
                                 </tr>
                             @endforelse
@@ -956,7 +966,7 @@
 
         // ── Atur kolom tabel ─────────────────────────────────
         const COLUMN_STORAGE_KEY = 'laporan-penjualan-visible-columns-v1';
-        const MANDATORY_COLUMNS = ['no', 'kode_penjualan', 'keterangan'];
+        const MANDATORY_COLUMNS = {!! json_encode($mandatoryColumns) !!};
         const penjualanTable = document.getElementById('penjualanTable');
         const columnHeaders = Array.from(penjualanTable.querySelectorAll('thead > tr > th[data-col]'));
         const columnKeys = columnHeaders.map(function(header) {

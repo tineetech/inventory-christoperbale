@@ -1634,6 +1634,16 @@ private function isRowBlankWhite($img, int $width, int $y): bool
 
     public function updateHargaKeuntungan(Request $request, $id)
     {
+        $role = optional(optional(Auth::guard('pengguna')->user())->role)->nama_role;
+        $isFinance = strcasecmp((string) $role, 'Finance') === 0;
+
+        if (!$isFinance && $role !== 'super_admin') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Hanya role Finance dan super admin yang dapat mengubah harga keuntungan.',
+            ], 403);
+        }
+
         $request->validate([
             'harga_keuntungan' => 'required|numeric',
         ]);
