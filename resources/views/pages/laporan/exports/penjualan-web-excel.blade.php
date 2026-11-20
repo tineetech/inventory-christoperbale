@@ -27,7 +27,9 @@
         @endphp
         @forelse ($penjualan as $index => $item)
             @php
-                $grandTotal += $item->total_harga;
+                $isRetur = $item->is_retur === 'yes';
+                $totalHargaWeb = $isRetur ? 0 : $item->total_harga;
+                $grandTotal += $totalHargaWeb;
                 $statusWeb = ucfirst($item->status ?? '-');
                 $scanWeb = ucfirst($item->scan_out ?? '-');
                 $returWeb = match ($item->is_retur) {
@@ -53,7 +55,7 @@
                 <td>{{ $alamatWeb ?: '-' }}</td>
                 <td>{{ $statusWeb }}</td>
                 <td>{{ $item->tanggal }}</td>
-                <td>{{ $item->total_harga }}</td>
+                <td data-format='"Rp" #,##0'>{{ $totalHargaWeb }}</td>
                 <td>{{ $scanWeb }}</td>
                 <td>{{ $returWeb }}</td>
             </tr>
@@ -76,17 +78,19 @@
             @endphp
             @forelse ($item->detail as $detail)
                 @php
-                    $totalDetail += $detail->subtotal;
-                    $totalQty += $detail->qty;
+                    $qtyTerjual = $isRetur ? 0 : $detail->qty;
+                    $subtotalDetail = $isRetur ? 0 : $detail->subtotal;
+                    $totalDetail += $subtotalDetail;
+                    $totalQty += $qtyTerjual;
                 @endphp
                 <tr>
                     <td></td>
                     <td>{{ $detail->nomor_resi ?: '-' }}</td>
                     <td>{{ $detail->barang->sku ?? '-' }}</td>
                     <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
-                    <td>{{ $detail->qty }}</td>
-                    <td>{{ $detail->harga }}</td>
-                    <td>{{ $detail->subtotal }}</td>
+                    <td>{{ $qtyTerjual }}</td>
+                    <td data-format='"Rp" #,##0'>{{ $detail->harga }}</td>
+                    <td data-format='"Rp" #,##0'>{{ $subtotalDetail }}</td>
                     <td colspan="3"></td>
                 </tr>
             @empty
@@ -99,7 +103,7 @@
                 <tr>
                     <td></td>
                     <td colspan="4">Total Penjualan</td>
-                    <td>{{ $totalDetail }}</td>
+                    <td data-format='"Rp" #,##0'>{{ $totalDetail }}</td>
                     <td colspan="3"></td>
                 </tr>
             @endif
@@ -115,7 +119,7 @@
         {{-- GRAND TOTAL --}}
         <tr style="background-color:#c6efce;">
             <td colspan="7"><strong>Grand Total</strong></td>
-            <td><strong>{{ $grandTotal }}</strong></td>
+            <td data-format='"Rp" #,##0'><strong>{{ $grandTotal }}</strong></td>
             <td colspan="2"></td>
         </tr>
         <tr style="background-color:#c6efce;">

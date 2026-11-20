@@ -18,6 +18,7 @@ if (!function_exists('sortIcon')) {
         return '<i class="feather icon-chevrons-up sort-icon"></i>';
     }
 }
+$isSuperAdmin = Auth::guard('pengguna')->user()->role->nama_role === 'super_admin';
 @endphp
 
 @section('content')
@@ -181,12 +182,14 @@ if (!function_exists('sortIcon')) {
                                                                     {!! sortIcon('tanggal') !!}
                                                                 </a>
                                                             </th>
+                                                            @if ($isSuperAdmin)
                                                             <th class="d-none d-md-table-cell">
                                                                 <a href="{{ sortUrl('total_harga') }}" style="color:inherit">
                                                                     Total Harga
                                                                     {!! sortIcon('total_harga') !!}
                                                                 </a>
                                                             </th>
+                                                            @endif
                                                             <th class="d-none d-sm-table-cell">Dibuat Oleh</th>
                                                             <th class="d-none d-sm-table-cell">
                                                                 <a href="{{ sortUrl('created_at') }}" style="color:inherit">
@@ -212,7 +215,9 @@ if (!function_exists('sortIcon')) {
                                                                 <td class="d-none d-lg-table-cell">{{ $pj->nomor_pesanan ?? '-' }}</td>
                                                                 <td class="d-none d-md-table-cell">{{ $pj->dropshipper->nama ?? '-' }}</td>
                                                                 <td style="white-space:nowrap">{{ \Carbon\Carbon::parse($pj->tanggal)->format('d/m/Y H:i') }}</td>
+                                                                @if ($isSuperAdmin)
                                                                 <td class="d-none d-md-table-cell" style="font-weight:bold;white-space:nowrap">Rp {{ number_format($pj->total_harga, 0, ',', '.') }}</td>
+                                                                @endif
                                                                 <td class="d-none d-sm-table-cell">{{ $pj->user->nama ?? '-' }}</td>
                                                                 <td class="d-none d-sm-table-cell">
                                                                     <small class="text-muted">{{ \Carbon\Carbon::parse($pj->created_at)->diffForHumans() }}</small>
@@ -233,7 +238,7 @@ if (!function_exists('sortIcon')) {
                                                                 </td>
                                                             </tr>
                                                             <tr class="detail-row" id="detail-{{ $pj->id }}" style="display:none;background:#f9f9f9">
-                                                                <td colspan="11">
+                                                                <td colspan="{{ $isSuperAdmin ? 11 : 10 }}">
                                                                     <div class="p-2 p-md-3" style="overflow-x:auto">
                                                                         <table class="table table-sm table-bordered mb-0" style="min-width:500px">
                                                                             <thead class="thead-light">
@@ -258,10 +263,12 @@ if (!function_exists('sortIcon')) {
                                                                                 @empty
                                                                                     <tr><td colspan="7" class="text-center text-muted">Tidak ada detail.</td></tr>
                                                                                 @endforelse
+                                                                                @if ($isSuperAdmin)
                                                                                 <tr style="background:#f1f1f1;font-weight:bold">
                                                                                     <td colspan="6" class="text-right">Total Penjualan</td>
                                                                                     <td>Rp {{ number_format($totalDetail, 0, ',', '.') }}</td>
                                                                                 </tr>
+                                                                                @endif
                                                                             </tbody>
                                                                         </table>
                                                                     </div>
@@ -269,7 +276,7 @@ if (!function_exists('sortIcon')) {
                                                             </tr>
                                                         @empty
                                                             <tr>
-                                                                <td colspan="11" class="text-center text-muted py-4">
+                                                                <td colspan="{{ $isSuperAdmin ? 11 : 10 }}" class="text-center text-muted py-4">
                                                                     <i class="feather icon-check-circle text-success mr-2"></i>
                                                                     Tidak ada penjualan draft
                                                                 </td>

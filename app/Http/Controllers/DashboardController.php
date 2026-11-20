@@ -35,14 +35,24 @@ class DashboardController extends Controller
         $adjustHariIni       = AdjustStok::whereDate('created_at', today())->count();
         $stokMovementHariIni = StokMovement::whereDate('created_at', today())->count();
 
-        // ── PENJUALAN WEB ─────────────────────────────
-        $penjualanWebHariIni = Penjualan::where('order_web', 1)
-            ->whereDate('tanggal', today())
-            ->count();
-        $omzetWebHariIni = (float) Penjualan::where('order_web', 1)
-            ->whereDate('tanggal', today())
-            ->sum('total_harga');
-        $penjualanWebTotal = Penjualan::where('order_web', 1)->count();
+        // ── TOTAL PASANG TERJUAL PER BULAN ─────────────
+        $pasangMonth = $request->input('pasang_month', now()->format('Y-m'));
+
+        if (!is_string($pasangMonth) || !preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $pasangMonth)) {
+            $pasangMonth = now()->format('Y-m');
+        }
+
+        $pasangDate = Carbon::createFromFormat('Y-m-d', $pasangMonth . '-01')->startOfMonth();
+        $pasangStartDate = $pasangDate->copy()->startOfMonth();
+        $pasangEndDate = $pasangDate->copy()->endOfMonth();
+        $pasangMonthLabel = $pasangDate->copy()->locale('id')->translatedFormat('F Y');
+
+        $totalPasangTerjual = (int) Penjualan::where('is_retur', 'no')
+            ->where('is_draft', 'no')
+            ->whereDate('tanggal', '>=', $pasangStartDate)
+            ->whereDate('tanggal', '<=', $pasangEndDate)
+            ->join('penjualan_detail', 'penjualan.id', '=', 'penjualan_detail.penjualan_id')
+            ->sum('penjualan_detail.qty');
 
         $perPageKritis = in_array($request->get('kritis_per_page'), [10, 25, 50, 100])
             ? $request->get('kritis_per_page')
@@ -144,9 +154,11 @@ class DashboardController extends Controller
             'penjualanHariIni',
             'pembelianHariIni',
             'adjustHariIni',
-            'penjualanWebHariIni',
-            'omzetWebHariIni',
-            'penjualanWebTotal',
+            'totalPasangTerjual',
+            'pasangMonth',
+            'pasangMonthLabel',
+            'pasangStartDate',
+            'pasangEndDate',
             'stokKritis',
             'stokMovementHariIni',
             // statistik chart

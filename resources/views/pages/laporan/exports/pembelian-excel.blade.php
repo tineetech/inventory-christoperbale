@@ -30,7 +30,7 @@
                 <td>{{ $item->kode_pembelian }}</td>
                 <td>{{ $item->supplier->nama_supplier ?? '-' }}</td>
                 <td>{{ $item->tanggal }}</td>
-                <td>{{ $item->total_harga }}</td>
+                <td data-format='"Rp" #,##0'>{{ $item->total_harga }}</td>
                 <td>{{ $item->user->nama ?? '-' }}</td>
                 <td>{{ $item->keterangan ?: '-' }}</td>
             </tr>
@@ -60,8 +60,8 @@
                     <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                     <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
                     <td>{{ $detail->qty }}</td>
-                    <td>{{ $detail->harga }}</td>
-                    <td>{{ $detail->subtotal }}</td>
+                    <td data-format='"Rp" #,##0'>{{ $detail->harga }}</td>
+                    <td data-format='"Rp" #,##0'>{{ $detail->subtotal }}</td>
                 </tr>
             @empty
                 <tr>
@@ -73,7 +73,7 @@
                 <tr>
                     <td></td>
                     <td colspan="5">Total Pembelian</td>
-                    <td>{{ $totalDetail }}</td>
+                    <td data-format='"Rp" #,##0'>{{ $totalDetail }}</td>
                 </tr>
             @endif
         @empty
@@ -86,7 +86,7 @@
         {{-- GRAND TOTAL --}}
         <tr>
             <td colspan="6"><strong>Grand Total</strong></td>
-            <td><strong>{{ $grandTotal }}</strong></td>
+            <td data-format='"Rp" #,##0'><strong>{{ $grandTotal }}</strong></td>
             <td></td>
         </tr>
     </tbody>

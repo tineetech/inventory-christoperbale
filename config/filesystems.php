@@ -15,6 +15,8 @@ return [
 
     'default' => env('FILESYSTEM_DISK', 'local'),
 
+    'resi_remote_url' => env('RESI_REMOTE_URL'),
+
     /*
     |--------------------------------------------------------------------------
     | Filesystem Disks

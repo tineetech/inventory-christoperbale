@@ -85,7 +85,7 @@ class PenjualanController extends Controller
         $pendingScanOut = (clone $query)->where('scan_out', 'pending')->count();
 
         // ── Pagination ──────────────────────────────────────
-        $perPage = in_array((int) $request->per_page, [10, 25, 50, 100]) ? (int) $request->per_page : 10;
+        $perPage = in_array((int) $request->per_page, [10, 25, 50, 100, 200, 500]) ? (int) $request->per_page : 10;
         $penjualan = $query->paginate($perPage)->withQueryString();
 
         $dropshippers = Dropshipper::orderBy('nama')->get();
@@ -136,39 +136,46 @@ class PenjualanController extends Controller
 
     public function webIndex(Request $request)
     {
+        $dateFrom = $request->date_from ?? today()->format('Y-m-d');
+        $dateTo   = $request->date_to   ?? today()->format('Y-m-d');
+        $timeFrom = $request->time_from ?: '06:00';
+        $timeTo   = $request->time_to   ?: '23:59';
+
+        $filters = [
+            'date_from' => $dateFrom,
+            'date_to'   => $dateTo,
+            'time_from' => $timeFrom,
+            'time_to'   => $timeTo,
+            'search'    => $request->search ?: null,
+            'status'    => $request->status ?: null,
+            'scan_out'  => $request->scan_out ?: null,
+        ];
+
+        if ($request->filled('generate_keuntungan')
+            && optional(optional(Auth::guard('pengguna')->user())->role)->nama_role !== 'super_admin') {
+            abort(403);
+        }
+
+        if ($request->filled('generate_keuntungan')) {
+            $manualCount = Penjualan::countManualHargaKeuntungan($filters, true);
+
+            if ($manualCount > 0 && !$request->boolean('confirm_generate')) {
+                return redirect()
+                    ->route('penjualan.web', $request->except(['generate_keuntungan', 'confirm_generate']))
+                    ->with('error', "Ada {$manualCount} transaksi yang sudah diedit manual. Konfirmasi diperlukan sebelum generate.");
+            }
+
+            $total = Penjualan::generateHargaKeuntungan($filters, true);
+
+            return redirect()
+                ->route('penjualan.web', $request->except(['generate_keuntungan', 'confirm_generate']))
+                ->with('success', "Harga keuntungan berhasil digenerate untuk {$total} transaksi web.");
+        }
+
         $query = Penjualan::with(['dropshipper', 'user', 'detail.barang.stok', 'address', 'shipment', 'pembayaran'])
             ->where('order_web', 1);
 
-        // ── Search ──────────────────────────────────────────
-        if ($search = $request->search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('kode_penjualan', 'like', "%{$search}%")
-                    ->orWhere('nomor_resi', 'like', "%{$search}%")
-                    ->orWhere('nomor_pesanan', 'like', "%{$search}%")
-                    ->orWhere('nomor_transaksi', 'like', "%{$search}%")
-                    ->orWhere('keterangan', 'like', "%{$search}%")
-                    ->orWhereHas('address', fn($q2) => $q2->where('recipient_name', 'like', "%{$search}%"))
-                    ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$search}%"));
-            });
-        }
-
-        // ── Filter Tanggal (default: hari ini) ──────────────
-        $dateFrom = $request->date_from ?? today()->format('Y-m-d');
-        $dateTo   = $request->date_to   ?? today()->format('Y-m-d');
-
-        $from = $dateFrom . ' ' . ($request->time_from ?: '06:00');
-        $to   = $dateTo   . ' ' . ($request->time_to   ?: '23:59');
-        $query->where('tanggal', '>=', $from)->where('tanggal', '<=', $to);
-
-        // ── Filter Status Web ───────────────────────────────
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // ── Filter Scan Out ─────────────────────────────────
-        if ($request->filled('scan_out')) {
-            $query->where('scan_out', $request->scan_out);
-        }
+        Penjualan::applyPenjualanWebFilters($query, $filters);
 
         // ── Sort ────────────────────────────────────────────
         $sortCol = $request->sort_col;
@@ -694,7 +701,15 @@ class PenjualanController extends Controller
 
     public function edit(string $id)
     {
-        $penjualan = Penjualan::with('detail.barang.stok')->findOrFail($id);
+        $penjualan = Penjualan::with('detail.barang.stok')->find($id);
+
+        if (!$penjualan) {
+            $penjualan = Penjualan::with('detail.barang.stok')
+                ->where('nomor_resi', $id)
+                ->latest('id')
+                ->firstOrFail();
+        }
+
         $dropshippers = Dropshipper::all();
 
         return view('pages.transaksi.penjualan.edit', compact('penjualan', 'dropshippers'));
@@ -1128,7 +1143,7 @@ class PenjualanController extends Controller
         }
 
         ini_set('memory_limit', '512M');
-        set_time_limit(120);
+        set_time_limit(300);
 
         $penjualanList = Penjualan::with('dropshipper')
             ->whereIn('id', $ids)
@@ -1172,27 +1187,9 @@ class PenjualanController extends Controller
                 \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY')
             );
 
-            $resiBase64 = null;
-            $resiMime   = null;
-            $resiIsPdf  = false;
+            $resiData = $this->buildResiPdfData($penjualan->file_resi);
 
-            if ($penjualan->file_resi) {
-                $resiPath = storage_path('app/public/' . $penjualan->file_resi);
-                $ext      = strtolower(pathinfo($resiPath, PATHINFO_EXTENSION));
-
-                if (file_exists($resiPath)) {
-                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                        $resiBase64 = $this->compressImageToBase64($resiPath, $ext);
-                        $resiChunks = $this->splitImageToPages($resiBase64);
-                        $resiMime   = 'image/jpeg';
-                    } elseif ($ext === 'pdf') {
-                        $resiIsPdf = true;
-                        $resiChunks = [];
-                    }
-                }
-            }
-
-            return compact('penjualan', 'nomorStruk', 'resiChunks', 'resiMime', 'resiIsPdf');
+            return compact('penjualan', 'nomorStruk') + $resiData;
         })->toArray();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
@@ -1442,6 +1439,94 @@ private function isRowBlankWhite($img, int $width, int $y): bool
         return $variance / count($samples);
     }
 
+    private function buildResiPdfData(?string $fileResi): array
+    {
+        $resiChunks = [];
+        $resiMime   = null;
+        $resiIsPdf  = false;
+        $fileResi   = trim((string) $fileResi);
+
+        if ($fileResi === '') {
+            return compact('resiChunks', 'resiMime', 'resiIsPdf');
+        }
+
+        $ext = strtolower(pathinfo($fileResi, PATHINFO_EXTENSION));
+
+        if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            $source = $this->resolveResiSource($fileResi);
+            $resiPath = $source['path'];
+
+            if ($resiPath) {
+                try {
+                    $resiBase64 = $this->compressImageToBase64($resiPath, $ext);
+                    $resiChunks = $this->splitImageToPages($resiBase64);
+                    $resiMime   = 'image/jpeg';
+                } finally {
+                    if ($source['temporary']) {
+                        @unlink($resiPath);
+                    }
+                }
+            }
+        } elseif ($ext === 'pdf') {
+            $localPath = Penjualan::resiLocalPath($fileResi);
+            $resiIsPdf = ($localPath && is_file($localPath)) || Penjualan::resiRemoteUrl($fileResi) !== null;
+        }
+
+        return compact('resiChunks', 'resiMime', 'resiIsPdf');
+    }
+
+    private function resolveResiSource(?string $fileResi): array
+    {
+        $localPath = Penjualan::resiLocalPath($fileResi);
+
+        if ($localPath && is_file($localPath) && filesize($localPath) > 0 && @getimagesize($localPath)) {
+            return ['path' => $localPath, 'temporary' => false];
+        }
+
+        $remoteUrl = Penjualan::resiRemoteUrl($fileResi);
+
+        if ($remoteUrl === null) {
+            return ['path' => null, 'temporary' => false];
+        }
+
+        try {
+            $response = Http::connectTimeout(5)->timeout(10)->get($remoteUrl);
+
+            if (!$response->successful() || $response->body() === '') {
+                return ['path' => null, 'temporary' => false];
+            }
+
+            $extension = strtolower(pathinfo((string) $fileResi, PATHINFO_EXTENSION)) ?: 'jpg';
+            $tempDir   = storage_path('app/tmp/resi');
+
+            if (!is_dir($tempDir) && !@mkdir($tempDir, 0755, true) && !is_dir($tempDir)) {
+                return ['path' => null, 'temporary' => false];
+            }
+
+            $tempPath = $tempDir . DIRECTORY_SEPARATOR . Str::uuid() . '.' . $extension;
+
+            if (@file_put_contents($tempPath, $response->body()) === false) {
+                return ['path' => null, 'temporary' => false];
+            }
+
+            if (!@getimagesize($tempPath)) {
+                @unlink($tempPath);
+
+                return ['path' => null, 'temporary' => false];
+            }
+
+            return ['path' => $tempPath, 'temporary' => true];
+        } catch (\Throwable $e) {
+            Log::warning('Gagal mengambil file resi dari server remote.', [
+                'file_resi' => $fileResi,
+                'url' => $remoteUrl,
+                'error' => $e->getMessage(),
+            ]);
+
+            return ['path' => null, 'temporary' => false];
+        }
+    }
+
     /**
      * Compress & resize gambar sebelum di-embed ke PDF.
      * Max width 800px, quality JPEG 75% — cukup untuk struk cetak.
@@ -1511,34 +1596,12 @@ private function isRowBlankWhite($img, int $width, int $y): bool
             \Carbon\Carbon::parse($penjualan->tanggal)->format('dmY')
         );
 
-        // Encode file resi ke base64 agar bisa ditampilkan di PDF
-        $resiChunks = [];
-        $resiMime   = null;
-        $resiIsPdf  = false;
+        $resiData = $this->buildResiPdfData($penjualan->file_resi);
 
-        if ($penjualan->file_resi) {
-            $resiPath = storage_path('app/public/' . $penjualan->file_resi);
-            $ext      = strtolower(pathinfo($resiPath, PATHINFO_EXTENSION));
-
-            if (file_exists($resiPath)) {
-                if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
-                    // Compress + split sama seperti bulk
-                    $resiBase64 = $this->compressImageToBase64($resiPath, $ext);
-                    $resiChunks = $this->splitImageToPages($resiBase64);
-                    $resiMime   = 'image/jpeg';
-                } elseif ($ext === 'pdf') {
-                    $resiIsPdf = true; // PDF tidak bisa di-embed langsung di DomPDF
-                }
-            }
-        }
-
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pages.transaksi.penjualan.struk_pdf', compact(
-            'penjualan',
-            'nomorStruk',
-            'resiChunks',
-            'resiMime',
-            'resiIsPdf'
-        ))->setPaper([0, 0, 419.53, 595.28])->setOptions([
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'pages.transaksi.penjualan.struk_pdf',
+            compact('penjualan', 'nomorStruk') + $resiData
+        )->setPaper([0, 0, 419.53, 595.28])->setOptions([
             'isHtml5ParserEnabled' => true,
             'isRemoteEnabled'      => false,
             'defaultFont'          => 'Arial',
@@ -1566,6 +1629,88 @@ private function isRowBlankWhite($img, int $width, int $y): bool
             'success' => true,
             'message' => 'Harga cair berhasil disimpan.',
             'harga_cair' => $penjualan->harga_cair,
+        ]);
+    }
+
+    public function updateHargaKeuntungan(Request $request, $id)
+    {
+        $request->validate([
+            'harga_keuntungan' => 'required|numeric',
+        ]);
+
+        $penjualan = Penjualan::findOrFail($id);
+        $penjualan->update([
+            'harga_keuntungan' => $request->harga_keuntungan,
+            'is_harga_keuntungan_manual' => true,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Harga keuntungan berhasil disimpan.',
+            'harga_keuntungan' => $penjualan->harga_keuntungan,
+        ]);
+    }
+
+    public function countManualHargaKeuntungan(Request $request)
+    {
+        $request->validate([
+            'source' => 'nullable|in:laporan,web',
+            'dari_tanggal' => 'nullable|date',
+            'sampai_tanggal' => 'nullable|date',
+            'dari_jam' => 'nullable|date_format:H:i',
+            'sampai_jam' => 'nullable|date_format:H:i',
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+            'time_from' => 'nullable|date_format:H:i',
+            'time_to' => 'nullable|date_format:H:i',
+            'search' => 'nullable|string|max:100',
+            'dropshipper_id' => 'nullable|exists:dropshipper,id',
+            'show_retur' => 'nullable|in:yes,no',
+            'only_retur' => 'nullable|in:yes,no',
+            'ekspedisi' => 'nullable|in:spx,jnt,anteraja,lazada,lainnya',
+            'status' => 'nullable|in:proses,packing,dikirim,selesai',
+            'scan_out' => 'nullable|in:pending,done,failed',
+        ]);
+
+        if ($request->input('source') === 'web') {
+            $filters = [
+                'date_from' => $request->date_from ?: today()->format('Y-m-d'),
+                'date_to' => $request->date_to ?: today()->format('Y-m-d'),
+                'time_from' => $request->time_from ?: '06:00',
+                'time_to' => $request->time_to ?: '23:59',
+                'search' => $request->search ?: null,
+                'status' => $request->status ?: null,
+                'scan_out' => $request->scan_out ?: null,
+            ];
+            $onlyWeb = true;
+        } else {
+            $dateFrom = $request->dari_tanggal ?: now()->startOfMonth()->format('Y-m-d');
+            $dateTo = $request->sampai_tanggal ?: now()->endOfMonth()->format('Y-m-d');
+
+            if ($dateFrom > $dateTo) {
+                [$dateFrom, $dateTo] = [$dateTo, $dateFrom];
+            }
+
+            $filters = [
+                'dari_tanggal' => $dateFrom,
+                'sampai_tanggal' => $dateTo,
+                'dari_jam' => $request->dari_jam ?: null,
+                'sampai_jam' => $request->sampai_jam ?: null,
+                'dropshipper_id' => $request->filled('dropshipper_id') ? (int) $request->dropshipper_id : null,
+                'search' => $request->search ?: null,
+                'show_retur' => $request->filled('show_retur')
+                    ? ($request->input('show_retur') === 'yes' ? 'yes' : 'no')
+                    : 'yes',
+                'only_retur' => $request->input('only_retur') === 'yes' ? 'yes' : 'no',
+                'ekspedisi' => in_array($request->input('ekspedisi'), ['spx', 'jnt', 'anteraja', 'lazada', 'lainnya'], true)
+                    ? $request->input('ekspedisi')
+                    : null,
+            ];
+            $onlyWeb = false;
+        }
+
+        return response()->json([
+            'count' => Penjualan::countManualHargaKeuntungan($filters, $onlyWeb),
         ]);
     }
 

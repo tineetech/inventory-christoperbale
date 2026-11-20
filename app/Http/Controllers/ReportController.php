@@ -72,18 +72,42 @@ class ReportController extends Controller
     {
         $filters = $this->resolvePenjualanFilters($request);
 
+        if ($request->filled('generate_keuntungan') && !$this->isSuperAdmin()) {
+            abort(403);
+        }
+
+        if ($request->filled('generate_keuntungan')) {
+            $manualCount = Penjualan::countManualHargaKeuntungan($filters);
+
+            if ($manualCount > 0 && !$request->boolean('confirm_generate')) {
+                return redirect()
+                    ->route('laporan.penjualan', $request->except(['generate_keuntungan', 'confirm_generate']))
+                    ->with('error', "Ada {$manualCount} transaksi yang sudah diedit manual. Konfirmasi diperlukan sebelum generate.");
+            }
+
+            $total = Penjualan::generateHargaKeuntungan($filters);
+
+            return redirect()
+                ->route('laporan.penjualan', $request->except(['generate_keuntungan', 'confirm_generate']))
+                ->with('success', "Harga keuntungan berhasil digenerate untuk {$total} transaksi.");
+        }
+
         if ($filters['search']) {
             $filters['dari_tanggal'] = null;
             $filters['sampai_tanggal'] = null;
         }
 
-        $penjualan = $this->getPenjualanReportQuery($filters)->paginate($filters['per_page'])->withQueryString();
+        $penjualanQuery = $this->getPenjualanReportQuery($filters);
+        $hargaCairKosong = (clone $penjualanQuery)->whereNull('penjualan.harga_cair')->count();
+        $penjualan = $penjualanQuery->paginate($filters['per_page'])->withQueryString();
+        $totalPasangTerjual = $this->getTotalPasangTerjual($filters);
         $dropshipperOptions = Dropshipper::orderBy('nama')->get(['id', 'nama']);
 
         if ($filters['search'] && $penjualan->count()) {
             $found = $penjualan->first();
-            $filters['dari_tanggal'] = $found->tanggal;
-            $filters['sampai_tanggal'] = $found->tanggal;
+            $tanggal = Carbon::parse($found->tanggal)->toDateString();
+            $filters['dari_tanggal'] = $tanggal;
+            $filters['sampai_tanggal'] = $tanggal;
         }
 
         if ($filters['search'] && !$penjualan->count()) {
@@ -91,15 +115,16 @@ class ReportController extends Controller
             $filters['sampai_tanggal'] = $request->sampai_tanggal ?? now()->format('Y-m-d');
         }
 
-        return view('pages.laporan.penjualan', compact('penjualan', 'dropshipperOptions', 'filters'));
+        return view('pages.laporan.penjualan', compact('penjualan', 'dropshipperOptions', 'filters', 'totalPasangTerjual', 'hargaCairKosong'));
     }
 
     public function penjualanPrint(Request $request)
     {
         $filters = $this->resolvePenjualanFilters($request);
         $penjualan = $this->getPenjualanReportQuery($filters)->get();
+        $isSuperAdmin = $this->isSuperAdmin();
 
-        return view('pages.laporan.exports.penjualan-print', compact('penjualan', 'filters'));
+        return view('pages.laporan.exports.penjualan-print', compact('penjualan', 'filters', 'isSuperAdmin'));
     }
 
     public function penjualanExcel(Request $request)
@@ -107,9 +132,10 @@ class ReportController extends Controller
         set_time_limit(600);
         $filters = $this->resolvePenjualanFilters($request);
         $penjualan = $this->getPenjualanReportQuery($filters)->get();
+        $isSuperAdmin = $this->isSuperAdmin();
 
         return Excel::download(
-            new LaporanPenjualanExport($penjualan, $filters),
+            new LaporanPenjualanExport($penjualan, $filters, $isSuperAdmin),
             'laporan-penjualan-' . now()->format('YmdHis') . '.xlsx'
         );
     }
@@ -118,10 +144,12 @@ class ReportController extends Controller
     {
         $filters = $this->resolvePenjualanFilters($request);
         $penjualan = $this->getPenjualanReportQuery($filters)->get();
+        $isSuperAdmin = $this->isSuperAdmin();
 
         $pdf = Pdf::loadView('pages.laporan.exports.penjualan-pdf', [
             'penjualan' => $penjualan,
             'filters' => $filters,
+            'isSuperAdmin' => $isSuperAdmin,
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('laporan-penjualan-' . now()->format('YmdHis') . '.pdf');
@@ -591,75 +619,27 @@ class ReportController extends Controller
         return $query->latest('tanggal');
     }
 
-    private function getPenjualanReportQuery(array $filters)
+    private function isSuperAdmin(): bool
+    {
+        return optional(optional(Auth::guard('pengguna')->user())->role)->nama_role === 'super_admin';
+    }
+
+    private function getPenjualanReportQuery(array $filters, bool $applyReturFilter = true)
     {
         $query = Penjualan::with('dropshipper', 'user', 'detail.barang.stok');
 
-        // Default: hanya penjualan normal (bukan retur).
-        // show_retur = yes → penjualan normal + retur.
-        // only_retur = yes → hanya penjualan retur.
-        if (($filters['only_retur'] ?? 'no') === 'yes') {
-            $query->where('is_retur', 'yes');
-        } elseif (($filters['show_retur'] ?? 'no') !== 'yes') {
-            $query->where('is_retur', 'no');
-        }
+        Penjualan::applyLaporanPenjualanFilters($query, $filters, $applyReturFilter, false);
 
-        if ($filters['dari_tanggal']) {
-            $dari = $filters['dari_tanggal'] . ' ' . ($filters['dari_jam'] ?? '00:00') . ':00';
-            $query->where('tanggal', '>=', $dari);
-        }
-        if ($filters['sampai_tanggal']) {
-            $sampai = $filters['sampai_tanggal'] . ' ' . ($filters['sampai_jam'] ?? '23:59') . ':59';
-            $query->where('tanggal', '<=', $sampai);
-        }
-        if ($filters['dropshipper_id']) {
-            $query->where('dropshipper_id', $filters['dropshipper_id']);
-        }
+        return $query->latest('penjualan.tanggal')->orderByDesc('penjualan.id');
+    }
 
-        if ($filters['search']) {
-            $s = $filters['search'];
-            $query->where(function ($q) use ($s) {
-                $q->where('kode_penjualan', 'like', "%{$s}%")
-                  ->orWhere('nomor_resi', 'like', "%{$s}%")
-                  ->orWhere('nomor_pesanan', 'like', "%{$s}%")
-                  ->orWhere('keterangan', 'like', "%{$s}%");
-            });
-        }
-
-        // Filter pengelompokan nomor resi berdasarkan prefix.
-        if (!empty($filters['ekspedisi'])) {
-            $resi = "UPPER(TRIM(nomor_resi))";
-
-            if ($filters['ekspedisi'] === 'spx') {
-                $query->whereRaw("{$resi} LIKE 'SPX%'");
-            } elseif ($filters['ekspedisi'] === 'jnt') {
-                $query->where(function ($q) use ($resi) {
-                    $q->whereRaw("{$resi} LIKE 'JX%'")
-                      ->orWhereRaw("{$resi} LIKE 'JY%'")
-                      ->orWhereRaw("{$resi} LIKE 'JZ%'");
-                });
-            } elseif ($filters['ekspedisi'] === 'anteraja') {
-                $query->whereRaw("{$resi} REGEXP '^[0-9]'");
-            } elseif ($filters['ekspedisi'] === 'lazada') {
-                $query->whereRaw("{$resi} LIKE 'LX%'");
-            } elseif ($filters['ekspedisi'] === 'lainnya') {
-                $query->where(function ($q) use ($resi) {
-                    $q->whereNull('nomor_resi')
-                      ->orWhereRaw("TRIM(nomor_resi) = ''")
-                      ->orWhere(function ($sub) use ($resi) {
-                          $sub->whereRaw("TRIM(nomor_resi) <> ''")
-                              ->whereRaw("{$resi} NOT LIKE 'SPX%'")
-                              ->whereRaw("{$resi} NOT LIKE 'JX%'")
-                              ->whereRaw("{$resi} NOT LIKE 'JY%'")
-                              ->whereRaw("{$resi} NOT LIKE 'JZ%'")
-                              ->whereRaw("{$resi} NOT LIKE 'LX%'")
-                              ->whereRaw("{$resi} NOT REGEXP '^[0-9]'");
-                      });
-                });
-            }
-        }
-
-        return $query->latest('tanggal');
+    private function getTotalPasangTerjual(array $filters): int
+    {
+        return (int) $this->getPenjualanReportQuery($filters, false)
+            ->where('penjualan.is_retur', 'no')
+            ->where('penjualan.is_draft', 'no')
+            ->join('penjualan_detail', 'penjualan.id', '=', 'penjualan_detail.penjualan_id')
+            ->sum('penjualan_detail.qty');
     }
 
     private function getLegacyStokTableQuery(array $filters)
@@ -929,7 +909,7 @@ class ReportController extends Controller
             'only_retur'     => 'nullable|in:yes,no',
             'mode_harga'     => 'nullable|in:harga_reseller,harga_hpp',
             'ekspedisi'      => 'nullable|in:spx,jnt,anteraja,lazada,lainnya',
-            'per_page'       => 'nullable|in:10,25,50,100',
+            'per_page'       => 'nullable|in:10,25,50,100,200,500',
         ]);
 
         [$dariTanggal, $sampaiTanggal] = $this->resolveDateRange(
@@ -945,13 +925,15 @@ class ReportController extends Controller
             'sampai_jam'     => $request->sampai_jam ?? null,
             'dropshipper_id' => $request->filled('dropshipper_id') ? (int) $request->dropshipper_id : null,
             'search'         => $request->search ?? null,
-            'show_retur'     => $request->input('show_retur') === 'yes' ? 'yes' : 'no',
+            'show_retur'     => $request->filled('show_retur')
+                ? ($request->input('show_retur') === 'yes' ? 'yes' : 'no')
+                : 'yes',
             'only_retur'     => $request->input('only_retur') === 'yes' ? 'yes' : 'no',
             'mode_harga'     => $request->input('mode_harga') === 'harga_hpp' ? 'harga_hpp' : 'harga_reseller',
             'ekspedisi'      => in_array($request->input('ekspedisi'), ['spx', 'jnt', 'anteraja', 'lazada', 'lainnya'], true)
                 ? $request->input('ekspedisi')
                 : null,
-            'per_page'       => $this->resolvePerPage($request),
+            'per_page'       => $this->resolveLaporanPenjualanPerPage($request),
         ];
     }
 
@@ -960,35 +942,7 @@ class ReportController extends Controller
         $query = Penjualan::with(['dropshipper', 'user', 'detail.barang.stok', 'address', 'shipment', 'pembayaran'])
             ->where('order_web', 1);
 
-        if ($filters['dari_tanggal']) {
-            $dari = $filters['dari_tanggal'] . ' ' . ($filters['dari_jam'] ?? '00:00') . ':00';
-            $query->where('tanggal', '>=', $dari);
-        }
-        if ($filters['sampai_tanggal']) {
-            $sampai = $filters['sampai_tanggal'] . ' ' . ($filters['sampai_jam'] ?? '23:59') . ':59';
-            $query->where('tanggal', '<=', $sampai);
-        }
-
-        if ($filters['status']) {
-            $query->where('status', $filters['status']);
-        }
-
-        if ($filters['scan_out']) {
-            $query->where('scan_out', $filters['scan_out']);
-        }
-
-        if ($filters['search']) {
-            $s = $filters['search'];
-            $query->where(function ($q) use ($s) {
-                $q->where('kode_penjualan', 'like', "%{$s}%")
-                  ->orWhere('nomor_resi', 'like', "%{$s}%")
-                  ->orWhere('nomor_pesanan', 'like', "%{$s}%")
-                  ->orWhere('nomor_transaksi', 'like', "%{$s}%")
-                  ->orWhere('keterangan', 'like', "%{$s}%")
-                  ->orWhereHas('address', fn($q2) => $q2->where('recipient_name', 'like', "%{$s}%"))
-                  ->orWhereHas('dropshipper', fn($q2) => $q2->where('nama', 'like', "%{$s}%"));
-            });
-        }
+        Penjualan::applyPenjualanWebFilters($query, $filters);
 
         return $query->latest('tanggal');
     }
@@ -1124,6 +1078,14 @@ class ReportController extends Controller
     {
         $allowedPerPage = [10, 25, 50, 100];
         $perPage = (int) $value;
+
+        return in_array($perPage, $allowedPerPage, true) ? $perPage : 10;
+    }
+
+    private function resolveLaporanPenjualanPerPage(Request $request): int
+    {
+        $allowedPerPage = [10, 25, 50, 100, 200, 500];
+        $perPage = (int) $request->input('per_page', 10);
 
         return in_array($perPage, $allowedPerPage, true) ? $perPage : 10;
     }

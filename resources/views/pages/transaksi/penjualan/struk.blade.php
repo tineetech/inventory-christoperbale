@@ -245,15 +245,19 @@
                 @if($penjualan->file_resi)
                     @php
                         $ext = strtolower(pathinfo($penjualan->file_resi, PATHINFO_EXTENSION));
+                        $resiUrl = \App\Models\Penjualan::resiDisplayUrl($penjualan->file_resi);
+                        $resiFallback = \App\Models\Penjualan::resiRemoteUrl($penjualan->file_resi);
                     @endphp
 
                     @if(in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif']))
                         {{-- Tampilkan sebagai gambar --}}
-                        <img src="{{ asset('storage/' . $penjualan->file_resi) }}"
+                        <img src="{{ $resiUrl }}"
+                             data-fallback-src="{{ $resiFallback }}"
+                             onerror="if (this.dataset.fallbackSrc && this.src !== this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; } else { this.onerror = null; this.style.visibility = 'hidden'; }"
                              alt="File Resi">
                     @elseif($ext === 'pdf')
                         {{-- Tampilkan sebagai iframe PDF --}}
-                        <iframe src="{{ asset('storage/' . $penjualan->file_resi) }}#toolbar=0"
+                        <iframe src="{{ $resiUrl }}#toolbar=0"
                                 title="File Resi PDF"></iframe>
                     @endif
                 @else

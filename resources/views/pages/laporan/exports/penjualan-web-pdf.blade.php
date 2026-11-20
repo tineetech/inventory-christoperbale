@@ -98,6 +98,8 @@
         <tbody>
             @forelse ($penjualan as $index => $item)
                 @php
+                    $isRetur = $item->is_retur === 'yes';
+                    $totalHargaWeb = $isRetur ? 0 : $item->total_harga;
                     $scanWeb = $item->scan_out ? ucfirst($item->scan_out) : '-';
                     $returWeb = match ($item->is_retur) {
                         'yes' => 'Ya',
@@ -122,7 +124,7 @@
                     <td>{{ $alamatWeb ?: '-' }}</td>
                     <td>{{ ucfirst($item->status ?? '-') }}</td>
                     <td>{{ $item->tanggal }}</td>
-                    <td>Rp {{ number_format($item->total_harga, 0, ',', '.') }}</td>
+                    <td>Rp {{ number_format($totalHargaWeb, 0, ',', '.') }}</td>
                     <td>{{ $scanWeb }}</td>
                     <td>{{ $returWeb }}</td>
                 </tr>
@@ -148,16 +150,18 @@
 
                                 @forelse ($item->detail as $detail)
                                     @php
-                                        $totalDetail += $detail->subtotal;
+                                        $qtyTerjual = $isRetur ? 0 : $detail->qty;
+                                        $subtotalDetail = $isRetur ? 0 : $detail->subtotal;
+                                        $totalDetail += $subtotalDetail;
                                     @endphp
                                     <tr>
                                         <td>{{ $detail->nomor_resi ?: '-' }}</td>
                                         <td>{{ $detail->barang->sku ?? '-' }}</td>
                                         <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                                         <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
-                                        <td>{{ $detail->qty }}</td>
+                                        <td>{{ $qtyTerjual }}</td>
                                         <td>Rp {{ number_format($detail->harga, 0, ',', '.') }}</td>
-                                        <td>Rp {{ number_format($detail->subtotal, 0, ',', '.') }}</td>
+                                        <td>Rp {{ number_format($subtotalDetail, 0, ',', '.') }}</td>
                                     </tr>
                                 @empty
                                     <tr>

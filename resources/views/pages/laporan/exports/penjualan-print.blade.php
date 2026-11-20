@@ -42,6 +42,9 @@
                 <th>Tanggal</th>
                 <th>Total Harga</th>
                 <th>Harga Cair</th>
+                @if ($isSuperAdmin)
+                <th>Keuntungan</th>
+                @endif
                 <th>Retur?</th>
                 <th>Scan Out</th>
                 <th>Draft</th>
@@ -51,6 +54,10 @@
         <tbody>
             @forelse ($penjualan as $index => $item)
                 @php
+                    $isRetur = $item->is_retur === 'yes';
+                    $totalHarga = $isRetur ? 0 : $item->totalHargaByMode($modeHarga);
+                    $hargaCair = $isRetur ? 0 : ($item->harga_cair ?? 0);
+                    $keuntungan = $isRetur ? 0 : ($item->harga_keuntungan ?? 0);
                     $scanOutLabel = $item->scan_out ? ucfirst($item->scan_out) : '-';
                     $draftLabel = match ($item->is_draft) {
                         'yes' => 'Ya',
@@ -64,17 +71,20 @@
                     <td>{{ $item->nomor_resi ?: '-' }}</td>
                     <td>{{ $item->dropshipper->nama ?? '-' }}</td>
                     <td>{{ $item->tanggal }}</td>
-                    <td>Rp {{ number_format($item->totalHargaByMode($modeHarga), 0, ',', '.') }}</td>
+                    <td>Rp {{ number_format($totalHarga, 0, ',', '.') }}</td>
                     <td style="white-space: nowrap;">
-                        {{ $item->harga_cair !== null ? 'Rp ' . number_format($item->harga_cair, 0, ',', '.') : '' }}
+                        {{ $isRetur || $item->harga_cair !== null ? 'Rp ' . number_format($hargaCair, 0, ',', '.') : '' }}
                     </td>
+                    @if ($isSuperAdmin)
+                    <td style="white-space: nowrap;">Rp {{ number_format($keuntungan, 0, ',', '.') }}</td>
+                    @endif
                     <td>{{ $item->is_retur === 'yes' ? 'Ya' : 'Tidak' }}</td>
                     <td>{{ $scanOutLabel }}</td>
                     <td>{{ $draftLabel }}</td>
                     <td>{{ $item->keterangan ?: '-' }}</td>
                 </tr>
                 <tr class="{{ $item->is_retur === 'yes' ? 'row-retur' : '' }}">
-                    <td colspan="11" class="detail-cell">
+                    <td colspan="{{ $isSuperAdmin ? 12 : 11 }}" class="detail-cell">
                         <div class="detail-header">Detail Barang</div>
                         <table class="detail-table">
                             <thead>
@@ -96,7 +106,8 @@
                                 @forelse ($item->detail as $detail)
                                     @php
                                         $hargaDetail = $detail->hargaByMode($modeHarga);
-                                        $subtotalDetail = $detail->qty * $hargaDetail;
+                                        $qtyTerjual = $isRetur ? 0 : $detail->qty;
+                                        $subtotalDetail = $isRetur ? 0 : ($detail->qty * $hargaDetail);
                                         $totalDetail += $subtotalDetail;
                                     @endphp
                                     <tr>
@@ -104,7 +115,7 @@
                                         <td>{{ $detail->barang->sku ?? '-' }}</td>
                                         <td>{{ $detail->barang->nama_barang ?? '-' }}</td>
                                         <td>{{ $detail->barang->stok->jumlah_stok ?? 0 }}</td>
-                                        <td>{{ $detail->qty }}</td>
+                                        <td>{{ $qtyTerjual }}</td>
                                         <td>Rp {{ number_format($hargaDetail, 0, ',', '.') }}</td>
                                         <td>Rp {{ number_format($subtotalDetail, 0, ',', '.') }}</td>
                                     </tr>
@@ -126,7 +137,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="11">Belum ada data penjualan pada filter ini.</td>
+                    <td colspan="{{ $isSuperAdmin ? 12 : 11 }}">Belum ada data penjualan pada filter ini.</td>
                 </tr>
             @endforelse
         </tbody>

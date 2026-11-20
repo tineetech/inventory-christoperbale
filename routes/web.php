@@ -787,6 +787,12 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::patch('/transaksi/penjualan/{id}/harga-cair', [PenjualanController::class, 'updateHargaCair'])
     ->name('penjualan.update-harga-cair');
 
+    Route::get('/transaksi/penjualan/harga-keuntungan/manual-count', [PenjualanController::class, 'countManualHargaKeuntungan'])
+    ->name('penjualan.harga-keuntungan.manual-count');
+
+    Route::patch('/transaksi/penjualan/{id}/harga-keuntungan', [PenjualanController::class, 'updateHargaKeuntungan'])
+    ->name('penjualan.update-harga-keuntungan');
+
     Route::patch('/transaksi/penjualan/{id}/transit', [PenjualanController::class, 'updateTransit'])
     ->name('penjualan.update-transit');
 

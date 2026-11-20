@@ -36,7 +36,7 @@
                 <td>{{ $kodeJual }}</td>
                 <td>{{ $item->order_id_midtrans ?: '-' }}</td>
                 <td>{{ $metodeWeb }}</td>
-                <td>{{ $item->amount }}</td>
+                <td data-format='"Rp" #,##0'>{{ $item->amount }}</td>
                 <td>{{ $item->status ?: '-' }}</td>
                 <td>{{ $item->created_at }}</td>
                 <td>{{ $item->paid_at ?: '-' }}</td>
@@ -54,7 +54,7 @@
         {{-- GRAND TOTAL --}}
         <tr style="background-color:#c6efce;">
             <td colspan="4"><strong>Grand Total</strong></td>
-            <td><strong>{{ $grandTotal }}</strong></td>
+            <td data-format='"Rp" #,##0'><strong>{{ $grandTotal }}</strong></td>
             <td colspan="4"></td>
         </tr>
     </tbody>

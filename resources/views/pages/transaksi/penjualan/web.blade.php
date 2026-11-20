@@ -18,6 +18,7 @@ if (!function_exists('sortIcon')) {
         return '<i class="feather icon-chevrons-up sort-icon"></i>';
     }
 }
+$isSuperAdmin = optional(optional(Auth::guard('pengguna')->user())->role)->nama_role === 'super_admin';
 @endphp
 
 @section('content')
@@ -126,6 +127,11 @@ if (!function_exists('sortIcon')) {
                                         </div>
 
                                         <div class="d-flex flex-wrap justify-content-end" style="gap:10px">
+                                            @if ($isSuperAdmin)
+                                                <button type="button" class="btn btn-warning text-white" id="btnGenerateHargaKeuntunganWeb">
+                                                    <i class="feather icon-refresh-cw"></i> Generate Harga Keuntungan
+                                                </button>
+                                            @endif
                                             <button type="submit" class="btn btn-info">
                                                 <i class="feather icon-refresh-cw"></i> Proses
                                             </button>
@@ -140,6 +146,8 @@ if (!function_exists('sortIcon')) {
                                         <input type="hidden" name="sort_col" value="{{ request('sort_col') }}">
                                         <input type="hidden" name="sort_dir" value="{{ request('sort_dir') }}">
                                         <input type="hidden" name="per_page" id="perPageInput" value="{{ request('per_page', 10) }}">
+                                        <input type="hidden" name="generate_keuntungan" id="generateKeuntunganFlagWeb" value="" disabled>
+                                        <input type="hidden" name="confirm_generate" id="confirmGenerateFlagWeb" value="" disabled>
                                     </form>
                                 </div>
                             </div>
@@ -293,6 +301,7 @@ if (!function_exists('sortIcon')) {
                                                                     {!! sortIcon('total_harga') !!}
                                                                 </a>
                                                             </th>
+                                                            <th>Harga Keuntungan</th>
                                                             <th>
                                                                 <a href="{{ sortUrl('scan_out') }}" style="color:inherit">
                                                                     Scan Out
@@ -352,6 +361,7 @@ if (!function_exists('sortIcon')) {
                                                                 </td>
                                                                 <td class="d-none d-md-table-cell" style="white-space:nowrap">{{ \Carbon\Carbon::parse($pj->tanggal)->format('d/m/Y H:i') }}</td>
                                                                 <td style="font-weight:bold;white-space:nowrap">Rp {{ number_format($pj->total_harga, 0, ',', '.') }}</td>
+                                                                <td style="white-space:nowrap">Rp {{ number_format($pj->harga_keuntungan ?? 0, 0, ',', '.') }}</td>
                                                                 <td>
                                                                     @php
                                                                         $scanBadge = match($pj->scan_out ?? 'nothing') {
@@ -420,7 +430,7 @@ if (!function_exists('sortIcon')) {
                                                                 </td>
                                                             </tr>
                                                             <tr class="detail-row" id="detail-{{ $pj->id }}" style="display:none;background:#f9f9f9">
-                                                                <td colspan="11">
+                                                                <td colspan="12">
                                                                     <div class="p-2 p-md-3" style="overflow-x:auto">
                                                                         <div class="row mb-2">
                                                                             <div class="col-md-6">
@@ -522,7 +532,7 @@ if (!function_exists('sortIcon')) {
                                                             </tr>
                                                         @empty
                                                             <tr>
-                                                                <td colspan="11" class="text-center text-muted py-4">Tidak ada data penjualan web.</td>
+                                                                <td colspan="12" class="text-center text-muted py-4">Tidak ada data penjualan web.</td>
                                                             </tr>
                                                         @endforelse
                                                     </tbody>
@@ -997,5 +1007,67 @@ if (!function_exists('sortIcon')) {
                 btn.innerHTML = originalHtml;
             }
         });
+
+        const btnGenerateHargaKeuntunganWeb = document.getElementById('btnGenerateHargaKeuntunganWeb');
+        if (btnGenerateHargaKeuntunganWeb) {
+            btnGenerateHargaKeuntunganWeb.addEventListener('click', async function() {
+                const btn = this;
+                const form = document.getElementById('filterForm');
+                const originalHtml = btn.innerHTML;
+                const params = new URLSearchParams(new FormData(form));
+                params.set('source', 'web');
+
+                btn.disabled = true;
+                btn.innerHTML = '<span class="spinner-border spinner-border-sm mr-1"></span> Mengecek...';
+
+                try {
+                    const res = await fetch(`{{ route('penjualan.harga-keuntungan.manual-count') }}?${params.toString()}`, {
+                        cache: 'no-store',
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
+                    if (!res.ok) throw new Error('Gagal mengecek data edit manual.');
+
+                    const json = await res.json();
+                    const count = Number(json.count || 0);
+
+                    if (count > 0) {
+                        const result = await Swal.fire({
+                            icon: 'warning',
+                            title: 'Konfirmasi Generate Harga Keuntungan',
+                            html: `Ada <strong>${count.toLocaleString('id-ID')}</strong> transaksi yang sudah diedit manual.<br><br>Jika dilanjutkan, hasil edit manual akan diganti dengan perhitungan baru <strong>(harga reseller - HPP)</strong> dan tidak bisa dikembalikan.`,
+                            showCancelButton: true,
+                            confirmButtonText: 'Ya, Lanjutkan',
+                            cancelButtonText: 'Batal',
+                            confirmButtonColor: '#d33',
+                            cancelButtonColor: '#6c757d',
+                            reverseButtons: true
+                        });
+
+                        if (!result.isConfirmed) return;
+                    }
+
+                    const generateFlag = document.getElementById('generateKeuntunganFlagWeb');
+                    const confirmFlag = document.getElementById('confirmGenerateFlagWeb');
+                    generateFlag.disabled = false;
+                    generateFlag.value = '1';
+                    if (count > 0) {
+                        confirmFlag.disabled = false;
+                        confirmFlag.value = '1';
+                    }
+                    form.submit();
+                } catch (e) {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: e.message || 'Gagal mengecek data edit manual.'
+                    });
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            });
+        }
     </script>
 @endsection

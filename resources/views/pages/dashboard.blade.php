@@ -95,26 +95,51 @@
                             </div>
                         </div>
 
-                        <!-- PENJUALAN WEB HARI INI -->
-                        <a href="{{ route('penjualan.web') }}" class="col-md-12 text-decoration-none">
+                        <!-- TOTAL PASANG TERJUAL PER BULAN -->
+                        <div class="col-md-12">
                             <div class="card mb-4">
                                 <div class="card-body">
                                     <div class="d-flex align-items-center justify-content-between">
                                         <div>
-                                            <h2 class="mb-2">{{ $penjualanWebHariIni }}</h2>
+                                            <h2 class="mb-2">{{ number_format($totalPasangTerjual, 0, ',', '.') }}</h2>
                                             <p class="text-muted mb-0">
-                                                <span class="badge badge-info">Penjualan Web</span> Hari Ini
-                                                <br>
-                                                <small>Rp {{ number_format($omzetWebHariIni, 0, ',', '.') }}</small>
-                                                &bull;
-                                                <small>{{ $penjualanWebTotal }} total transaksi</small>
+                                                <span class="badge badge-info">Pasang</span> Terjual
+                                                {{ $pasangMonthLabel }}
                                             </p>
                                         </div>
-                                        <div class="lnr lnr-earth display-4 text-info"></div>
+                                        <div class="lnr lnr-cart display-4 text-info"></div>
                                     </div>
+
+                                    <form method="GET" action="{{ url()->current() }}" class="mt-3">
+                                        @foreach (request()->except(['pasang_month']) as $key => $value)
+                                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                                        @endforeach
+
+                                        <div class="form-row align-items-end">
+                                            <div class="col">
+                                                <label class="small text-muted mb-1">Bulan</label>
+                                                <input type="month" name="pasang_month" class="form-control form-control-sm"
+                                                    value="{{ $pasangMonth }}">
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="submit" class="btn btn-sm btn-info">
+                                                    <i class="feather icon-refresh-cw mr-1"></i> Tampilkan
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+
+                                    <a href="{{ route('laporan.penjualan', [
+                                        'dari_tanggal' => $pasangStartDate->format('Y-m-d'),
+                                        'sampai_tanggal' => $pasangEndDate->format('Y-m-d'),
+                                        'show_retur' => 'no',
+                                        'only_retur' => 'no',
+                                    ]) }}" class="btn btn-sm btn-link px-0 mt-2">
+                                        Lihat Laporan Penjualan
+                                    </a>
                                 </div>
                             </div>
-                        </a>
+                        </div>
                     @endif
 
                     <!-- INFO TAMBAHAN -->
@@ -610,6 +635,8 @@
     </div>
 
     @include('components.footer')
+
+    @include('components.quick-nav')
 
     </div>
 @endsection

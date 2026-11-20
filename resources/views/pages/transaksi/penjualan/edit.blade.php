@@ -348,7 +348,9 @@
                                              onclick="openLightboxEdit()">
                                             @if($penjualan->file_resi)
                                                 <img id="file_resi_img_edit"
-                                                    src="{{ asset('storage/' . $penjualan->file_resi) }}"
+                                                    src="{{ \App\Models\Penjualan::resiDisplayUrl($penjualan->file_resi) }}"
+                                                    data-fallback-src="{{ \App\Models\Penjualan::resiRemoteUrl($penjualan->file_resi) }}"
+                                                    onerror="if (this.dataset.fallbackSrc && this.src !== this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; } else { this.onerror = null; this.style.visibility = 'hidden'; }"
                                                     alt="Preview Resi">
                                             @else
                                                 <img id="file_resi_img_edit" src="" alt="Preview Resi">

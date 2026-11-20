@@ -18,6 +18,7 @@ if (!function_exists('sortIcon')) {
         return '<i class="feather icon-chevrons-up sort-icon"></i>';
     }
 }
+$isSuperAdmin = Auth::guard('pengguna')->user()->role->nama_role === 'super_admin';
 @endphp
 
 @section('content')
@@ -265,12 +266,14 @@ if (!function_exists('sortIcon')) {
                                                                     {!! sortIcon('tanggal') !!}
                                                                 </a>
                                                             </th>
+                                                            @if ($isSuperAdmin)
                                                             <th class="d-none d-md-table-cell">
                                                                 <a href="{{ sortUrl('total_harga') }}" style="color:inherit">
                                                                     Total Harga
                                                                     {!! sortIcon('total_harga') !!}
                                                                 </a>
                                                             </th>
+                                                            @endif
                                                             <th>
                                                                 <a href="{{ sortUrl('scan_out') }}" style="color:inherit">
                                                                     Scan Out
@@ -307,7 +310,9 @@ if (!function_exists('sortIcon')) {
                                                                 <td class="d-none d-lg-table-cell">{{ $pj->nomor_pesanan ?? '-' }}</td>
                                                                 <td class="d-none d-md-table-cell">{{ $pj->dropshipper->nama ?? '-' }}</td>
                                                                 <td style="white-space:nowrap">{{ \Carbon\Carbon::parse($pj->tanggal)->format('d/m/Y H:i') }}</td>
+                                                                @if ($isSuperAdmin)
                                                                 <td class="d-none d-md-table-cell" style="font-weight:bold;white-space:nowrap">Rp {{ number_format($pj->total_harga, 0, ',', '.') }}</td>
+                                                                @endif
                                                                 <td>
                                                                     @php
                                                                         $scanBadge = match($pj->scan_out ?? 'nothing') {
@@ -376,7 +381,7 @@ if (!function_exists('sortIcon')) {
                                                                 </td>
                                                             </tr>
                                                             <tr class="detail-row" id="detail-{{ $pj->id }}" style="display:none;background:#f9f9f9">
-                                                                <td colspan="13">
+                                                                <td colspan="{{ $isSuperAdmin ? 13 : 12 }}">
                                                                     <div class="p-2 p-md-3" style="overflow-x:auto">
                                                                         <table class="table table-sm table-bordered mb-0" style="min-width:500px">
                                                                             <thead class="thead-light">
@@ -401,10 +406,12 @@ if (!function_exists('sortIcon')) {
                                                                                 @empty
                                                                                     <tr><td colspan="7" class="text-center text-muted">Tidak ada detail.</td></tr>
                                                                                 @endforelse
+                                                                                @if ($isSuperAdmin)
                                                                                 <tr style="background:#f1f1f1;font-weight:bold">
                                                                                     <td colspan="6" class="text-right">Total Penjualan</td>
                                                                                     <td>Rp {{ number_format($totalDetail, 0, ',', '.') }}</td>
                                                                                 </tr>
+                                                                                @endif
                                                                             </tbody>
                                                                         </table>
                                                                     </div>
@@ -412,7 +419,7 @@ if (!function_exists('sortIcon')) {
                                                             </tr>
                                                         @empty
                                                             <tr>
-                                                                <td colspan="13" class="text-center text-muted py-4">Tidak ada data penjualan.</td>
+                                                                <td colspan="{{ $isSuperAdmin ? 13 : 12 }}" class="text-center text-muted py-4">Tidak ada data penjualan.</td>
                                                             </tr>
                                                         @endforelse
                                                     </tbody>
@@ -430,6 +437,8 @@ if (!function_exists('sortIcon')) {
                                                         <option value="25" {{ request('per_page') == 25 ? 'selected' : '' }}>25</option>
                                                         <option value="50" {{ request('per_page') == 50 ? 'selected' : '' }}>50</option>
                                                         <option value="100" {{ request('per_page') == 100 ? 'selected' : '' }}>100</option>
+                                                        <option value="200" {{ request('per_page') == 200 ? 'selected' : '' }}>200</option>
+                                                        <option value="500" {{ request('per_page') == 500 ? 'selected' : '' }}>500</option>
                                                     </select>
                                                     <span class="ml-2 text-muted small">entries</span>
                                                 </div>
