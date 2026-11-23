@@ -137,7 +137,7 @@
                                                             <th>File</th>
                                                             <th>Dibuat Oleh</th>
                                                             @if(hasPermission('edit', 'laporan_retur') || hasPermission('hapus', 'laporan_retur'))
-                                                            <th width="100">Action</th>
+                                                            <th width="140">Action</th>
                                                             @endif
                                                         </tr>
                                                     </thead>
@@ -218,6 +218,16 @@
                                                                     <a href="{{ route('laporan.retur.edit', $retur->id) }}" class="btn btn-sm btn-warning">
                                                                         <i class="feather icon-edit"></i>
                                                                     </a>
+                                                                    <button type="button" onclick="confirmDeleteRetur({{ $retur->id }})"
+                                                                        class="btn btn-sm btn-danger" title="Hapus">
+                                                                        <i class="feather icon-trash"></i>
+                                                                    </button>
+                                                                    <form id="delete-retur-form-{{ $retur->id }}"
+                                                                        action="{{ route('laporan.retur.destroy', $retur->id) }}"
+                                                                        method="POST" style="display:none">
+                                                                        @csrf
+                                                                        @method('DELETE')
+                                                                    </form>
                                                                     @endif
                                                                 </td>
                                                                 @endif
@@ -370,6 +380,26 @@
 @section('scripts')
 <script>
     const CSRF_TOKEN = '{{ csrf_token() }}';
+
+    // ============================================================
+    // CONFIRM HAPUS RETUR
+    // ============================================================
+    function confirmDeleteRetur(id) {
+        Swal.fire({
+            title: 'Hapus retur penjualan?',
+            html: 'Data <strong>retur</strong> dan itemnya akan dihapus, serta status retur pada penjualan dikembalikan ke <strong>Tidak</strong>.<br><span class="text-muted small">Data penjualan & item penjualan TIDAK dihapus.</span>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, hapus!',
+            cancelButtonText: 'Batal'
+        }).then(result => {
+            if (result.isConfirmed) {
+                document.getElementById('delete-retur-form-' + id).submit();
+            }
+        });
+    }
 
     // ============================================================
     // CHECK ALL & BULK BAR

@@ -6,6 +6,7 @@ use App\Models\Penjualan;
 use App\Models\ReturPenjualan;
 use App\Models\ReturPenjualanDetail;
 use App\Models\StokBarang;
+use App\Models\StokMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -303,6 +304,66 @@ class ReturPenjualanController extends Controller
             'updated' => $updated,
             'skipped' => $skipped,
         ]);
+    }
+
+    public function destroy($id)
+    {
+        $retur = ReturPenjualan::with('detail')->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            // Jika status selesai, stok pernah ditambah saat selesai -> kurangi kembali + catat movement
+            if ($retur->status === 'selesai') {
+                foreach ($retur->detail as $d) {
+                    $stok = StokBarang::where('barang_id', $d->barang_id)->lockForUpdate()->first();
+                    $stokSebelum = $stok->jumlah_stok ?? 0;
+                    $stokSesudah = $stokSebelum - $d->qty_retur;
+
+                    StokBarang::updateOrCreate(
+                        ['barang_id' => $d->barang_id],
+                        ['jumlah_stok' => $stokSesudah]
+                    );
+
+                    StokMovement::create([
+                        'barang_id'      => $d->barang_id,
+                        'jenis'          => 'keluar',
+                        'qty'            => $d->qty_retur,
+                        'stok_sebelum'   => $stokSebelum,
+                        'stok_sesudah'   => $stokSesudah,
+                        'referensi_tipe' => 'retur_penjualan_delete',
+                        'referensi_id'   => $retur->id,
+                        'keterangan'     => 'Hapus retur penjualan #' . $retur->id,
+                        'created_by'     => Auth::guard('pengguna')->id(),
+                    ]);
+                }
+            }
+
+            $filePath    = $retur->file_path;
+            $penjualanId = $retur->penjualan_id;
+
+            // Hapus item retur + header retur (bukan penjualan / penjualan_detail)
+            ReturPenjualanDetail::where('retur_penjualan_id', $retur->id)->delete();
+            $retur->delete();
+
+            // Set is_retur penjualan kembali 'no' (false)
+            $masihAdaRetur = ReturPenjualan::where('penjualan_id', $penjualanId)->exists();
+            Penjualan::where('id', $penjualanId)
+                ->update(['is_retur' => $masihAdaRetur ? 'yes' : 'no']);
+
+            DB::commit();
+
+            // Hapus file bukti retur dari storage setelah commit
+            if ($filePath) {
+                Storage::disk('public')->delete($filePath);
+            }
+
+            return redirect()->route('laporan.retur')
+                ->with('success', 'Retur penjualan berhasil dihapus.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return back()->with('error', 'Gagal menghapus retur: ' . $e->getMessage());
+        }
     }
 
     // ─────────────────────────────────────────────────────────

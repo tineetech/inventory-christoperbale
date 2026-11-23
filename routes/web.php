@@ -684,6 +684,10 @@ Route::middleware(['auth.pengguna'])->group(function () {
     Route::put('/laporan/penjualan/list-retur/{id}',         [ReturPenjualanController::class, 'update']) ->name('laporan.retur.update');
     Route::patch('/laporan/penjualan/list-retur/{id}/status', [ReturPenjualanController::class, 'updateStatus'])->name('laporan.retur.update-status');
 
+    Route::delete('/laporan/penjualan/list-retur/{id}', [ReturPenjualanController::class, 'destroy'])
+        ->name('laporan.retur.destroy')
+        ->middleware('permission:edit,laporan_retur');
+
     /*
     |--------------------------------------------------------------------------
     | MANAGE STOK
